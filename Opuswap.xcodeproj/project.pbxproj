@@ -1,0 +1,488 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 63;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04395F8CFA0884D2B8F436E6 /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3F83804AE0CFA48AA1C7C7 /* SyncService.swift */; };
+		27057EC9516B652D4D4A71A0 /* ExternalTerminalLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59AAE8DF957200EC1B627331 /* ExternalTerminalLauncher.swift */; };
+		3953079EE4AB0C745D0E0E05 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AE2257E756984DB79D123E /* Session.swift */; };
+		3FFD7AA398A31A9C48AF9DA5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0D483ED43F83810DA274F24B /* Assets.xcassets */; };
+		60102EF2DDA4B23D87416E92 /* SessionMessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC025FDED5C0A4E25C3FE62 /* SessionMessagesView.swift */; };
+		6901EC9F618AEED5AC36513B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB080DDB2D78F7CCFEE24C14 /* ContentView.swift */; };
+		7BD2F9C9FF0502D3437D5CBF /* FileWatcherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4248E169F6C731AD3805FF2 /* FileWatcherService.swift */; };
+		91177A022F2DC75200E040C6 /* LayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91177A002F2DC71600E040C6 /* LayoutView.swift */; };
+		91177A032F2DC75700E040C6 /* PaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91177A012F2DC71600E040C6 /* PaneView.swift */; };
+		91177A042F2DC75C00E040C6 /* WorkspaceLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911779FF2F2DC70300E040C6 /* WorkspaceLayout.swift */; };
+		91177A052F2DC76200E040C6 /* LayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911779FE2F2DC6F300E040C6 /* LayoutManager.swift */; };
+		973D1D309FB239C1E09F9289 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = DF749758EB1F02BFC0E2FE44 /* SwiftTerm */; };
+		9C42ED88F2C9169D381B2EB2 /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 768CD017B5DC3ECFB007B235 /* MessageRow.swift */; };
+		9C43A72BBE1ECF95A14D2FA4 /* OpuswapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87402FDE3E7F421DEABB752 /* OpuswapApp.swift */; };
+		A53AF644E053317D1CFFC75D /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 866028B51841D86C8D5A2A8D /* ProjectListView.swift */; };
+		AABB11223344556677889900 /* TokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11223344556677889901 /* TokenEstimator.swift */; };
+		B3C5171B50B6C0F77FB3C756 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A04124BDC7477739AD997D /* Project.swift */; };
+		CCDD11223344556677889900 /* JSONLWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDD11223344556677889901 /* JSONLWriter.swift */; };
+		D2619FEBAB7F26CE450A66B0 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3A9B5CD3EF499C937CBE8B /* Message.swift */; };
+		D71046965ED0E514E8EBC7DA /* JSONLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16247EBBB66B9C9F51A63C5D /* JSONLParser.swift */; };
+		E022366AEA9184BEE6153E47 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B0FC2762D81D97CD7CC570 /* AppCoordinator.swift */; };
+		F1C870912B7EE2041C38CFFB /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E477E90A7B9B247355A1EDF /* TerminalView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0D483ED43F83810DA274F24B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		16247EBBB66B9C9F51A63C5D /* JSONLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParser.swift; sourceTree = "<group>"; };
+		1C19652555C7A91B447373FD /* Opuswap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Opuswap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		20B0FC2762D81D97CD7CC570 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		59AAE8DF957200EC1B627331 /* ExternalTerminalLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalTerminalLauncher.swift; sourceTree = "<group>"; };
+		768CD017B5DC3ECFB007B235 /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
+		866028B51841D86C8D5A2A8D /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
+		911779FE2F2DC6F300E040C6 /* LayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutManager.swift; sourceTree = "<group>"; };
+		911779FF2F2DC70300E040C6 /* WorkspaceLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLayout.swift; sourceTree = "<group>"; };
+		91177A002F2DC71600E040C6 /* LayoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutView.swift; sourceTree = "<group>"; };
+		91177A012F2DC71600E040C6 /* PaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneView.swift; sourceTree = "<group>"; };
+		9BC025FDED5C0A4E25C3FE62 /* SessionMessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionMessagesView.swift; sourceTree = "<group>"; };
+		9E477E90A7B9B247355A1EDF /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
+		A2A04124BDC7477739AD997D /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		A87402FDE3E7F421DEABB752 /* OpuswapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpuswapApp.swift; sourceTree = "<group>"; };
+		AABB11223344556677889901 /* TokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenEstimator.swift; sourceTree = "<group>"; };
+		AB080DDB2D78F7CCFEE24C14 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B4248E169F6C731AD3805FF2 /* FileWatcherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatcherService.swift; sourceTree = "<group>"; };
+		BB5635E4B63909A0AC025040 /* Opuswap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Opuswap.entitlements; sourceTree = "<group>"; };
+		BE3A9B5CD3EF499C937CBE8B /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		C1AE2257E756984DB79D123E /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
+		CCDD11223344556677889901 /* JSONLWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLWriter.swift; sourceTree = "<group>"; };
+		CF3F83804AE0CFA48AA1C7C7 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BAB7B1FE9A366F7BE8A5C6C8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				973D1D309FB239C1E09F9289 /* SwiftTerm in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0B50DE653ED57A9A76124F17 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				9E477E90A7B9B247355A1EDF /* TerminalView.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+		0EDED6575E72CD86006C2877 /* Sidebar */ = {
+			isa = PBXGroup;
+			children = (
+				866028B51841D86C8D5A2A8D /* ProjectListView.swift */,
+			);
+			path = Sidebar;
+			sourceTree = "<group>";
+		};
+		18B3C079A09A27863B48A097 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0D483ED43F83810DA274F24B /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		1A586AF131733A4AAE7161B9 /* Opuswap */ = {
+			isa = PBXGroup;
+			children = (
+				BB5635E4B63909A0AC025040 /* Opuswap.entitlements */,
+				A87402FDE3E7F421DEABB752 /* OpuswapApp.swift */,
+				C0C7BDD6EFCD04985D4F5720 /* Models */,
+				18B3C079A09A27863B48A097 /* Resources */,
+				702130F51159294B14F4DD4D /* Services */,
+				F762C07FB3A720D644C8536D /* Views */,
+			);
+			path = Opuswap;
+			sourceTree = "<group>";
+		};
+		308CCA39CCF5B19943FE8878 /* Timeline */ = {
+			isa = PBXGroup;
+			children = (
+				768CD017B5DC3ECFB007B235 /* MessageRow.swift */,
+				9BC025FDED5C0A4E25C3FE62 /* SessionMessagesView.swift */,
+			);
+			path = Timeline;
+			sourceTree = "<group>";
+		};
+		702130F51159294B14F4DD4D /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				20B0FC2762D81D97CD7CC570 /* AppCoordinator.swift */,
+				59AAE8DF957200EC1B627331 /* ExternalTerminalLauncher.swift */,
+				B4248E169F6C731AD3805FF2 /* FileWatcherService.swift */,
+				16247EBBB66B9C9F51A63C5D /* JSONLParser.swift */,
+				CCDD11223344556677889901 /* JSONLWriter.swift */,
+				CF3F83804AE0CFA48AA1C7C7 /* SyncService.swift */,
+				AABB11223344556677889901 /* TokenEstimator.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		C0C7BDD6EFCD04985D4F5720 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BE3A9B5CD3EF499C937CBE8B /* Message.swift */,
+				A2A04124BDC7477739AD997D /* Project.swift */,
+				C1AE2257E756984DB79D123E /* Session.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D69B0F185E32E77F3823D791 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1C19652555C7A91B447373FD /* Opuswap.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D8905968DA2FFC0DDCF3F257 = {
+			isa = PBXGroup;
+			children = (
+				91177A002F2DC71600E040C6 /* LayoutView.swift */,
+				91177A012F2DC71600E040C6 /* PaneView.swift */,
+				911779FF2F2DC70300E040C6 /* WorkspaceLayout.swift */,
+				911779FE2F2DC6F300E040C6 /* LayoutManager.swift */,
+				1A586AF131733A4AAE7161B9 /* Opuswap */,
+				D69B0F185E32E77F3823D791 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F762C07FB3A720D644C8536D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AB080DDB2D78F7CCFEE24C14 /* ContentView.swift */,
+				0EDED6575E72CD86006C2877 /* Sidebar */,
+				0B50DE653ED57A9A76124F17 /* Terminal */,
+				308CCA39CCF5B19943FE8878 /* Timeline */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D1735C3CF96782BB3F7AA91C /* Opuswap */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0993F6D0DDAACB1EE5D98B5D /* Build configuration list for PBXNativeTarget "Opuswap" */;
+			buildPhases = (
+				B605D405CA0B0E50E0E2DAFD /* Sources */,
+				D5EAE8988EB522673FB5113E /* Resources */,
+				BAB7B1FE9A366F7BE8A5C6C8 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Opuswap;
+			packageProductDependencies = (
+				DF749758EB1F02BFC0E2FE44 /* SwiftTerm */,
+			);
+			productName = Opuswap;
+			productReference = 1C19652555C7A91B447373FD /* Opuswap.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D0C82B6D7999F7335808D471 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					D1735C3CF96782BB3F7AA91C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E3AB3F3421C807598CF8F852 /* Build configuration list for PBXProject "Opuswap" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D8905968DA2FFC0DDCF3F257;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7945C9F84511FEE8902EBD01 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D1735C3CF96782BB3F7AA91C /* Opuswap */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D5EAE8988EB522673FB5113E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3FFD7AA398A31A9C48AF9DA5 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B605D405CA0B0E50E0E2DAFD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E022366AEA9184BEE6153E47 /* AppCoordinator.swift in Sources */,
+				6901EC9F618AEED5AC36513B /* ContentView.swift in Sources */,
+				91177A032F2DC75700E040C6 /* PaneView.swift in Sources */,
+				27057EC9516B652D4D4A71A0 /* ExternalTerminalLauncher.swift in Sources */,
+				7BD2F9C9FF0502D3437D5CBF /* FileWatcherService.swift in Sources */,
+				D71046965ED0E514E8EBC7DA /* JSONLParser.swift in Sources */,
+				91177A042F2DC75C00E040C6 /* WorkspaceLayout.swift in Sources */,
+				CCDD11223344556677889900 /* JSONLWriter.swift in Sources */,
+				D2619FEBAB7F26CE450A66B0 /* Message.swift in Sources */,
+				9C42ED88F2C9169D381B2EB2 /* MessageRow.swift in Sources */,
+				9C43A72BBE1ECF95A14D2FA4 /* OpuswapApp.swift in Sources */,
+				B3C5171B50B6C0F77FB3C756 /* Project.swift in Sources */,
+				A53AF644E053317D1CFFC75D /* ProjectListView.swift in Sources */,
+				3953079EE4AB0C745D0E0E05 /* Session.swift in Sources */,
+				60102EF2DDA4B23D87416E92 /* SessionMessagesView.swift in Sources */,
+				91177A052F2DC76200E040C6 /* LayoutManager.swift in Sources */,
+				04395F8CFA0884D2B8F436E6 /* SyncService.swift in Sources */,
+				F1C870912B7EE2041C38CFFB /* TerminalView.swift in Sources */,
+				AABB11223344556677889900 /* TokenEstimator.swift in Sources */,
+				91177A022F2DC75200E040C6 /* LayoutView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		06BC5A28AC2DA5DFFF0FCC5D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Opuswap/Opuswap.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_GENERATION_MODE = GeneratedFile;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toro.opuswap;
+				PRODUCT_NAME = Opuswap;
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		6B9816A9A6CCF5A12158D89C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		DB6C1C0D49926F07239FB943 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Opuswap/Opuswap.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_GENERATION_MODE = GeneratedFile;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toro.opuswap;
+				PRODUCT_NAME = Opuswap;
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		FBD5318C2C886923B45BE346 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0993F6D0DDAACB1EE5D98B5D /* Build configuration list for PBXNativeTarget "Opuswap" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06BC5A28AC2DA5DFFF0FCC5D /* Debug */,
+				DB6C1C0D49926F07239FB943 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E3AB3F3421C807598CF8F852 /* Build configuration list for PBXProject "Opuswap" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B9816A9A6CCF5A12158D89C /* Debug */,
+				FBD5318C2C886923B45BE346 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7945C9F84511FEE8902EBD01 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DF749758EB1F02BFC0E2FE44 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7945C9F84511FEE8902EBD01 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D0C82B6D7999F7335808D471 /* Project object */;
+}
