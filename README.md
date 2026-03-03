@@ -1,5 +1,7 @@
 # Opuswap
 
+English | [日本語](README.ja.md)
+
 A macOS app for real-time visualization and management of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session history.
 
 Monitors JSONL files under `~/.claude/projects/` and displays conversation timelines, thinking processes, and tool usage in a rich native UI.
