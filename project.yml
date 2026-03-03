@@ -1,6 +1,6 @@
 name: Opuswap
 options:
-  bundleIdPrefix: com.toro
+  bundleIdPrefix: com.opuswap
   deploymentTarget:
     macOS: "14.0"
   xcodeVersion: "15.0"
@@ -27,7 +27,7 @@ targets:
       - package: SwiftTerm
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.toro.opuswap
+        PRODUCT_BUNDLE_IDENTIFIER: com.opuswap.app
         PRODUCT_NAME: Opuswap
         INFOPLIST_GENERATION_MODE: GeneratedFile
         GENERATE_INFOPLIST_FILE: YES
