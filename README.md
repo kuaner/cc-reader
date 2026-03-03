@@ -7,12 +7,6 @@ Monitors JSONL files under `~/.claude/projects/` and displays conversation timel
 > **⚠️ Disclaimer**
 > This is an **unofficial** third-party tool. Claude Code's JSONL format is not a public API and may change without notice. Surgery Mode directly edits session files — **use at your own risk**. Always keep backups.
 
-<!-- TODO: screenshots -->
-<!-- ![Session List](images/opuswap/session-list.png) -->
-<!-- ![Message Timeline](images/opuswap/timeline.png) -->
-<!-- ![Surgery Mode](images/opuswap/surgery-mode.png) -->
-<!-- ![Multi-pane](images/opuswap/multi-pane.png) -->
-
 ## Features
 
 - **Session Viewer** — Timeline display of thinking / tool use / diffs with syntax highlighting
