@@ -10,12 +10,10 @@ enum SplitDirection: String, Codable {
 struct Pane: Identifiable, Codable, Equatable {
     let id: UUID
     var sessionId: String?      // 表示中のセッション（nilなら空）
-    var showTerminal: Bool      // ターミナル表示するか
 
-    init(id: UUID = UUID(), sessionId: String? = nil, showTerminal: Bool = true) {
+    init(id: UUID = UUID(), sessionId: String? = nil) {
         self.id = id
         self.sessionId = sessionId
-        self.showTerminal = showTerminal
     }
 }
 

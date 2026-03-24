@@ -4,7 +4,7 @@
 
 **Opuswap** is a macOS desktop app for real-time visualization and management of Claude Code session history. It monitors and parses JSONL files under `~/.claude/projects/`, displaying conversation timelines, tool usage, and context information in a rich native UI.
 
-Key capabilities: multi-pane session monitoring, surgical context editing (Surgery Mode), and a built-in terminal.
+Key capabilities: multi-pane session monitoring and surgical context editing (Surgery Mode).
 
 ---
 
@@ -16,7 +16,6 @@ Key capabilities: multi-pane session monitoring, surgical context editing (Surge
 | Language | Swift 5.9 |
 | UI | SwiftUI |
 | Database | SQLite.swift |
-| Terminal | Custom ANSIParser |
 | Build | Xcode + XcodeGen (`project.yml`) |
 
 ---
@@ -29,11 +28,11 @@ Key capabilities: multi-pane session monitoring, surgical context editing (Surge
 │                     (@main Entry)                        │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │ ContentView  │  │ LayoutView   │  │ TerminalView  │  │
-│  │ (Main UI)    │  │ (Multi-pane) │  │ (Terminal)    │  │
-│  └──────┬───────┘  └──────┬───────┘  └───────────────┘  │
-│         │                 │                              │
+│  ┌──────────────┐  ┌──────────────┐                      │
+│  │ ContentView  │  │ LayoutView   │                      │
+│  │ (Main UI)    │  │ (Multi-pane) │                      │
+│  └──────┬───────┘  └──────┬───────┘                      │
+│         │                 │                               │
 │  ┌──────┴──────────────────┴──────────────────────────┐  │
 │  │              Views Layer (SwiftUI)                  │  │
 │  │  ProjectListView / SessionMessagesView / MessageRow │  │
@@ -45,7 +44,7 @@ Key capabilities: multi-pane session monitoring, surgical context editing (Surge
 │  │  AppCoordinator / SyncService / LayoutManager      │  │
 │  │  FileWatcherService / JSONLParser / JSONLWriter     │  │
 │  │  TokenEstimator / ConfirmationDetector             │  │
-│  │  ExternalTerminalLauncher / IgnoredSessionManager  │  │
+│  │  IgnoredSessionManager                             │  │
 │  └────────────────────┬───────────────────────────────┘  │
 │                       │                                  │
 │  ┌────────────────────┴───────────────────────────────┐  │
@@ -127,7 +126,7 @@ Represents a single line in the JSONL file. Stores the original JSON in `rawJson
 Recursive tree structure for multi-pane layout. Persisted in UserDefaults.
 
 - `LayoutNode` — `.pane(Pane)` / `.split(direction, first, second, ratio)`
-- `Pane` — `id`, `sessionId?`, `showTerminal`
+- `Pane` — `id`, `sessionId?`
 - `SplitDirection` — `.horizontal` / `.vertical`
 - Presets: `single`, `twoColumn`, `grid2x2`, `grid(columns:rows:)`
 
@@ -197,7 +196,6 @@ Opuswap/
 │   │   ├── LayoutManager.swift         # Pane layout management
 │   │   ├── TokenEstimator.swift        # Token count estimator
 │   │   ├── ConfirmationDetector.swift  # Confirmation request detection
-│   │   ├── ExternalTerminalLauncher.swift  # External terminal launcher
 │   │   └── IgnoredSessionManager.swift # Deleted session tracking
 │   ├── Storage/
 │   │   ├── StorageManager.swift        # SQLite wrapper (@MainActor)
@@ -209,11 +207,9 @@ Opuswap/
 │   │   ├── Timeline/
 │   │   │   ├── SessionMessagesView.swift   # Timeline + Surgery Mode
 │   │   │   └── MessageRow.swift        # Message row
-│   │   ├── Layout/
-│   │   │   ├── LayoutView.swift        # Multi-pane renderer
-│   │   │   └── PaneView.swift          # Individual pane
-│   │   └── Terminal/
-│   │       └── TerminalView.swift      # Built-in ANSI terminal
+│   │   └── Layout/
+│   │       ├── LayoutView.swift        # Multi-pane renderer
+│   │       └── PaneView.swift          # Individual pane
 │   ├── Resources/
 │   │   └── Assets.xcassets/
 │   └── Opuswap.entitlements

@@ -1,6 +1,6 @@
 # Opuswap
 
-[English](README.md) | 日本語
+[English](README.md) | 日本語 | [简体中文](README.zh-Hans.md)
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) のセッション履歴をリアルタイムで可視化・管理する macOS アプリ。
 
@@ -16,7 +16,6 @@
 - **マルチペイン** — 最大12ペインで複数セッションを同時監視
 - **Surgery Mode** — JSONL を直接編集してコンテキストのトークンを最適化（一括削除・巻き戻し・要約編集）
 - **コンテキストパネル** — Claude の理解状況、読み込み/編集済みファイルを一覧表示
-- **内蔵ターミナル** — 自作 ANSI パーサー、セッションの作業ディレクトリに連動
 
 ## 必要環境
 
@@ -45,7 +44,6 @@ Xcode で `Cmd + R` でビルド＆実行。
 |---------|------|
 | UI | SwiftUI |
 | データベース | [SQLite.swift](https://github.com/nicklama/SQLite.swift) |
-| ターミナル | 自作 ANSIParser |
 | ファイル監視 | FSEvents |
 | ビルド | XcodeGen (`project.yml`) |
 
@@ -58,7 +56,7 @@ FileWatcherService → SyncService → JSONLParser (差分パース)
     ↓
 StorageManager (SQLite.swift)
     ↓
-SwiftUI Views (ContentView / LayoutView / TerminalView)
+SwiftUI Views (ContentView / LayoutView)
 ```
 
 詳細は [docs/SPEC.md](docs/SPEC.md) を参照。

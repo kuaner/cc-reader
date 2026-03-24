@@ -1,6 +1,6 @@
 # Opuswap
 
-English | [日本語](README.ja.md)
+English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md)
 
 A macOS app for real-time visualization and management of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session history.
 
@@ -16,7 +16,6 @@ Monitors JSONL files under `~/.claude/projects/` and displays conversation timel
 - **Multi-pane Layout** — Up to 12 panes for simultaneous session monitoring
 - **Surgery Mode** — Directly edit JSONL to optimize context tokens (bulk delete, rollback, summary editing)
 - **Context Panel** — View Claude's understanding, loaded/edited files at a glance
-- **Built-in Terminal** — Custom ANSI parser, auto-linked to session working directory
 
 ## Requirements
 
@@ -45,7 +44,6 @@ Build & Run with `Cmd + R` in Xcode.
 |----------|-----------|
 | UI | SwiftUI |
 | Database | [SQLite.swift](https://github.com/nicklama/SQLite.swift) |
-| Terminal | Custom ANSIParser |
 | File Watching | FSEvents |
 | Build | XcodeGen (`project.yml`) |
 
@@ -58,7 +56,7 @@ FileWatcherService → SyncService → JSONLParser (incremental)
     ↓
 StorageManager (SQLite.swift)
     ↓
-SwiftUI Views (ContentView / LayoutView / TerminalView)
+SwiftUI Views (ContentView / LayoutView)
 ```
 
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.

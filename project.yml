@@ -1,14 +1,10 @@
 name: Opuswap
 options:
   bundleIdPrefix: com.opuswap
+  developmentLanguage: en
   deploymentTarget:
     macOS: "14.0"
   xcodeVersion: "15.0"
-
-packages:
-  SwiftTerm:
-    url: https://github.com/migueldeicaza/SwiftTerm
-    from: "1.2.0"
 
 settings:
   base:
@@ -23,8 +19,6 @@ targets:
       - path: Opuswap
         excludes:
           - "**/.DS_Store"
-    dependencies:
-      - package: SwiftTerm
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.opuswap.app

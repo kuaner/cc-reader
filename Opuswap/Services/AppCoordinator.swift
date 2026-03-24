@@ -2,14 +2,6 @@ import Foundation
 import SwiftData
 import Combine
 
-// MARK: - Notification Names
-
-extension Notification.Name {
-    /// ターミナルでコマンドを実行する通知
-    /// userInfo: ["paneId": UUID, "command": String]
-    static let executeTerminalCommand = Notification.Name("executeTerminalCommand")
-}
-
 @MainActor
 class AppCoordinator: ObservableObject {
     @Published private(set) var isInitialized = false

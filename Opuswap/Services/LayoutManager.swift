@@ -49,17 +49,6 @@ class LayoutManager: ObservableObject {
         save()
     }
 
-    /// ペインのターミナル表示を切り替え
-    func toggleTerminal(for paneId: UUID) {
-        objectWillChange.send()
-        layout.root = updateNode(layout.root, targetId: paneId) { pane in
-            var newPane = pane
-            newPane.showTerminal.toggle()
-            return newPane
-        }
-        save()
-    }
-
     /// 全ペインを取得
     func allPanes() -> [Pane] {
         collectPanes(layout.root)
@@ -68,23 +57,6 @@ class LayoutManager: ObservableObject {
     /// 特定のセッションが開いているペインを検索
     func findPane(for sessionId: String) -> Pane? {
         allPanes().first { $0.sessionId == sessionId }
-    }
-
-    /// セッションを再開（ターミナルでclaude --resumeを実行）
-    func resumeSession(_ sessionId: String, cwd: String) {
-        // cdしてからclaude --resumeを実行
-        let command = "cd \"\(cwd)\" && claude --resume \(sessionId)"
-
-        // フォーカスされたペインに割り当てる（なければ最初のペイン）
-        let targetPaneId = focusedPaneId ?? allPanes().first?.id
-        guard let paneId = targetPaneId else { return }
-
-        // コマンド実行
-        NotificationCenter.default.post(
-            name: .executeTerminalCommand,
-            object: nil,
-            userInfo: ["paneId": paneId, "command": command]
-        )
     }
 
     /// 特定のsplitノードのratioを更新
