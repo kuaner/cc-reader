@@ -29,13 +29,15 @@
 "file.open.external" = "在外部打开";
 "file.preview.help" = "预览文件";
 "file.preview.rendered" = "预览";
-"file.preview.source" = "源码";
+"file.preview.source" = "原文";
 "layout.emptyHint" = "从侧边栏拖拽，或从上方菜单选择";
 "layout.noSessionSelected" = "未选择会话";
 "layout.pane.close" = "关闭窗格";
 "layout.recentSessions" = "最近会话";
 "layout.split.horizontal" = "横向分割";
 "layout.split.vertical" = "纵向分割";
+"session.resume.copied" = "已复制：claude --resume <sessionId>";
+"session.resume.help" = "复制 resume 命令到剪贴板";
 "sidebar.deleteAndDontAsk" = "删除（以后不再确认）";
 "sidebar.deleteMany.confirm" = "确认删除这 %d 个会话吗？对应的 JSONL 文件也会被删除。";
 "sidebar.deleteSession.confirmSingle" = "确认删除这个会话吗？对应的 JSONL 文件也会被删除。";

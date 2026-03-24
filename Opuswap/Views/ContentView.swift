@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -23,6 +24,9 @@ struct ContentView: View {
                     .id(session.sessionId)
                     .navigationSubtitle(subtitleText)
                     .toolbar {
+                        ToolbarItem(placement: .automatic) {
+                            SessionResumeButton(sessionId: session.sessionId)
+                        }
                         ToolbarItem(placement: .automatic) {
                             Button {
                                 Task {
@@ -65,6 +69,36 @@ struct ContentView: View {
         return String(format: String(localized: "status.messageCount"), count)
     }
 }
+
+// MARK: - Session Resume Button
+
+private struct SessionResumeButton: View {
+    let sessionId: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            let command = "claude --resume \(sessionId)"
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(command, forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                copied = false
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: copied ? "checkmark" : "terminal")
+                Text("Resume")
+                    .font(.caption)
+            }
+        }
+        .help(copied
+              ? String(localized: "session.resume.copied")
+              : String(localized: "session.resume.help"))
+    }
+}
+
+// MARK: - Sync Overlay
 
 private struct SyncOverlayView: View {
     @ObservedObject var coordinator: AppCoordinator

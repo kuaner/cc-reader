@@ -659,6 +659,7 @@ struct CurrentUnderstandingView: View {
 struct UnderstandingModalView: View {
     let thinking: String
     @Environment(\.dismiss) private var dismiss
+    @State private var showRendered = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -668,6 +669,14 @@ struct UnderstandingModalView: View {
                 Text(String(localized: "context.understanding.title"))
                     .font(.headline)
                 Spacer()
+
+                Picker("", selection: $showRendered) {
+                    Text(String(localized: "file.preview.source")).tag(false)
+                    Text(String(localized: "file.preview.rendered")).tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 160)
+
                 Button {
                     dismiss()
                 } label: {
@@ -682,12 +691,16 @@ struct UnderstandingModalView: View {
 
             Divider()
 
-            ScrollView {
-                Text(thinking)
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+            if showRendered {
+                MarkdownRenderView(markdown: thinking)
+            } else {
+                ScrollView {
+                    Text(verbatim: thinking)
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
             }
         }
         .frame(minWidth: 500, minHeight: 400)
@@ -950,87 +963,97 @@ struct FilePreviewSheet: View {
     }
 }
 
-// MARK: - Markdown Render View (WKWebView)
+// MARK: - Markdown Render View (WKWebView, bundled JS)
 
 import WebKit
 
 struct MarkdownRenderView: NSViewRepresentable {
     let markdown: String
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
+        context.coordinator.loadTemplate(into: webView, markdown: markdown)
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        let escaped = markdown
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "`", with: "\\`")
-            .replacingOccurrences(of: "$", with: "\\$")
-        let html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <style>
-          :root { color-scheme: light dark; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-            padding: 16px;
-            margin: 0;
-            color: var(--text);
-            background: transparent;
-          }
-          @media (prefers-color-scheme: dark) {
-            :root { --text: #e0e0e0; --code-bg: #1e1e1e; --border: #333; }
-          }
-          @media (prefers-color-scheme: light) {
-            :root { --text: #1d1d1f; --code-bg: #f5f5f5; --border: #d1d1d6; }
-          }
-          h1 { font-size: 1.6em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-          h2 { font-size: 1.3em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-          h3 { font-size: 1.1em; }
-          code {
-            font-family: Menlo, monospace;
-            font-size: 0.9em;
-            background: var(--code-bg);
-            padding: 2px 5px;
-            border-radius: 4px;
-          }
-          pre {
-            background: var(--code-bg);
-            padding: 12px;
-            border-radius: 8px;
-            overflow-x: auto;
-          }
-          pre code { background: none; padding: 0; }
-          blockquote {
-            border-left: 3px solid var(--border);
-            margin-left: 0;
-            padding-left: 12px;
-            color: #888;
-          }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid var(--border); padding: 6px 12px; text-align: left; }
-          img { max-width: 100%; }
-          a { color: #007aff; }
-        </style>
-        </head>
-        <body>
-        <div id="content"></div>
-        <script>
-          document.getElementById('content').innerHTML = marked.parse(`\(escaped)`);
-        </script>
-        </body>
-        </html>
-        """
-        webView.loadHTMLString(html, baseURL: nil)
+        guard context.coordinator.lastMarkdown != markdown else { return }
+        context.coordinator.loadTemplate(into: webView, markdown: markdown)
+    }
+
+    class Coordinator {
+        var lastMarkdown: String?
+        private static var cachedMarkedJS: String?
+
+        private var markedJS: String {
+            if let cached = Self.cachedMarkedJS { return cached }
+            if let url = Bundle.main.url(forResource: "marked.min", withExtension: "js"),
+               let js = try? String(contentsOf: url, encoding: .utf8) {
+                Self.cachedMarkedJS = js
+                return js
+            }
+            return ""
+        }
+
+        func loadTemplate(into webView: WKWebView, markdown: String) {
+            lastMarkdown = markdown
+            let escaped = markdown
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "`", with: "\\`")
+                .replacingOccurrences(of: "$", with: "\\$")
+            let html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <style>
+              :root { color-scheme: light dark; }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                font-size: 14px; line-height: 1.6;
+                padding: 16px; margin: 0;
+                color: var(--text); background: transparent;
+              }
+              @media (prefers-color-scheme: dark) {
+                :root { --text: #e0e0e0; --code-bg: #1e1e1e; --border: #333; }
+              }
+              @media (prefers-color-scheme: light) {
+                :root { --text: #1d1d1f; --code-bg: #f5f5f5; --border: #d1d1d6; }
+              }
+              h1 { font-size: 1.6em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+              h2 { font-size: 1.3em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+              h3 { font-size: 1.1em; }
+              code {
+                font-family: Menlo, monospace; font-size: 0.9em;
+                background: var(--code-bg); padding: 2px 5px; border-radius: 4px;
+              }
+              pre { background: var(--code-bg); padding: 12px; border-radius: 8px; overflow-x: auto; }
+              pre code { background: none; padding: 0; }
+              blockquote {
+                border-left: 3px solid var(--border);
+                margin-left: 0; padding-left: 12px; color: #888;
+              }
+              table { border-collapse: collapse; width: 100%; }
+              th, td { border: 1px solid var(--border); padding: 6px 12px; text-align: left; }
+              img { max-width: 100%; }
+              a { color: #007aff; }
+            </style>
+            </head>
+            <body>
+            <div id="content"></div>
+            <script>\(markedJS)</script>
+            <script>
+              document.getElementById('content').innerHTML = marked.parse(`\(escaped)`);
+            </script>
+            </body>
+            </html>
+            """
+            webView.loadHTMLString(html, baseURL: nil)
+        }
     }
 }
 

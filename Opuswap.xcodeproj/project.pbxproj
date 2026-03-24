@@ -29,6 +29,7 @@
 		E022366AEA9184BEE6153E47 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B0FC2762D81D97CD7CC570 /* AppCoordinator.swift */; };
 		F253B1242AA447FF2E4B0714 /* TokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A3667D7404351FD1BFD341 /* TokenEstimator.swift */; };
 		F62B69E7D5AF84DA0D0A2796 /* IgnoredSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B3499B0036259289402565 /* IgnoredSessionManager.swift */; };
+		AABB001122334455DEAD0001 /* marked.min.js in Resources */ = {isa = PBXBuildFile; fileRef = AABB001122334455DEAD0002 /* marked.min.js */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +59,7 @@
 		EEF8BC129BBAC8BD3EABA88D /* WorkspaceLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLayout.swift; sourceTree = "<group>"; };
 		F8C0CE24B8E4C048AC610E9A /* ConfirmationDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmationDetector.swift; sourceTree = "<group>"; };
 		F8E4127F94A73CDC23477FC9 /* LayoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutView.swift; sourceTree = "<group>"; };
+		AABB001122334455DEAD0002 /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "marked.min.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -74,6 +76,7 @@
 			children = (
 				0D483ED43F83810DA274F24B /* Assets.xcassets */,
 				0A86E2955535140C8485D465 /* Localizable.strings */,
+				AABB001122334455DEAD0002 /* marked.min.js */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -227,6 +230,7 @@
 			files = (
 				3FFD7AA398A31A9C48AF9DA5 /* Assets.xcassets in Resources */,
 				49BA30408004D660DF15D9E6 /* Localizable.strings in Resources */,
+				AABB001122334455DEAD0001 /* marked.min.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

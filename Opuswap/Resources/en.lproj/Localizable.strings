@@ -29,13 +29,15 @@
 "file.open.external" = "Open Externally";
 "file.preview.help" = "Preview file";
 "file.preview.rendered" = "Preview";
-"file.preview.source" = "Source";
+"file.preview.source" = "Raw";
 "layout.emptyHint" = "Drag from the sidebar or choose from the menu above.";
 "layout.noSessionSelected" = "No Session Selected";
 "layout.pane.close" = "Close Pane";
 "layout.recentSessions" = "Recent Sessions";
 "layout.split.horizontal" = "Split Horizontally";
 "layout.split.vertical" = "Split Vertically";
+"session.resume.copied" = "Copied: claude --resume <sessionId>";
+"session.resume.help" = "Copy resume command to clipboard";
 "sidebar.deleteAndDontAsk" = "Delete (Do not ask again)";
 "sidebar.deleteMany.confirm" = "Delete %d sessions? JSONL files will also be deleted.";
 "sidebar.deleteSession.confirmSingle" = "Delete this session? The JSONL file will also be deleted.";

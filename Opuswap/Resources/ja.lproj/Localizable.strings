@@ -29,13 +29,15 @@
 "file.open.external" = "外部で開く";
 "file.preview.help" = "ファイルをプレビュー";
 "file.preview.rendered" = "プレビュー";
-"file.preview.source" = "ソース";
+"file.preview.source" = "原文";
 "layout.emptyHint" = "サイドバーからドラッグ、または上のメニューから選択";
 "layout.noSessionSelected" = "セッション未選択";
 "layout.pane.close" = "ペインを閉じる";
 "layout.recentSessions" = "最近のセッション";
 "layout.split.horizontal" = "横に分割";
 "layout.split.vertical" = "縦に分割";
+"session.resume.copied" = "コピー済み: claude --resume <sessionId>";
+"session.resume.help" = "resumeコマンドをクリップボードにコピー";
 "sidebar.deleteAndDontAsk" = "削除（今後確認しない）";
 "sidebar.deleteMany.confirm" = "%d件のセッションを削除しますか？JSONLファイルも削除されます。";
 "sidebar.deleteSession.confirmSingle" = "このセッションを削除しますか？JSONLファイルも削除されます。";
