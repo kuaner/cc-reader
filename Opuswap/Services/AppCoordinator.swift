@@ -6,7 +6,6 @@ import Combine
 class AppCoordinator: ObservableObject {
     @Published private(set) var isInitialized = false
     @Published private(set) var isSyncing = false
-    @Published private(set) var messageCount = 0
     @Published private(set) var syncProgress: String = ""
 
     private var syncService: SyncService?
@@ -34,10 +33,6 @@ class AppCoordinator: ObservableObject {
         sync.$isSyncing
             .receive(on: DispatchQueue.main)
             .assign(to: &$isSyncing)
-
-        sync.$syncedMessageCount
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$messageCount)
 
         sync.$syncProgress
             .receive(on: DispatchQueue.main)

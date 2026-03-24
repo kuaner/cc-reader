@@ -128,6 +128,9 @@ class Message {
     /// 全プロパティを事前にデコードしてキャッシュに格納する（スクロール時のメインスレッドデコードを防ぐ）
     func preload() { ensureDecoded() }
 
+    /// デコード済みかどうか（外部からの軽量チェック用）
+    var isDecoded: Bool { _decoded }
+
     func invalidateCache() {
         _decoded = false
         _content = nil; _thinking = nil; _model = nil
@@ -271,7 +274,7 @@ struct ToolResultData: Codable {
 
 // MARK: - StructuredPatch (Edit結果の差分情報)
 
-struct StructuredPatchHunk: Codable {
+struct StructuredPatchHunk: Codable, Equatable {
     var oldStart: Int
     var oldLines: Int
     var newStart: Int

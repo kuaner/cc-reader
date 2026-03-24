@@ -3,15 +3,10 @@ import SwiftData
 
 struct SessionMessagesView: View {
     let session: Session
+    @Binding var visibleMessageCount: Int
     @Environment(\.modelContext) private var modelContext
-    @State private var showContext = true
 
-    // SQLiteがtimestampでソート → View側のO(n log n)ソート完全不要
     @Query private var messages: [Message]
-
-    // Surgery Mode
-    @State private var isSurgeryMode = false
-    @State private var selectedMessageIds: Set<String> = []
 
     // Rewind
     @State private var showRewindConfirm = false
@@ -34,26 +29,18 @@ struct SessionMessagesView: View {
     // ローディング状態
     @State private var isDeleting = false
 
-    // 予計算済みデータ（メッセージ数変化時のみ更新）
-    @State private var prevTimestampMap: [String: Date] = [:]
-    @State private var lastProcessedMessageCount = 0
-    @State private var derivedPatchMap: [String: [StructuredPatchHunk]] = [:]
-    @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
-    @State private var derivedContextMap: [String: ContextItem] = [:]
-    @State private var derivedLatestThinking: String? = nil
-    @State private var derivedHasSummaryThinking = false
-    @State private var tokenCountByMessageId: [String: Int] = [:]
-    @State private var cachedTotalTokens = 0
-    @StateObject private var patchMapStore = PatchMapStore()
+    // 派生データ一括スナップショット
+    @State private var timeline = TimelineSnapshot()
 
-    // ContextPanel 用のキャッシュ（重複 @Query 排除）
+    // ContextPanel 用のキャッシュ
     @State private var ctxLatestThinking: String? = nil
     @State private var ctxReadFiles: [ContextItem] = []
     @State private var ctxEditedFiles: [ContextItem] = []
     @State private var ctxWrittenFiles: [ContextItem] = []
 
-    init(session: Session) {
+    init(session: Session, visibleMessageCount: Binding<Int>) {
         self.session = session
+        self._visibleMessageCount = visibleMessageCount
         let sid = session.sessionId
         _messages = Query(
             filter: #Predicate<Message> { $0.session?.sessionId == sid },
@@ -62,128 +49,27 @@ struct SessionMessagesView: View {
         )
     }
 
-    private var isWaitingForResponse: Bool {
-        visibleMessages.last?.type == MessageType.user
-    }
-    private var visibleMessages: [Message] {
-        messages.filter { message in
-            switch message.type {
-            case .user:
-                return !(message.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            case .assistant:
-                let hasContent = !(message.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-                let hasThinking = !(message.thinking?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-                let hasToolUses = !message.toolUses.isEmpty
-                return hasContent || hasThinking || hasToolUses
-            }
-        }
-    }
-
-
-    private var selectedTokenCount: Int {
-        guard isSurgeryMode else { return 0 }
-        return selectedMessageIds.reduce(0) { partial, id in
-            partial + (tokenCountByMessageId[id] ?? 0)
-        }
-    }
-
-    private var totalTokenCount: Int {
-        isSurgeryMode ? cachedTotalTokens : 0
-    }
-
     var body: some View {
         HStack(spacing: 0) {
-            // メインタイムライン
-            VStack(spacing: 0) {
-                if isSurgeryMode {
-                    surgeryToolbar
-                }
+            TimelineListView(
+                snapshotId: timeline.generation,
+                visibleMessages: timeline.visibleMessages,
+                prevTimestampMap: timeline.prevTimestampMap,
+                rowPatchesMap: timeline.rowPatchesMap,
+                isDeleting: isDeleting,
+                onAction: handleRowAction
+            )
 
-                if visibleMessages.isEmpty {
-                    Spacer()
-                    Text(String(localized: "timeline.noMessages"))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                } else {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 12) {
-                                ForEach(visibleMessages) { message in
-                                    MessageRow(
-                                        message: message,
-                                        previousUserTimestamp: prevTimestampMap[message.uuid],
-                                        isInSurgeryMode: isSurgeryMode,
-                                        isSelected: selectedMessageIds.contains(message.uuid),
-                                        tokenCount: isSurgeryMode ? TokenEstimator.estimateTokens(for: message) : 0,
-                                        onAction: handleRowAction
-                                    )
-                                    .id(message.uuid)
-                                }
-
-                                if isWaitingForResponse && !isSurgeryMode {
-                                    WaitingForResponseBubble()
-                                        .id("waiting")
-                                }
-                            }
-                            .padding()
-                        }
-                        .environmentObject(patchMapStore)
-                        .onChange(of: visibleMessages.count) { oldCount, newCount in
-                            rebuildDerivedData()
-                            guard newCount > oldCount, !isDeleting else { return }
-                            if let last = visibleMessages.last {
-                                withAnimation {
-                                    proxy.scrollTo(last.uuid, anchor: .bottom)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // コンテキストパネル（固定幅サイドバー、@Query 排除済み）
-            if showContext && !isSurgeryMode {
-                Divider()
-                ContextPanel(
-                    latestThinking: ctxLatestThinking,
-                    readFiles: ctxReadFiles,
-                    editedFiles: ctxEditedFiles,
-                    writtenFiles: ctxWrittenFiles
-                )
-                .frame(width: 260)
-            }
+            Divider()
+            ContextPanel(
+                latestThinking: ctxLatestThinking,
+                readFiles: ctxReadFiles,
+                editedFiles: ctxEditedFiles,
+                writtenFiles: ctxWrittenFiles
+            )
+            .frame(width: 260)
         }
         .navigationTitle(sessionTitle)
-        .toolbar {
-            // Surgery Modeトグル
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    withAnimation {
-                        isSurgeryMode.toggle()
-                        if !isSurgeryMode {
-                            selectedMessageIds.removeAll()
-                        }
-                    }
-                } label: {
-                    Image(systemName: "scissors")
-                        .symbolVariant(isSurgeryMode ? .fill : .none)
-                        .foregroundStyle(isSurgeryMode ? .red : .primary)
-                }
-                .help("Surgery Mode")
-            }
-
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    withAnimation { showContext.toggle() }
-                } label: {
-                    Image(systemName: showContext ? "sidebar.right" : "sidebar.right")
-                        .symbolVariant(showContext ? .fill : .none)
-                }
-                .help(String(localized: "timeline.context.help"))
-                .disabled(isSurgeryMode)
-            }
-        }
-        // Rewind確認ダイアログ
         .confirmationDialog(String(localized: "timeline.rewind.confirmTitle"), isPresented: $showRewindConfirm, titleVisibility: .visible) {
             Button(String(localized: "timeline.rewind.execute"), role: .destructive) {
                 performRewind()
@@ -192,7 +78,6 @@ struct SessionMessagesView: View {
         } message: {
             Text(String(localized: "timeline.rewind.confirmMessage"))
         }
-        // 単一メッセージ削除確認
         .sheet(isPresented: $showDeleteConfirm) {
             DeleteConfirmSheet(
                 skipConfirmation: $skipDeleteConfirmation,
@@ -200,7 +85,6 @@ struct SessionMessagesView: View {
                 onCancel: { showDeleteConfirm = false }
             )
         }
-        // 要約編集シート
         .sheet(isPresented: $showSummaryEditor) {
             SummaryEditorSheet(
                 content: $editedSummaryContent,
@@ -208,7 +92,6 @@ struct SessionMessagesView: View {
                 onCancel: { showSummaryEditor = false }
             )
         }
-        // エラーアラート
         .alert(String(localized: "common.error"), isPresented: $showError) {
             Button(String(localized: "common.ok")) {}
         } message: {
@@ -217,14 +100,15 @@ struct SessionMessagesView: View {
         .onAppear {
             rebuildDerivedData()
         }
+        .onChange(of: messages.count) { _, _ in
+            rebuildDerivedData()
+        }
     }
 
     // MARK: - Row Action Handler
 
     private func handleRowAction(_ action: MessageRowAction) {
         switch action {
-        case .toggleSelection(let uuid):
-            toggleSelection(uuid)
         case .rewindHere(let uuid):
             rewindTargetId = uuid
             showRewindConfirm = true
@@ -245,17 +129,21 @@ struct SessionMessagesView: View {
     // MARK: - Derived Data
 
     @State private var derivedDataGeneration = 0
+    @State private var lastProcessedMessageCount = 0
+    @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
+    @State private var toolUseOwnerMap: [String: String] = [:]
 
-    /// Phase 1（同期・高速）: timestamp マップのみ構築。type / timestamp / uuid は SQLite 直接読み出しで JSON デコード不要。
-    /// Phase 2（非同期・yield 付き）: 全メッセージのデコード + patchMap + context を段階的に構築。
     private func rebuildDerivedData() {
         derivedDataGeneration += 1
         let gen = derivedDataGeneration
 
-        // --- Phase 1: 同期（デコード不要のプロパティのみ） ---
+        let visible = messages.filter { $0.rawJson.count > 50 }
+        let visibleCount = visible.count
+
         var tsMap: [String: Date] = [:]
+        tsMap.reserveCapacity(visibleCount)
         var lastUserTime: Date? = nil
-        for msg in visibleMessages {
+        for msg in visible {
             if msg.type == .assistant, let t = lastUserTime {
                 tsMap[msg.uuid] = t
             }
@@ -263,43 +151,47 @@ struct SessionMessagesView: View {
                 lastUserTime = msg.timestamp
             }
         }
-        prevTimestampMap = tsMap
 
-        // --- Phase 2: 非同期（デコード + patchMap + context） ---
-        let count = visibleMessages.count
-        let needsFullRebuild = count < lastProcessedMessageCount
+        // Phase 0: UI を即座に更新（デコード不要のデータだけ）
+        var immediateSnap = timeline
+        immediateSnap.visibleMessages = visible
+        immediateSnap.prevTimestampMap = tsMap
+        immediateSnap.generation = gen
+        timeline = immediateSnap
+        visibleMessageCount = visibleCount
+
+        // Phase 1: 差分だけ非同期デコード
+        let needsFullRebuild = visibleCount < lastProcessedMessageCount
         let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount
-        guard startIndex <= count else { return }
-        let deltaMessages = Array(visibleMessages[startIndex..<count])
-
-        var initialPatchMap = needsFullRebuild ? [:] : derivedPatchMap
-        var initialToolUseMap = needsFullRebuild ? [:] : derivedToolUseMap
-        var initialContextMap = needsFullRebuild ? [:] : derivedContextMap
-        var initialLatestThinking = needsFullRebuild ? nil : derivedLatestThinking
-        var initialHasSummaryThinking = needsFullRebuild ? false : derivedHasSummaryThinking
-        var initialTokenMap = needsFullRebuild ? [:] : tokenCountByMessageId
+        guard startIndex <= visibleCount else { return }
+        let deltaMessages = Array(visible[startIndex..<visibleCount])
 
         if deltaMessages.isEmpty {
-            publishContext(
-                patchMap: initialPatchMap,
-                contextMap: initialContextMap,
-                latestThinking: initialLatestThinking
-            )
+            publishContext(contextMap: timeline.derivedContextMap, latestThinking: ctxLatestThinking)
             return
         }
+
+        var patchMap = needsFullRebuild ? [String: [StructuredPatchHunk]]() : timeline.derivedPatchMap
+        var toolUseMap = needsFullRebuild ? [String: ToolUseInfo]() : derivedToolUseMap
+        var ownerMap = needsFullRebuild ? [String: String]() : toolUseOwnerMap
+        var contextMap = needsFullRebuild ? [String: ContextItem]() : timeline.derivedContextMap
+        var latestThinking: String? = needsFullRebuild ? nil : ctxLatestThinking
+        var hasSummaryThinking = needsFullRebuild ? false : timeline.hasSummaryThinking
+        var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
 
         Task { @MainActor in
             for (i, msg) in deltaMessages.enumerated() {
                 guard gen == derivedDataGeneration else { return }
                 msg.preload()
-                initialTokenMap[msg.uuid] = TokenEstimator.estimateTokens(for: msg)
 
                 if msg.type == .assistant {
-                    for toolUse in msg.toolUses {
-                        initialToolUseMap[toolUse.id] = toolUse
+                    let uses = msg.toolUses
+                    for toolUse in uses {
+                        toolUseMap[toolUse.id] = toolUse
+                        ownerMap[toolUse.id] = msg.uuid
                         if let key = toolUse.filePath ?? toolUse.command {
-                            if initialContextMap[key] == nil {
-                                initialContextMap[key] = ContextItem(
+                            if contextMap[key] == nil {
+                                contextMap[key] = ContextItem(
                                     id: key, toolName: toolUse.name,
                                     filePath: toolUse.filePath, command: toolUse.command,
                                     content: String(localized: "timeline.tool.running"), isError: false
@@ -307,24 +199,38 @@ struct SessionMessagesView: View {
                             }
                         }
                     }
-                    if !initialHasSummaryThinking, let t = msg.thinking, !t.isEmpty {
-                        initialLatestThinking = t
+                    if !uses.isEmpty && !patchMap.isEmpty {
+                        var rowMap: [String: [StructuredPatchHunk]] = [:]
+                        for tu in uses {
+                            if let p = patchMap[tu.id] { rowMap[tu.id] = p }
+                        }
+                        if !rowMap.isEmpty { rowPatchesMap[msg.uuid] = rowMap }
+                    }
+                    if !hasSummaryThinking, let t = msg.thinking, !t.isEmpty {
+                        latestThinking = t
                     }
                 } else {
                     if let patches = msg.toolUseResultsWithPatch {
-                        for (id, hunks) in patches { initialPatchMap[id] = hunks }
+                        for (id, hunks) in patches {
+                            patchMap[id] = hunks
+                            if let ownerUuid = ownerMap[id] {
+                                var existing = rowPatchesMap[ownerUuid] ?? [:]
+                                existing[id] = hunks
+                                rowPatchesMap[ownerUuid] = existing
+                            }
+                        }
                     }
                     if let c = msg.content, c.contains("This session is being continued") {
-                        initialLatestThinking = c
-                        initialHasSummaryThinking = true
+                        latestThinking = c
+                        hasSummaryThinking = true
                     }
                     if let results = msg.toolResults {
                         for result in results {
                             guard let toolUseId = result.tool_use_id,
-                                  let toolUse = initialToolUseMap[toolUseId] else { continue }
+                                  let toolUse = toolUseMap[toolUseId] else { continue }
                             let content = result.content ?? ""
                             let key = toolUse.filePath ?? toolUse.command ?? toolUseId
-                            initialContextMap[key] = ContextItem(
+                            contextMap[key] = ContextItem(
                                 id: key, toolName: toolUse.name,
                                 filePath: toolUse.filePath, command: toolUse.command,
                                 content: content.isEmpty ? String(localized: "timeline.tool.success") : content,
@@ -333,32 +239,32 @@ struct SessionMessagesView: View {
                         }
                     }
                 }
-                if i.isMultiple(of: 40) { await Task.yield() }
+                if i.isMultiple(of: 15) { await Task.yield() }
             }
 
             guard gen == derivedDataGeneration else { return }
-            lastProcessedMessageCount = count
-            derivedPatchMap = initialPatchMap
-            derivedToolUseMap = initialToolUseMap
-            derivedContextMap = initialContextMap
-            derivedLatestThinking = initialLatestThinking
-            derivedHasSummaryThinking = initialHasSummaryThinking
-            tokenCountByMessageId = initialTokenMap
-            cachedTotalTokens = initialTokenMap.values.reduce(0, +)
-            publishContext(
-                patchMap: initialPatchMap,
-                contextMap: initialContextMap,
-                latestThinking: initialLatestThinking
-            )
+            lastProcessedMessageCount = visibleCount
+            derivedToolUseMap = toolUseMap
+            toolUseOwnerMap = ownerMap
+
+            var snap = TimelineSnapshot()
+            snap.generation = gen
+            snap.visibleMessages = visible
+            snap.prevTimestampMap = tsMap
+            snap.derivedPatchMap = patchMap
+            snap.derivedContextMap = contextMap
+            snap.hasSummaryThinking = hasSummaryThinking
+            snap.rowPatchesMap = rowPatchesMap
+            timeline = snap
+            visibleMessageCount = visibleCount
+            publishContext(contextMap: contextMap, latestThinking: latestThinking)
         }
     }
 
     private func publishContext(
-        patchMap: [String: [StructuredPatchHunk]],
         contextMap: [String: ContextItem],
         latestThinking: String?
     ) {
-        patchMapStore.map = patchMap
         let sorted = contextMap.values.sorted { ($0.filePath ?? "") < ($1.filePath ?? "") }
         var reads: [ContextItem] = []
         var edits: [ContextItem] = []
@@ -380,96 +286,7 @@ struct SessionMessagesView: View {
         ctxWrittenFiles = writes
     }
 
-    // MARK: - Surgery Mode Toolbar
-
-    private var surgeryToolbar: some View {
-        HStack {
-            // トークン使用状況
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "timeline.tokenUsage"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 4) {
-                    Text(TokenEstimator.formatTokens(totalTokenCount))
-                        .fontWeight(.semibold)
-                    Text("/ 200K")
-                        .foregroundStyle(.secondary)
-                }
-                .font(.callout)
-            }
-
-            Spacer()
-
-            // 選択状況
-            if !selectedMessageIds.isEmpty {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(String(format: String(localized: "timeline.selection.count"), selectedMessageIds.count))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("-\(TokenEstimator.formatTokens(selectedTokenCount))")
-                        .font(.callout)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.red)
-                }
-            }
-
-            // 削除ボタン
-            Button {
-                performSurgeryDelete()
-            } label: {
-                Label(String(localized: "common.delete"), systemImage: "trash")
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            .disabled(selectedMessageIds.isEmpty)
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(.bar)
-    }
-
     // MARK: - Actions
-
-    private func toggleSelection(_ uuid: String) {
-        if selectedMessageIds.contains(uuid) {
-            selectedMessageIds.remove(uuid)
-        } else {
-            selectedMessageIds.insert(uuid)
-        }
-    }
-
-    private func performSurgeryDelete() {
-        guard let fileURL = session.jsonlFileURL else {
-            errorMessage = String(localized: "error.sessionFile.notFound")
-            showError = true
-            return
-        }
-        let deleteIds = Array(selectedMessageIds)
-        Task {
-            isDeleting = true
-            defer { isDeleting = false }
-
-            do {
-                try await JSONLWriter.backup(url: fileURL)
-                try await JSONLWriter.deleteMessages(uuids: deleteIds, from: fileURL)
-
-                let messagesToDelete = session.messages.filter { selectedMessageIds.contains($0.uuid) }
-                for message in messagesToDelete {
-                    modelContext.delete(message)
-                }
-                try? modelContext.save()
-
-                selectedMessageIds.removeAll()
-                isSurgeryMode = false
-            } catch {
-                errorMessage = String(
-                    format: String(localized: "error.delete.failed"),
-                    error.localizedDescription
-                )
-                showError = true
-            }
-        }
-    }
 
     private func performSingleDelete() {
         guard let message = deleteTargetMessage,
@@ -569,6 +386,82 @@ struct SessionMessagesView: View {
     }
 }
 
+// MARK: - Timeline Snapshot
+
+struct TimelineSnapshot {
+    var generation = 0
+    var visibleMessages: [Message] = []
+    var prevTimestampMap: [String: Date] = [:]
+    var derivedPatchMap: [String: [StructuredPatchHunk]] = [:]
+    var derivedContextMap: [String: ContextItem] = [:]
+    var hasSummaryThinking = false
+    var rowPatchesMap: [String: [String: [StructuredPatchHunk]]] = [:]
+}
+
+// MARK: - Timeline List View (Equatable で親の無関係な @State 変更を遮断)
+
+struct TimelineListView: View, Equatable {
+    let snapshotId: Int
+    let visibleMessages: [Message]
+    let prevTimestampMap: [String: Date]
+    let rowPatchesMap: [String: [String: [StructuredPatchHunk]]]
+    let isDeleting: Bool
+    let onAction: (MessageRowAction) -> Void
+
+    static func == (lhs: TimelineListView, rhs: TimelineListView) -> Bool {
+        lhs.snapshotId == rhs.snapshotId &&
+        lhs.isDeleting == rhs.isDeleting
+    }
+
+    private var isWaitingForResponse: Bool {
+        visibleMessages.last?.type == MessageType.user
+    }
+
+    var body: some View {
+        if visibleMessages.isEmpty {
+            Spacer()
+            Text(String(localized: "timeline.noMessages"))
+                .foregroundStyle(.secondary)
+            Spacer()
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        ForEach(visibleMessages) { message in
+                            MessageRow(
+                                message: message,
+                                previousUserTimestamp: prevTimestampMap[message.uuid],
+                                structuredPatches: rowPatchesMap[message.uuid] ?? [:],
+                                onAction: onAction
+                            )
+                            .id(message.uuid)
+                        }
+
+                        if isWaitingForResponse {
+                            WaitingForResponseBubble()
+                                .id("waiting")
+                        }
+                    }
+                    .padding()
+                }
+                .onAppear {
+                    if let last = visibleMessages.last {
+                        proxy.scrollTo(last.uuid, anchor: .bottom)
+                    }
+                }
+                .onChange(of: visibleMessages.count) { oldCount, newCount in
+                    guard newCount > oldCount, !isDeleting else { return }
+                    if let last = visibleMessages.last {
+                        withAnimation {
+                            proxy.scrollTo(last.uuid, anchor: .bottom)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Delete Confirm Sheet
 
 struct DeleteConfirmSheet: View {
@@ -625,7 +518,6 @@ struct SummaryEditorSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー
             HStack {
                 Text(String(localized: "timeline.summaryEditor.title"))
                     .font(.headline)
@@ -644,7 +536,6 @@ struct SummaryEditorSheet: View {
 
             Divider()
 
-            // エディタ
             TextEditor(text: $content)
                 .font(.system(.body, design: .monospaced))
                 .padding()
@@ -693,7 +584,7 @@ struct ContextPanel: View {
         .background(.quaternary.opacity(0.5))
         .sheet(item: $selectedFileItem) { item in
             if let path = item.filePath {
-                FileEditorSheet(filePath: path)
+                FilePreviewSheet(filePath: path)
             }
         }
     }
@@ -765,14 +656,12 @@ struct CurrentUnderstandingView: View {
     }
 }
 
-// Claudeの理解モーダル
 struct UnderstandingModalView: View {
     let thinking: String
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー
             HStack {
                 Image(systemName: "brain.head.profile")
                     .foregroundStyle(.orange)
@@ -793,7 +682,6 @@ struct UnderstandingModalView: View {
 
             Divider()
 
-            // 本文
             ScrollView {
                 Text(thinking)
                     .font(.body)
@@ -917,12 +805,12 @@ struct ContextItemView: View {
                     Button {
                         onOpenFile?()
                     } label: {
-                        Image(systemName: "pencil.and.outline")
+                        Image(systemName: "eye")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help(String(localized: "file.edit.help"))
+                    .help(String(localized: "file.preview.help"))
                 }
 
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -947,19 +835,27 @@ struct ContextItemView: View {
     }
 }
 
-// MARK: - File Editor Sheet
+// MARK: - File Preview Sheet
 
-struct FileEditorSheet: View {
+struct FilePreviewSheet: View {
     let filePath: String
     @Environment(\.dismiss) private var dismiss
     @State private var content = ""
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var isSaving = false
+    @State private var showRendered = false
+
+    private var fileName: String {
+        (filePath as NSString).lastPathComponent
+    }
+
+    private var isMarkdown: Bool {
+        let ext = (filePath as NSString).pathExtension.lowercased()
+        return ext == "md" || ext == "markdown"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(fileName)
@@ -971,28 +867,34 @@ struct FileEditorSheet: View {
                 }
                 Spacer()
 
+                if isMarkdown && !content.isEmpty {
+                    Picker("", selection: $showRendered) {
+                        Text(String(localized: "file.preview.source")).tag(false)
+                        Text(String(localized: "file.preview.rendered")).tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 160)
+                }
+
                 Button(String(localized: "file.open.external")) {
                     openInExternalEditor()
                 }
                 .help(String(localized: "file.open.defaultEditor.help"))
 
-                Button(String(localized: "common.cancel")) {
+                Button {
                     dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
                 .keyboardShortcut(.escape)
-
-                Button(String(localized: "common.save")) {
-                    saveFile()
-                }
-                .keyboardShortcut("s", modifiers: .command)
-                .buttonStyle(.borderedProminent)
-                .disabled(isSaving)
             }
             .padding()
 
             Divider()
 
-            // エディタ
             if isLoading {
                 Spacer()
                 ProgressView(String(localized: "common.loading"))
@@ -1007,10 +909,16 @@ struct FileEditorSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+            } else if showRendered && isMarkdown {
+                MarkdownRenderView(markdown: content)
             } else {
-                TextEditor(text: $content)
-                    .font(.system(.body, design: .monospaced))
-                    .padding(8)
+                ScrollView {
+                    Text(verbatim: content)
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
             }
         }
         .frame(minWidth: 700, minHeight: 500)
@@ -1020,10 +928,6 @@ struct FileEditorSheet: View {
         }
     }
 
-    private var fileName: String {
-        (filePath as NSString).lastPathComponent
-    }
-
     private func loadFile() async {
         isLoading = true
         defer { isLoading = false }
@@ -1031,25 +935,10 @@ struct FileEditorSheet: View {
         let url = URL(fileURLWithPath: filePath)
         do {
             content = try String(contentsOf: url, encoding: .utf8)
+            if isMarkdown { showRendered = true }
         } catch {
             errorMessage = String(
                 format: String(localized: "error.file.read.failed"),
-                error.localizedDescription
-            )
-        }
-    }
-
-    private func saveFile() {
-        isSaving = true
-        defer { isSaving = false }
-
-        let url = URL(fileURLWithPath: filePath)
-        do {
-            try content.write(to: url, atomically: true, encoding: .utf8)
-            dismiss()
-        } catch {
-            errorMessage = String(
-                format: String(localized: "error.save.failed"),
                 error.localizedDescription
             )
         }
@@ -1061,6 +950,90 @@ struct FileEditorSheet: View {
     }
 }
 
+// MARK: - Markdown Render View (WKWebView)
+
+import WebKit
+
+struct MarkdownRenderView: NSViewRepresentable {
+    let markdown: String
+
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.setValue(false, forKey: "drawsBackground")
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        let escaped = markdown
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "`", with: "\\`")
+            .replacingOccurrences(of: "$", with: "\\$")
+        let html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <style>
+          :root { color-scheme: light dark; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 16px;
+            margin: 0;
+            color: var(--text);
+            background: transparent;
+          }
+          @media (prefers-color-scheme: dark) {
+            :root { --text: #e0e0e0; --code-bg: #1e1e1e; --border: #333; }
+          }
+          @media (prefers-color-scheme: light) {
+            :root { --text: #1d1d1f; --code-bg: #f5f5f5; --border: #d1d1d6; }
+          }
+          h1 { font-size: 1.6em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+          h2 { font-size: 1.3em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+          h3 { font-size: 1.1em; }
+          code {
+            font-family: Menlo, monospace;
+            font-size: 0.9em;
+            background: var(--code-bg);
+            padding: 2px 5px;
+            border-radius: 4px;
+          }
+          pre {
+            background: var(--code-bg);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+          }
+          pre code { background: none; padding: 0; }
+          blockquote {
+            border-left: 3px solid var(--border);
+            margin-left: 0;
+            padding-left: 12px;
+            color: #888;
+          }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid var(--border); padding: 6px 12px; text-align: left; }
+          img { max-width: 100%; }
+          a { color: #007aff; }
+        </style>
+        </head>
+        <body>
+        <div id="content"></div>
+        <script>
+          document.getElementById('content').innerHTML = marked.parse(`\(escaped)`);
+        </script>
+        </body>
+        </html>
+        """
+        webView.loadHTMLString(html, baseURL: nil)
+    }
+}
+
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: Project.self, Session.self, Message.self, configurations: config)
@@ -1068,6 +1041,6 @@ struct FileEditorSheet: View {
     let session = Session(sessionId: "test-session", cwd: "/test", slug: "test-slug")
     container.mainContext.insert(session)
 
-    return SessionMessagesView(session: session)
+    return SessionMessagesView(session: session, visibleMessageCount: .constant(0))
         .modelContainer(container)
 }

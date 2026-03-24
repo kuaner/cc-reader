@@ -19,7 +19,7 @@ struct PaneView: View {
 
             // メインコンテンツ
             if let session = session {
-                SessionMessagesView(session: session)
+                SessionMessagesView(session: session, visibleMessageCount: .constant(0))
             } else {
                 EmptyPaneView(pane: pane, sessions: sessions)
             }

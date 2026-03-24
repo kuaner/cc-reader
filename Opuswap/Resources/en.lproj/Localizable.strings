@@ -5,6 +5,8 @@
 "common.error" = "Error";
 "common.loading" = "Loading...";
 "common.ok" = "OK";
+"common.collapse" = "Collapse";
+"common.expand" = "Show More";
 "common.save" = "Save";
 "content.initialSyncing" = "Running initial sync...";
 "content.refresh.help" = "Refresh Messages";
@@ -23,9 +25,11 @@
 "error.rewind.failed" = "Rewind failed: %@";
 "error.save.failed" = "Save failed: %@";
 "error.sessionFile.notFound" = "Session file not found";
-"file.edit.help" = "Edit file";
 "file.open.defaultEditor.help" = "Open with default editor";
 "file.open.external" = "Open Externally";
+"file.preview.help" = "Preview file";
+"file.preview.rendered" = "Preview";
+"file.preview.source" = "Source";
 "layout.emptyHint" = "Drag from the sidebar or choose from the menu above.";
 "layout.noSessionSelected" = "No Session Selected";
 "layout.pane.close" = "Close Pane";

@@ -7,6 +7,7 @@ struct ContentView: View {
 
     @State private var selectedProject: Project?
     @State private var selectedSession: Session?
+    @State private var currentVisibleMessageCount = 0
 
     init(modelContext: ModelContext) {
         _coordinator = StateObject(wrappedValue: AppCoordinator(modelContext: modelContext))
@@ -18,8 +19,9 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 360)
         } detail: {
             if let session = selectedSession {
-                SessionMessagesView(session: session)
+                SessionMessagesView(session: session, visibleMessageCount: $currentVisibleMessageCount)
                     .id(session.sessionId)
+                    .navigationSubtitle(subtitleText)
                     .toolbar {
                         ToolbarItem(placement: .automatic) {
                             Button {
@@ -38,6 +40,7 @@ struct ContentView: View {
             }
         }
         .onChange(of: selectedSession) { _, newSession in
+            currentVisibleMessageCount = 0
             if let session = newSession {
                 Task(priority: .utility) {
                     await coordinator.syncSession(session)
@@ -45,11 +48,6 @@ struct ContentView: View {
             }
         }
         .navigationTitle("Opuswap")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                SyncStatusView(coordinator: coordinator)
-            }
-        }
         .overlay {
             SyncOverlayView(coordinator: coordinator)
         }
@@ -60,24 +58,11 @@ struct ContentView: View {
             coordinator.stop()
         }
     }
-}
 
-private struct SyncStatusView: View {
-    @ObservedObject var coordinator: AppCoordinator
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if coordinator.isSyncing {
-                ProgressView()
-                    .scaleEffect(0.7)
-                Text(String(localized: "content.syncing"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Text(String(format: String(localized: "status.messageCount"), coordinator.messageCount))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
+    private var subtitleText: String {
+        let count = currentVisibleMessageCount
+        if count == 0 { return "" }
+        return String(format: String(localized: "status.messageCount"), count)
     }
 }
 

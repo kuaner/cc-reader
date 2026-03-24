@@ -5,6 +5,8 @@
 "common.error" = "错误";
 "common.loading" = "加载中...";
 "common.ok" = "确定";
+"common.collapse" = "收起";
+"common.expand" = "展开更多";
 "common.save" = "保存";
 "content.initialSyncing" = "首次同步中...";
 "content.refresh.help" = "刷新消息";
@@ -23,9 +25,11 @@
 "error.rewind.failed" = "回滚失败：%@";
 "error.save.failed" = "保存失败：%@";
 "error.sessionFile.notFound" = "未找到会话文件";
-"file.edit.help" = "编辑文件";
 "file.open.defaultEditor.help" = "用默认编辑器打开";
 "file.open.external" = "在外部打开";
+"file.preview.help" = "预览文件";
+"file.preview.rendered" = "预览";
+"file.preview.source" = "源码";
 "layout.emptyHint" = "从侧边栏拖拽，或从上方菜单选择";
 "layout.noSessionSelected" = "未选择会话";
 "layout.pane.close" = "关闭窗格";

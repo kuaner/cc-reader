@@ -1,67 +1,38 @@
 import SwiftUI
 
-final class PatchMapStore: ObservableObject {
-    @Published var map: [String: [StructuredPatchHunk]] = [:]
-}
-
-// Row アクション（闭包を排除して SwiftUI の diff を効率化する）
 enum MessageRowAction {
-    case toggleSelection(String)
     case rewindHere(String)
     case delete(Message)
     case editSummary(Message)
 }
 
-struct MessageRow: View {
+struct MessageRow: View, Equatable {
     let message: Message
     var previousUserTimestamp: Date? = nil
-
-    // Surgery Mode
-    var isInSurgeryMode: Bool = false
-    var isSelected: Bool = false
-    var tokenCount: Int = 0
-
-    // 闭包の代わりにアクションハンドラ1つだけ（SwiftUI diff でスキップ可能）
+    var structuredPatches: [String: [StructuredPatchHunk]] = [:]
     var onAction: ((MessageRowAction) -> Void)? = nil
-
-    @EnvironmentObject private var patchMapStore: PatchMapStore
 
     private var isSummaryMessage: Bool {
         message.type == .user &&
         (message.content?.contains("This session is being continued") == true)
     }
 
+    static func == (lhs: MessageRow, rhs: MessageRow) -> Bool {
+        lhs.message.uuid == rhs.message.uuid &&
+        lhs.previousUserTimestamp == rhs.previousUserTimestamp &&
+        lhs.structuredPatches == rhs.structuredPatches
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Surgery Mode時のチェックボックス
-            if isInSurgeryMode {
-                VStack {
-                    Button {
-                        onAction?(.toggleSelection(message.uuid))
-                    } label: {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(isSelected ? .red : .secondary)
-                            .font(.title2)
-                    }
-                    .buttonStyle(.plain)
-
-                    Text(TokenEstimator.formatTokens(tokenCount))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(width: 50)
-            }
-
-            // メッセージコンテンツ
             if message.type == .user {
-                Spacer(minLength: isInSurgeryMode ? 20 : 60)
+                Spacer(minLength: 60)
                 userBubble
             } else {
                 assistantBubble
-                Spacer(minLength: isInSurgeryMode ? 20 : 60)
+                Spacer(minLength: 60)
             }
         }
-        .opacity(isSelected ? 0.5 : 1.0)
     }
 
     // 共通のcontextMenu
@@ -88,10 +59,9 @@ struct MessageRow: View {
     private var userBubble: some View {
         VStack(alignment: .trailing, spacing: 4) {
             if isSummaryMessage {
-                // 要約メッセージの特別表示
                 summaryBubble
             } else if let content = message.content, !content.isEmpty {
-                Text(content)
+                Text(verbatim: content)
                     .font(.body)
                     .textSelection(.enabled)
                     .padding(12)
@@ -117,21 +87,19 @@ struct MessageRow: View {
                 Text(String(localized: "timeline.summary.label"))
                     .fontWeight(.semibold)
                 Spacer()
-                if !isInSurgeryMode {
-                    Button {
-                        onAction?(.editSummary(message))
-                    } label: {
-                        Image(systemName: "pencil.circle")
-                            .font(.title3)
-                    }
-                    .buttonStyle(.plain)
-                    .help(String(localized: "timeline.summary.edit"))
+                Button {
+                    onAction?(.editSummary(message))
+                } label: {
+                    Image(systemName: "pencil.circle")
+                        .font(.title3)
                 }
+                .buttonStyle(.plain)
+                .help(String(localized: "timeline.summary.edit"))
             }
             .foregroundStyle(.orange)
 
             if let content = message.content {
-                Text(content)
+                Text(verbatim: content)
                     .font(.callout)
                     .textSelection(.enabled)
                     .lineLimit(10)
@@ -158,7 +126,7 @@ struct MessageRow: View {
             }
 
             if !message.toolUses.isEmpty {
-                ToolUsesView(toolUses: message.toolUses, structuredPatchMap: patchMapStore.map)
+                ToolUsesView(toolUses: message.toolUses, structuredPatchMap: structuredPatches)
             }
 
             if let content = message.content, !content.isEmpty {
@@ -218,7 +186,7 @@ struct ThinkingBubble: View {
             }
             .buttonStyle(.plain)
 
-            Text(thinking)
+            Text(verbatim: thinking)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
@@ -239,6 +207,11 @@ struct ResponseBubble<MenuContent: View>: View {
     let timestamp: Date
     let contextMenu: MenuContent
 
+    private static var collapseThreshold: Int { 800 }
+    @State private var isExpanded = false
+
+    private var isLong: Bool { content.count > Self.collapseThreshold }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -247,15 +220,16 @@ struct ResponseBubble<MenuContent: View>: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.purple)
                 if let modelDisplayName {
-                    Text(modelDisplayName)
+                    Text(verbatim: modelDisplayName)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
             }
 
-            Text(content)
+            Text(verbatim: content)
                 .font(.body)
                 .textSelection(.enabled)
+                .lineLimit(isExpanded || !isLong ? nil : 20)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.purple.opacity(0.1))
@@ -263,6 +237,18 @@ struct ResponseBubble<MenuContent: View>: View {
                 .contextMenu { contextMenu }
 
             HStack {
+                if isLong {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+                    } label: {
+                        Text(isExpanded
+                             ? String(localized: "common.collapse")
+                             : String(localized: "common.expand"))
+                            .font(.caption)
+                            .foregroundStyle(.purple)
+                    }
+                    .buttonStyle(.plain)
+                }
                 Spacer()
                 Text(timestamp, style: .time)
                     .font(.caption2)
