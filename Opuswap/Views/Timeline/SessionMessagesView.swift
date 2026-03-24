@@ -29,6 +29,9 @@ struct SessionMessagesView: View {
     // ローディング状態
     @State private var isDeleting = false
 
+    // ContextPanel 表示切替
+    @State private var showContextPanel = true
+
     // 派生データ一括スナップショット
     @State private var timeline = TimelineSnapshot()
 
@@ -59,17 +62,35 @@ struct SessionMessagesView: View {
                 isDeleting: isDeleting,
                 onAction: handleRowAction
             )
+            .equatable()
 
-            Divider()
+            if showContextPanel {
+                Divider()
+            }
             ContextPanel(
                 latestThinking: ctxLatestThinking,
                 readFiles: ctxReadFiles,
                 editedFiles: ctxEditedFiles,
                 writtenFiles: ctxWrittenFiles
             )
-            .frame(width: 260)
+            .frame(width: showContextPanel ? 260 : 0)
+            .opacity(showContextPanel ? 1 : 0)
+            .clipped()
+            .allowsHitTesting(showContextPanel)
         }
         .navigationTitle(sessionTitle)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        showContextPanel.toggle()
+                    }
+                } label: {
+                    Image(systemName: showContextPanel ? "sidebar.right" : "sidebar.left")
+                }
+                .help(String(localized: "timeline.context.help"))
+            }
+        }
         .confirmationDialog(String(localized: "timeline.rewind.confirmTitle"), isPresented: $showRewindConfirm, titleVisibility: .visible) {
             Button(String(localized: "timeline.rewind.execute"), role: .destructive) {
                 performRewind()
@@ -434,6 +455,7 @@ struct TimelineListView: View, Equatable {
                                 structuredPatches: rowPatchesMap[message.uuid] ?? [:],
                                 onAction: onAction
                             )
+                            .equatable()
                             .id(message.uuid)
                         }
 

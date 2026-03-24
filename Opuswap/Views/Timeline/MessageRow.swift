@@ -634,6 +634,8 @@ struct ToolResultBubble: View {
 // MARK: - Waiting For Response (userメッセージ後の待機表示)
 
 struct WaitingForResponseBubble: View {
+    @State private var pulse = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -642,20 +644,19 @@ struct WaitingForResponseBubble: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.purple)
 
-                TimelineView(.periodic(from: .now, by: 0.4)) { context in
-                    let ticks = Int(context.date.timeIntervalSinceReferenceDate / 0.4)
-                    let dotCount = (ticks % 3) + 1
-                    HStack(spacing: 0) {
-                        Text(String(localized: "timeline.thinking.label"))
-                        Text(String(repeating: ".", count: dotCount))
-                            .frame(width: 24, alignment: .leading)
-                    }
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .padding(12)
-                    .background(.purple.opacity(0.1))
-                    .clipShape(ChatBubble(isUser: false))
+                HStack(spacing: 0) {
+                    Text(String(localized: "timeline.thinking.label"))
+                    Text("...")
+                        .frame(width: 24, alignment: .leading)
                 }
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .opacity(pulse ? 1.0 : 0.45)
+                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
+                .onAppear { pulse = true }
+                .padding(12)
+                .background(.purple.opacity(0.1))
+                .clipShape(ChatBubble(isUser: false))
             }
             Spacer(minLength: 60)
         }

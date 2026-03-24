@@ -25,6 +25,9 @@ struct ContentView: View {
                     .navigationSubtitle(subtitleText)
                     .toolbar {
                         ToolbarItem(placement: .automatic) {
+                            SessionCwdButton(cwd: session.cwd)
+                        }
+                        ToolbarItem(placement: .automatic) {
                             SessionResumeButton(sessionId: session.sessionId)
                         }
                         ToolbarItem(placement: .automatic) {
@@ -70,6 +73,34 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Session Cwd Button
+
+private struct SessionCwdButton: View {
+    let cwd: String
+
+    private var displayPath: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let shortened = cwd.hasPrefix(home)
+            ? "~" + cwd.dropFirst(home.count)
+            : cwd
+        return shortened
+    }
+
+    var body: some View {
+        Button {
+            NSWorkspace.shared.open(URL(fileURLWithPath: cwd))
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "folder")
+                Text(displayPath)
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+        }
+        .help(cwd)
+    }
+}
+
 // MARK: - Session Resume Button
 
 private struct SessionResumeButton: View {
@@ -87,7 +118,7 @@ private struct SessionResumeButton: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: copied ? "checkmark" : "terminal")
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
                 Text("Resume")
                     .font(.caption)
             }
