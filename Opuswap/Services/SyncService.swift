@@ -19,7 +19,7 @@ class SyncService: ObservableObject {
     // 初回起動時: 新規ファイルのみスキャン
     func fullSync() async {
         isSyncing = true
-        syncProgress = "ファイルを検索中..."
+        syncProgress = String(localized: "sync.searchingFiles")
 
         let files = FileWatcherService.existingJSONLFiles()
         // 新規ファイルのみフィルタ
@@ -35,7 +35,11 @@ class SyncService: ObservableObject {
         print("Full sync: \(files.count) files, \(newFiles.count) new")
 
         for (index, file) in newFiles.enumerated() {
-            syncProgress = "同期中 \(index + 1)/\(newFiles.count)"
+            syncProgress = String(
+                format: String(localized: "sync.progress.indexed"),
+                index + 1,
+                newFiles.count
+            )
 
             // バックグラウンドでパース
             let rawMessages = await parseFileInBackground(file)

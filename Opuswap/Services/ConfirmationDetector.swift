@@ -13,6 +13,12 @@ struct ConfirmationDetector {
         "確認をお願い",
         "レビューをお願い",
         "チェックしてください",
+        // 中文
+        "请确认",
+        "请帮我确认",
+        "请检查",
+        "请审阅",
+        "你怎么看",
         // 英語
         "please review",
         "please confirm",
@@ -31,6 +37,9 @@ struct ConfirmationDetector {
         "successfully",
         "完了しました",
         "成功しました",
+        "已完成",
+        "完成了",
+        "成功了",
     ]
 
     /// エラー/失敗を示すキーワード（即座に注意が必要）
@@ -45,6 +54,9 @@ struct ConfirmationDetector {
         "エラーが発生",
         "失敗しました",
         "見つかりません",
+        "发生错误",
+        "失败了",
+        "未找到",
     ]
 
     /// 質問を示すキーワード（応答待ち）
@@ -52,6 +64,9 @@ struct ConfirmationDetector {
         "どちらがいいですか",
         "どうしますか",
         "どのように",
+        "你觉得哪个更好",
+        "要怎么做",
+        "你希望我怎么做",
         "which approach",
         "should I",
         "would you like",

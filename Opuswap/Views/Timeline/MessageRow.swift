@@ -70,7 +70,7 @@ struct MessageRow: View {
         Button {
             onAction?(.delete(message))
         } label: {
-            Label("このメッセージを削除", systemImage: "trash")
+            Label(String(localized: "timeline.messageContext.delete"), systemImage: "trash")
         }
 
         Divider()
@@ -78,7 +78,7 @@ struct MessageRow: View {
         Button {
             onAction?(.rewindHere(message.uuid))
         } label: {
-            Label("ここまで巻き戻す", systemImage: "arrow.counterclockwise")
+            Label(String(localized: "timeline.messageContext.rewind"), systemImage: "arrow.counterclockwise")
         }
     }
 
@@ -114,7 +114,7 @@ struct MessageRow: View {
         VStack(alignment: .trailing, spacing: 8) {
             HStack {
                 Image(systemName: "doc.text.magnifyingglass")
-                Text("セッション要約")
+                Text(String(localized: "timeline.summary.label"))
                     .fontWeight(.semibold)
                 Spacer()
                 if !isInSurgeryMode {
@@ -125,7 +125,7 @@ struct MessageRow: View {
                             .font(.title3)
                     }
                     .buttonStyle(.plain)
-                    .help("要約を編集")
+                    .help(String(localized: "timeline.summary.edit"))
                 }
             }
             .foregroundStyle(.orange)
@@ -202,11 +202,11 @@ struct ThinkingBubble: View {
                 withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
             } label: {
                 HStack(spacing: 4) {
-                    Text("Thinking")
+                    Text(String(localized: "timeline.thinking.label"))
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.orange)
-                    Text("\(duration)秒")
+                    Text(String(format: String(localized: "timeline.thinking.seconds"), duration))
                         .font(.caption2)
                         .foregroundStyle(.orange.opacity(0.7))
                     if isLong {
@@ -242,7 +242,7 @@ struct ResponseBubble<MenuContent: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Claude")
+                Text(String(localized: "timeline.claude.label"))
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.purple)
@@ -280,7 +280,7 @@ struct ToolUsesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Context")
+            Text(String(localized: "timeline.context.label"))
                 .font(.caption)
                 .fontWeight(.medium)
                 .foregroundStyle(.cyan)
@@ -465,7 +465,7 @@ struct StructuredPatchDiffView: View {
             HStack {
                 Image(systemName: "pencil")
                     .font(.caption)
-                Text("Update(\(fileName))")
+                Text(String(format: String(localized: "timeline.update.file"), fileName))
                     .font(.caption)
                     .fontWeight(.medium)
             }
@@ -615,11 +615,11 @@ struct ToolResultBubble: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
             HStack(spacing: 4) {
-                Text("Tool Result")
+            Text(String(localized: "timeline.toolResult.label"))
                     .font(.caption2)
                     .fontWeight(.medium)
                 if result.is_error == true {
-                    Text("ERROR")
+                    Text(String(localized: "timeline.error.label"))
                         .font(.caption2)
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
@@ -651,7 +651,7 @@ struct WaitingForResponseBubble: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Claude")
+                Text(String(localized: "timeline.claude.label"))
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.purple)
@@ -660,7 +660,7 @@ struct WaitingForResponseBubble: View {
                     let ticks = Int(context.date.timeIntervalSinceReferenceDate / 0.4)
                     let dotCount = (ticks % 3) + 1
                     HStack(spacing: 0) {
-                        Text("Thinking")
+                        Text(String(localized: "timeline.thinking.label"))
                         Text(String(repeating: ".", count: dotCount))
                             .frame(width: 24, alignment: .leading)
                     }
@@ -713,8 +713,8 @@ struct ChatBubble: Shape {
         "message": {
             "role": "assistant",
             "content": [
-                {"type": "thinking", "thinking": "ユーザーはOpuswapの実装を求めています。設計書を確認して進めます。"},
-                {"type": "text", "text": "設計書を確認しました。実装を開始します。"}
+                {"type": "thinking", "thinking": "Reviewing requirements and preparing implementation."},
+                {"type": "text", "text": "Reviewed the specification and started implementation."}
             ],
             "model": "claude-sonnet-4-5-20250929"
         }

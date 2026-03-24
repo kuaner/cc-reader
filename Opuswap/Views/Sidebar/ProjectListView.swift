@@ -16,7 +16,7 @@ struct ProjectListView: View {
             // ツールバー
             if !selectedSessions.isEmpty {
                 HStack {
-                    Text("\(selectedSessions.count)件選択中")
+                    Text(String(format: String(localized: "sidebar.selection.count"), selectedSessions.count))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -27,7 +27,7 @@ struct ProjectListView: View {
                             showBulkDeleteConfirm = true
                         }
                     } label: {
-                        Label("削除", systemImage: "trash")
+                        Label(String(localized: "common.delete"), systemImage: "trash")
                             .font(.caption)
                     }
                     .buttonStyle(.borderless)
@@ -45,17 +45,17 @@ struct ProjectListView: View {
             }
             .listStyle(.sidebar)
         }
-        .confirmationDialog("セッションを削除", isPresented: $showBulkDeleteConfirm, titleVisibility: .visible) {
-            Button("削除", role: .destructive) {
+        .confirmationDialog(String(localized: "sidebar.deleteSession.title"), isPresented: $showBulkDeleteConfirm, titleVisibility: .visible) {
+            Button(String(localized: "common.delete"), role: .destructive) {
                 deleteSessions(selectedSessions)
             }
-            Button("削除（今後確認しない）", role: .destructive) {
+            Button(String(localized: "sidebar.deleteAndDontAsk"), role: .destructive) {
                 skipDeleteConfirmation = true
                 deleteSessions(selectedSessions)
             }
-            Button("キャンセル", role: .cancel) {}
+            Button(String(localized: "common.cancel"), role: .cancel) {}
         } message: {
-            Text("\(selectedSessions.count)件のセッションを削除しますか？JSONLファイルも削除されます。")
+            Text(String(format: String(localized: "sidebar.deleteMany.confirm"), selectedSessions.count))
         }
         .onChange(of: selectedSessions) { _, newValue in
             // 単一選択時は従来のselectedSessionも更新
@@ -93,7 +93,7 @@ struct SessionRow: View {
         VStack(alignment: .leading, spacing: 8) {
             // タイトル
             if isEditing {
-                TextField("セッション名", text: $editingName, onCommit: {
+                TextField(String(localized: "sidebar.sessionName.placeholder"), text: $editingName, onCommit: {
                     saveSessionName()
                 })
                 .textFieldStyle(.plain)
@@ -151,7 +151,7 @@ struct SessionRow: View {
                 editingName = session.slug ?? ""
                 isEditing = true
             } label: {
-                Label("名前を変更", systemImage: "pencil")
+                Label(String(localized: "sidebar.rename"), systemImage: "pencil")
             }
 
             Divider()
@@ -163,20 +163,20 @@ struct SessionRow: View {
                     showDeleteConfirm = true
                 }
             } label: {
-                Label("削除", systemImage: "trash")
+                Label(String(localized: "common.delete"), systemImage: "trash")
             }
         }
-        .confirmationDialog("セッションを削除", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button("削除", role: .destructive) {
+        .confirmationDialog(String(localized: "sidebar.deleteSession.title"), isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button(String(localized: "common.delete"), role: .destructive) {
                 deleteSession()
             }
-            Button("削除（今後確認しない）", role: .destructive) {
+            Button(String(localized: "sidebar.deleteAndDontAsk"), role: .destructive) {
                 skipDeleteConfirmation = true
                 deleteSession()
             }
-            Button("キャンセル", role: .cancel) {}
+            Button(String(localized: "common.cancel"), role: .cancel) {}
         } message: {
-            Text("このセッションを削除しますか？JSONLファイルも削除されます。")
+            Text(String(localized: "sidebar.deleteSession.confirmSingle"))
         }
     }
 

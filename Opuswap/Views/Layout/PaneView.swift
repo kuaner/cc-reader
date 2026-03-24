@@ -19,15 +19,7 @@ struct PaneView: View {
 
             // メインコンテンツ
             if let session = session {
-                if pane.showTerminal {
-                    VSplitView {
-                        SessionMessagesView(session: session)
-                        TerminalContainerView(paneId: pane.id, cwd: session.cwd)
-                            .id("\(pane.id)-\(session.cwd)")  // cwd変更時も再生成
-                    }
-                } else {
-                    SessionMessagesView(session: session)
-                }
+                SessionMessagesView(session: session)
             } else {
                 EmptyPaneView(pane: pane, sessions: sessions)
             }
@@ -74,7 +66,7 @@ struct PaneHeaderView: View {
                     Text(session.displayTitle)
                         .lineLimit(1)
                 } else {
-                    Text("セッション未選択")
+                    Text(String(localized: "layout.noSessionSelected"))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -82,31 +74,21 @@ struct PaneHeaderView: View {
 
             Spacer()
 
-            // ターミナル表示トグル
-            Button {
-                layoutManager.toggleTerminal(for: pane.id)
-            } label: {
-                Image(systemName: pane.showTerminal ? "terminal.fill" : "terminal")
-                    .font(.caption)
-            }
-            .buttonStyle(.borderless)
-            .help(pane.showTerminal ? "ターミナルを隠す" : "ターミナルを表示")
-
             // 分割メニュー
             Menu {
-                Button("横に分割") {
+                Button(String(localized: "layout.split.horizontal")) {
                     layoutManager.splitPane(pane.id, direction: .horizontal)
                 }
                 .disabled(!layoutManager.canSplit())
 
-                Button("縦に分割") {
+                Button(String(localized: "layout.split.vertical")) {
                     layoutManager.splitPane(pane.id, direction: .vertical)
                 }
                 .disabled(!layoutManager.canSplit())
 
                 Divider()
 
-                Button("ペインを閉じる", role: .destructive) {
+                Button(String(localized: "layout.pane.close"), role: .destructive) {
                     layoutManager.closePane(pane.id)
                 }
                 .disabled(layoutManager.allPanes().count <= 1)
@@ -135,18 +117,18 @@ struct EmptyPaneView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.tertiary)
 
-            Text("セッションを選択")
+            Text(String(localized: "content.selectSession"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Text("サイドバーからドラッグ、または上のメニューから選択")
+            Text(String(localized: "layout.emptyHint"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
             // 最近のセッション（クイック選択）
             if !sessions.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("最近のセッション")
+                    Text(String(localized: "layout.recentSessions"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
 

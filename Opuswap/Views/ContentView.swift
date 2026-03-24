@@ -29,12 +29,12 @@ struct ContentView: View {
                             } label: {
                                 Image(systemName: "arrow.clockwise")
                             }
-                            .help("メッセージを更新")
+                            .help(String(localized: "content.refresh.help"))
                             .disabled(coordinator.isSyncing)
                         }
                     }
             } else {
-                ContentUnavailableView("セッションを選択", systemImage: "message")
+                ContentUnavailableView(String(localized: "content.selectSession"), systemImage: "message")
             }
         }
         .onChange(of: selectedSession) { _, newSession in
@@ -70,11 +70,11 @@ private struct SyncStatusView: View {
             if coordinator.isSyncing {
                 ProgressView()
                     .scaleEffect(0.7)
-                Text("同期中")
+                Text(String(localized: "content.syncing"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("\(coordinator.messageCount) msgs")
+            Text(String(format: String(localized: "status.messageCount"), coordinator.messageCount))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -90,7 +90,7 @@ private struct SyncOverlayView: View {
                 ProgressView()
                 Text(coordinator.syncProgress)
                     .font(.headline)
-                Text("初回同期中...")
+                Text(String(localized: "content.initialSyncing"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

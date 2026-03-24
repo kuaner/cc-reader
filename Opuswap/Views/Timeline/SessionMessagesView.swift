@@ -87,7 +87,7 @@ struct SessionMessagesView: View {
 
                 if messages.isEmpty {
                     Spacer()
-                    Text("メッセージなし")
+                    Text(String(localized: "timeline.noMessages"))
                         .foregroundStyle(.secondary)
                     Spacer()
                 } else {
@@ -165,18 +165,18 @@ struct SessionMessagesView: View {
                     Image(systemName: showContext ? "sidebar.right" : "sidebar.right")
                         .symbolVariant(showContext ? .fill : .none)
                 }
-                .help("コンテキストを表示")
+                .help(String(localized: "timeline.context.help"))
                 .disabled(isSurgeryMode)
             }
         }
         // Rewind確認ダイアログ
-        .confirmationDialog("巻き戻し確認", isPresented: $showRewindConfirm, titleVisibility: .visible) {
-            Button("巻き戻す", role: .destructive) {
+        .confirmationDialog(String(localized: "timeline.rewind.confirmTitle"), isPresented: $showRewindConfirm, titleVisibility: .visible) {
+            Button(String(localized: "timeline.rewind.execute"), role: .destructive) {
                 performRewind()
             }
-            Button("キャンセル", role: .cancel) {}
+            Button(String(localized: "common.cancel"), role: .cancel) {}
         } message: {
-            Text("このメッセージ以降を全て削除します。この操作は取り消せません。")
+            Text(String(localized: "timeline.rewind.confirmMessage"))
         }
         // 単一メッセージ削除確認
         .sheet(isPresented: $showDeleteConfirm) {
@@ -195,8 +195,8 @@ struct SessionMessagesView: View {
             )
         }
         // エラーアラート
-        .alert("エラー", isPresented: $showError) {
-            Button("OK") {}
+        .alert(String(localized: "common.error"), isPresented: $showError) {
+            Button(String(localized: "common.ok")) {}
         } message: {
             Text(errorMessage ?? "")
         }
@@ -288,7 +288,7 @@ struct SessionMessagesView: View {
                                 initialContextMap[key] = ContextItem(
                                     id: key, toolName: toolUse.name,
                                     filePath: toolUse.filePath, command: toolUse.command,
-                                    content: "(実行中...)", isError: false
+                                    content: String(localized: "timeline.tool.running"), isError: false
                                 )
                             }
                         }
@@ -313,7 +313,7 @@ struct SessionMessagesView: View {
                             initialContextMap[key] = ContextItem(
                                 id: key, toolName: toolUse.name,
                                 filePath: toolUse.filePath, command: toolUse.command,
-                                content: content.isEmpty ? "(成功)" : content,
+                                content: content.isEmpty ? String(localized: "timeline.tool.success") : content,
                                 isError: result.is_error ?? false
                             )
                         }
@@ -372,7 +372,7 @@ struct SessionMessagesView: View {
         HStack {
             // トークン使用状況
             VStack(alignment: .leading, spacing: 2) {
-                Text("トークン使用量")
+                Text(String(localized: "timeline.tokenUsage"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 4) {
@@ -389,7 +389,7 @@ struct SessionMessagesView: View {
             // 選択状況
             if !selectedMessageIds.isEmpty {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(selectedMessageIds.count)件選択中")
+                    Text(String(format: String(localized: "timeline.selection.count"), selectedMessageIds.count))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("-\(TokenEstimator.formatTokens(selectedTokenCount))")
@@ -403,7 +403,7 @@ struct SessionMessagesView: View {
             Button {
                 performSurgeryDelete()
             } label: {
-                Label("削除", systemImage: "trash")
+                Label(String(localized: "common.delete"), systemImage: "trash")
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
@@ -426,7 +426,7 @@ struct SessionMessagesView: View {
 
     private func performSurgeryDelete() {
         guard let fileURL = session.jsonlFileURL else {
-            errorMessage = "セッションファイルが見つかりません"
+            errorMessage = String(localized: "error.sessionFile.notFound")
             showError = true
             return
         }
@@ -448,7 +448,10 @@ struct SessionMessagesView: View {
                 selectedMessageIds.removeAll()
                 isSurgeryMode = false
             } catch {
-                errorMessage = "削除に失敗しました: \(error.localizedDescription)"
+                errorMessage = String(
+                    format: String(localized: "error.delete.failed"),
+                    error.localizedDescription
+                )
                 showError = true
             }
         }
@@ -457,7 +460,7 @@ struct SessionMessagesView: View {
     private func performSingleDelete() {
         guard let message = deleteTargetMessage,
               let fileURL = session.jsonlFileURL else {
-            errorMessage = "セッションファイルが見つかりません"
+            errorMessage = String(localized: "error.sessionFile.notFound")
             showError = true
             return
         }
@@ -475,7 +478,10 @@ struct SessionMessagesView: View {
 
                 deleteTargetMessage = nil
             } catch {
-                errorMessage = "削除に失敗しました: \(error.localizedDescription)"
+                errorMessage = String(
+                    format: String(localized: "error.delete.failed"),
+                    error.localizedDescription
+                )
                 showError = true
             }
         }
@@ -484,7 +490,7 @@ struct SessionMessagesView: View {
     private func performRewind() {
         guard let targetId = rewindTargetId,
               let fileURL = session.jsonlFileURL else {
-            errorMessage = "セッションファイルが見つかりません"
+            errorMessage = String(localized: "error.sessionFile.notFound")
             showError = true
             return
         }
@@ -511,7 +517,10 @@ struct SessionMessagesView: View {
 
                 rewindTargetId = nil
             } catch {
-                errorMessage = "巻き戻しに失敗しました: \(error.localizedDescription)"
+                errorMessage = String(
+                    format: String(localized: "error.rewind.failed"),
+                    error.localizedDescription
+                )
                 showError = true
             }
         }
@@ -520,7 +529,7 @@ struct SessionMessagesView: View {
     private func saveSummaryEdit() {
         guard let message = editingSummaryMessage,
               let fileURL = session.jsonlFileURL else {
-            errorMessage = "セッションファイルが見つかりません"
+            errorMessage = String(localized: "error.sessionFile.notFound")
             showError = true
             return
         }
@@ -532,7 +541,10 @@ struct SessionMessagesView: View {
                 showSummaryEditor = false
                 editingSummaryMessage = nil
             } catch {
-                errorMessage = "保存に失敗しました: \(error.localizedDescription)"
+                errorMessage = String(
+                    format: String(localized: "error.save.failed"),
+                    error.localizedDescription
+                )
                 showError = true
             }
         }
@@ -558,23 +570,23 @@ struct DeleteConfirmSheet: View {
                 .font(.largeTitle)
                 .foregroundStyle(.red)
 
-            Text("メッセージを削除")
+            Text(String(localized: "timeline.deleteMessage.title"))
                 .font(.headline)
 
-            Text("このメッセージを削除します。")
+            Text(String(localized: "timeline.deleteMessage.body"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            Toggle("今後確認しない", isOn: $dontAskAgain)
+            Toggle(String(localized: "common.dontAskAgain"), isOn: $dontAskAgain)
                 .toggleStyle(.checkbox)
 
             HStack(spacing: 12) {
-                Button("キャンセル") {
+                Button(String(localized: "common.cancel")) {
                     onCancel()
                 }
                 .keyboardShortcut(.escape)
 
-                Button("削除") {
+                Button(String(localized: "common.delete")) {
                     if dontAskAgain {
                         skipConfirmation = true
                     }
@@ -601,14 +613,14 @@ struct SummaryEditorSheet: View {
         VStack(spacing: 0) {
             // ヘッダー
             HStack {
-                Text("要約を編集")
+                Text(String(localized: "timeline.summaryEditor.title"))
                     .font(.headline)
                 Spacer()
-                Button("キャンセル") {
+                Button(String(localized: "common.cancel")) {
                     onCancel()
                 }
                 .keyboardShortcut(.escape)
-                Button("保存") {
+                Button(String(localized: "common.save")) {
                     onSave()
                 }
                 .keyboardShortcut(.return, modifiers: .command)
@@ -645,19 +657,19 @@ struct ContextPanel: View {
                 }
 
                 if !readFiles.isEmpty {
-                    ContextSectionView(title: "読み込み済み", icon: "doc.text", color: .blue, items: readFiles, onOpenFile: { selectedFileItem = $0 })
+                    ContextSectionView(title: String(localized: "context.section.read"), icon: "doc.text", color: .blue, items: readFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if !editedFiles.isEmpty {
-                    ContextSectionView(title: "編集済み", icon: "pencil", color: .orange, items: editedFiles, onOpenFile: { selectedFileItem = $0 })
+                    ContextSectionView(title: String(localized: "context.section.edited"), icon: "pencil", color: .orange, items: editedFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if !writtenFiles.isEmpty {
-                    ContextSectionView(title: "作成済み", icon: "doc.badge.plus", color: .green, items: writtenFiles, onOpenFile: { selectedFileItem = $0 })
+                    ContextSectionView(title: String(localized: "context.section.created"), icon: "doc.badge.plus", color: .green, items: writtenFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if latestThinking == nil && readFiles.isEmpty && editedFiles.isEmpty && writtenFiles.isEmpty {
-                    Text("コンテキストなし")
+                    Text(String(localized: "context.empty"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -689,7 +701,7 @@ struct CurrentUnderstandingView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "brain.head.profile")
                             .foregroundStyle(.orange)
-                        Text("Claudeの理解")
+                        Text(String(localized: "context.understanding.title"))
                             .fontWeight(.semibold)
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -708,7 +720,7 @@ struct CurrentUnderstandingView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("拡大表示")
+                .help(String(localized: "context.expand.help"))
             }
 
             if isExpanded {
@@ -725,7 +737,7 @@ struct CurrentUnderstandingView: View {
                     Button {
                         showModal = true
                     } label: {
-                        Text("全文を表示…")
+                        Text(String(localized: "context.showFull"))
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }
@@ -750,7 +762,7 @@ struct UnderstandingModalView: View {
             HStack {
                 Image(systemName: "brain.head.profile")
                     .foregroundStyle(.orange)
-                Text("Claudeの理解")
+                Text(String(localized: "context.understanding.title"))
                     .font(.headline)
                 Spacer()
                 Button {
@@ -896,7 +908,7 @@ struct ContextItemView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("ファイルを編集")
+                    .help(String(localized: "file.edit.help"))
                 }
 
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -945,17 +957,17 @@ struct FileEditorSheet: View {
                 }
                 Spacer()
 
-                Button("外部で開く") {
+                Button(String(localized: "file.open.external")) {
                     openInExternalEditor()
                 }
-                .help("デフォルトのエディタで開く")
+                .help(String(localized: "file.open.defaultEditor.help"))
 
-                Button("キャンセル") {
+                Button(String(localized: "common.cancel")) {
                     dismiss()
                 }
                 .keyboardShortcut(.escape)
 
-                Button("保存") {
+                Button(String(localized: "common.save")) {
                     saveFile()
                 }
                 .keyboardShortcut("s", modifiers: .command)
@@ -969,7 +981,7 @@ struct FileEditorSheet: View {
             // エディタ
             if isLoading {
                 Spacer()
-                ProgressView("読み込み中...")
+                ProgressView(String(localized: "common.loading"))
                 Spacer()
             } else if let error = errorMessage {
                 Spacer()
@@ -1006,7 +1018,10 @@ struct FileEditorSheet: View {
         do {
             content = try String(contentsOf: url, encoding: .utf8)
         } catch {
-            errorMessage = "ファイルを読み込めませんでした: \(error.localizedDescription)"
+            errorMessage = String(
+                format: String(localized: "error.file.read.failed"),
+                error.localizedDescription
+            )
         }
     }
 
@@ -1019,7 +1034,10 @@ struct FileEditorSheet: View {
             try content.write(to: url, atomically: true, encoding: .utf8)
             dismiss()
         } catch {
-            errorMessage = "保存に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(
+                format: String(localized: "error.save.failed"),
+                error.localizedDescription
+            )
         }
     }
 
