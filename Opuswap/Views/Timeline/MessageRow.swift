@@ -1,28 +1,31 @@
 import SwiftUI
 
+final class PatchMapStore: ObservableObject {
+    @Published var map: [String: [StructuredPatchHunk]] = [:]
+}
+
+// Row アクション（闭包を排除して SwiftUI の diff を効率化する）
+enum MessageRowAction {
+    case toggleSelection(String)
+    case rewindHere(String)
+    case delete(Message)
+    case editSummary(Message)
+}
+
 struct MessageRow: View {
     let message: Message
     var previousUserTimestamp: Date? = nil
-
-    // structuredPatchマップ: tool_use_idをキーに[StructuredPatchHunk]を保持
-    var structuredPatchMap: [String: [StructuredPatchHunk]] = [:]
 
     // Surgery Mode
     var isInSurgeryMode: Bool = false
     var isSelected: Bool = false
     var tokenCount: Int = 0
-    var onToggleSelection: (() -> Void)? = nil
 
-    // Rewind
-    var onRewindHere: (() -> Void)? = nil
+    // 闭包の代わりにアクションハンドラ1つだけ（SwiftUI diff でスキップ可能）
+    var onAction: ((MessageRowAction) -> Void)? = nil
 
-    // 削除
-    var onDelete: (() -> Void)? = nil
+    @EnvironmentObject private var patchMapStore: PatchMapStore
 
-    // 要約編集
-    var onEditSummary: (() -> Void)? = nil
-
-    // 要約メッセージかどうか
     private var isSummaryMessage: Bool {
         message.type == .user &&
         (message.content?.contains("This session is being continued") == true)
@@ -34,7 +37,7 @@ struct MessageRow: View {
             if isInSurgeryMode {
                 VStack {
                     Button {
-                        onToggleSelection?()
+                        onAction?(.toggleSelection(message.uuid))
                     } label: {
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(isSelected ? .red : .secondary)
@@ -65,7 +68,7 @@ struct MessageRow: View {
     @ViewBuilder
     private var messageContextMenu: some View {
         Button {
-            onDelete?()
+            onAction?(.delete(message))
         } label: {
             Label("このメッセージを削除", systemImage: "trash")
         }
@@ -73,7 +76,7 @@ struct MessageRow: View {
         Divider()
 
         Button {
-            onRewindHere?()
+            onAction?(.rewindHere(message.uuid))
         } label: {
             Label("ここまで巻き戻す", systemImage: "arrow.counterclockwise")
         }
@@ -116,7 +119,7 @@ struct MessageRow: View {
                 Spacer()
                 if !isInSurgeryMode {
                     Button {
-                        onEditSummary?()
+                        onAction?(.editSummary(message))
                     } label: {
                         Image(systemName: "pencil.circle")
                             .font(.title3)
@@ -150,67 +153,17 @@ struct MessageRow: View {
     @ViewBuilder
     private var assistantBubble: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Thinking（常に展開）
             if let thinking = message.thinking, !thinking.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Thinking")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.orange)
-
-                    Text(thinking)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.orange.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                    // 思考時間（前のuserメッセージからの経過時間）
-                    Text("\(calculatedThinkingDuration)秒")
-                        .font(.caption2)
-                        .foregroundStyle(.orange.opacity(0.7))
-                }
+                ThinkingBubble(thinking: thinking, duration: calculatedThinkingDuration)
             }
 
-            // ツール使用（コンテキスト）
             if !message.toolUses.isEmpty {
-                ToolUsesView(toolUses: message.toolUses, structuredPatchMap: structuredPatchMap)
+                ToolUsesView(toolUses: message.toolUses, structuredPatchMap: patchMapStore.map)
             }
 
-            // Response
             if let content = message.content, !content.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Claude")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.purple)
-                        if let model = message.model {
-                            Text(modelDisplayName(model))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-
-                    Text(content)
-                        .font(.body)
-                        .textSelection(.enabled)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.purple.opacity(0.1))
-                        .clipShape(ChatBubble(isUser: false))
-                        .contextMenu { messageContextMenu }
-
-                    // 回答時刻を右下に
-                    HStack {
-                        Spacer()
-                        Text(message.timestamp, style: .time)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
+                let displayModel = message.model.map(modelDisplayName)
+                ResponseBubble(content: content, modelDisplayName: displayModel, timestamp: message.timestamp, contextMenu: messageContextMenu)
             }
         }
     }
@@ -234,6 +187,91 @@ struct MessageRow: View {
     }
 }
 
+// MARK: - Thinking Bubble（折り畳み対応で巨大テキストのレンダリングコスト排除）
+
+struct ThinkingBubble: View {
+    let thinking: String
+    let duration: Int
+    @State private var isExpanded = false
+
+    private var isLong: Bool { thinking.count > 500 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Thinking")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.orange)
+                    Text("\(duration)秒")
+                        .font(.caption2)
+                        .foregroundStyle(.orange.opacity(0.7))
+                    if isLong {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2)
+                            .foregroundStyle(.orange.opacity(0.5))
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            Text(thinking)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .lineLimit(isExpanded ? nil : 6)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+// MARK: - Response Bubble（大量テキスト対応）
+
+struct ResponseBubble<MenuContent: View>: View {
+    let content: String
+    let modelDisplayName: String?
+    let timestamp: Date
+    let contextMenu: MenuContent
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Claude")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.purple)
+                if let modelDisplayName {
+                    Text(modelDisplayName)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Text(content)
+                .font(.body)
+                .textSelection(.enabled)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.purple.opacity(0.1))
+                .clipShape(ChatBubble(isUser: false))
+                .contextMenu { contextMenu }
+
+            HStack {
+                Spacer()
+                Text(timestamp, style: .time)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
 // MARK: - Tool Uses View (コンテキスト表示)
 
 struct ToolUsesView: View {
@@ -248,8 +286,7 @@ struct ToolUsesView: View {
                 .foregroundStyle(.cyan)
 
             FlowLayout(spacing: 6) {
-                ForEach(toolUses.indices, id: \.self) { index in
-                    let toolUse = toolUses[index]
+                ForEach(toolUses) { toolUse in
                     ToolUseTag(
                         toolUse: toolUse,
                         structuredPatch: structuredPatchMap[toolUse.id]
@@ -269,14 +306,21 @@ struct ToolUseTag: View {
     var structuredPatch: [StructuredPatchHunk]? = nil
     @State private var isExpanded = false
 
-    // 展開可能かどうか: structuredPatchがある場合のみ
-    private var canExpand: Bool {
+    private var hasEditPatch: Bool {
         toolUse.name == "Edit" && structuredPatch != nil
+    }
+
+    private var hasLongSummary: Bool {
+        guard let s = toolUse.inputSummary else { return false }
+        return s.count > 40 || s.contains("\n")
+    }
+
+    private var canExpand: Bool {
+        hasEditPatch || hasLongSummary
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // タグ部分
             Button {
                 if canExpand {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -303,12 +347,23 @@ struct ToolUseTag: View {
             }
             .buttonStyle(.plain)
 
-            // Edit差分表示（structuredPatchがある場合のみ）
-            if isExpanded, let patch = structuredPatch {
-                StructuredPatchDiffView(
-                    filePath: toolUse.filePath ?? "",
-                    patch: patch
-                )
+            if isExpanded {
+                if hasEditPatch, let patch = structuredPatch {
+                    StructuredPatchDiffView(
+                        filePath: toolUse.filePath ?? "",
+                        patch: patch
+                    )
+                } else if let summary = toolUse.inputSummary {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .lineLimit(12)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(backgroundColor.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
             }
         }
     }
@@ -321,6 +376,8 @@ struct ToolUseTag: View {
         case "Bash": return "terminal"
         case "Glob": return "folder.badge.gearshape"
         case "Grep": return "magnifyingglass"
+        case "Agent", "Task": return "person.2.wave.2"
+        case "TodoWrite": return "checklist"
         default: return "wrench"
         }
     }
@@ -333,6 +390,12 @@ struct ToolUseTag: View {
             let trimmed = cmd.trimmingCharacters(in: .whitespaces)
             return String(trimmed.prefix(20)) + (trimmed.count > 20 ? "..." : "")
         }
+        if let summary = toolUse.inputSummary {
+            let first = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines).first ?? summary
+            let label = String(first.prefix(40))
+            return toolUse.name + ": " + label + (first.count > 40 ? "…" : "")
+        }
         return toolUse.name
     }
 
@@ -342,6 +405,7 @@ struct ToolUseTag: View {
         case "Edit": return .orange.opacity(0.15)
         case "Write": return .green.opacity(0.15)
         case "Bash": return .purple.opacity(0.15)
+        case "Agent", "Task": return .indigo.opacity(0.15)
         default: return .gray.opacity(0.15)
         }
     }
@@ -352,6 +416,7 @@ struct ToolUseTag: View {
         case "Edit": return .orange
         case "Write": return .green
         case "Bash": return .purple
+        case "Agent", "Task": return .indigo
         default: return .secondary
         }
     }
@@ -427,56 +492,20 @@ struct StructuredPatchDiffView: View {
 struct HunkView: View {
     let hunk: StructuredPatchHunk
 
-    // 行番号とマーク、内容を計算
-    private var diffLines: [DiffLine] {
-        var result: [DiffLine] = []
-        var oldLine = hunk.oldStart
-        var newLine = hunk.newStart
-
-        for line in hunk.lines {
-            guard !line.isEmpty else { continue }
-            let prefix = String(line.prefix(1))
-            let content = String(line.dropFirst())
-
-            switch prefix {
-            case " ":
-                // コンテキスト行: 両方の行番号が進む（new側の行番号を表示）
-                result.append(DiffLine(lineNumber: "\(newLine)", mark: " ", content: content, type: .context))
-                oldLine += 1
-                newLine += 1
-            case "-":
-                // 削除行: old行番号
-                result.append(DiffLine(lineNumber: "\(oldLine)", mark: "-", content: content, type: .removed))
-                oldLine += 1
-            case "+":
-                // 追加行: new行番号
-                result.append(DiffLine(lineNumber: "\(newLine)", mark: "+", content: content, type: .added))
-                newLine += 1
-            default:
-                // その他の場合はコンテキストとして扱う
-                result.append(DiffLine(lineNumber: "\(newLine)", mark: " ", content: line, type: .context))
-                oldLine += 1
-                newLine += 1
-            }
-        }
-        return result
-    }
+    @State private var cachedLines: [DiffLine] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(diffLines.indices, id: \.self) { i in
-                let line = diffLines[i]
+            ForEach(cachedLines.indices, id: \.self) { i in
+                let line = cachedLines[i]
                 HStack(spacing: 0) {
-                    // 行番号
                     Text(line.lineNumber)
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .frame(width: 28, alignment: .trailing)
-                    // マーク
                     Text(" \(line.mark) ")
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(line.color)
-                    // 内容
                     Text(line.content)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(line.color.opacity(0.9))
@@ -488,21 +517,69 @@ struct HunkView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
+        .onAppear { buildDiffLines() }
+    }
+
+    private func buildDiffLines() {
+        guard cachedLines.isEmpty else { return }
+        var result: [DiffLine] = []
+        var oldLine = hunk.oldStart
+        var newLine = hunk.newStart
+        result.reserveCapacity(hunk.lines.count)
+
+        for line in hunk.lines {
+            guard !line.isEmpty else { continue }
+            let prefix = line.first!
+            let content = String(line.dropFirst())
+
+            switch prefix {
+            case " ":
+                result.append(DiffLine(lineNumber: "\(newLine)", mark: " ", content: content, type: .context))
+                oldLine += 1; newLine += 1
+            case "-":
+                result.append(DiffLine(lineNumber: "\(oldLine)", mark: "-", content: content, type: .removed))
+                oldLine += 1
+            case "+":
+                result.append(DiffLine(lineNumber: "\(newLine)", mark: "+", content: content, type: .added))
+                newLine += 1
+            default:
+                result.append(DiffLine(lineNumber: "\(newLine)", mark: " ", content: line, type: .context))
+                oldLine += 1; newLine += 1
+            }
+        }
+        cachedLines = result
     }
 }
 
 // シンプルなFlowLayout
 struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        return result.size
+    struct CacheData {
+        var width: CGFloat?
+        var result: (size: CGSize, positions: [CGPoint]) = (.zero, [])
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        for (index, position) in result.positions.enumerated() {
+    var spacing: CGFloat = 8
+
+    func makeCache(subviews: Subviews) -> CacheData {
+        CacheData()
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout CacheData) -> CGSize {
+        let width = proposal.width
+        if cache.width != width {
+            cache.width = width
+            cache.result = arrange(proposal: proposal, subviews: subviews)
+        }
+        return cache.result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout CacheData) {
+        let width = proposal.width
+        if cache.width != width {
+            cache.width = width
+            cache.result = arrange(proposal: proposal, subviews: subviews)
+        }
+        for (index, position) in cache.result.positions.enumerated() {
             subviews[index].place(at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y), proposal: .unspecified)
         }
     }
@@ -571,9 +648,6 @@ struct ToolResultBubble: View {
 // MARK: - Waiting For Response (userメッセージ後の待機表示)
 
 struct WaitingForResponseBubble: View {
-    @State private var dotCount = 0
-    private let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
-
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -582,21 +656,22 @@ struct WaitingForResponseBubble: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.purple)
 
-                HStack(spacing: 0) {
-                    Text("Thinking")
-                    Text(String(repeating: ".", count: dotCount + 1))
-                        .frame(width: 24, alignment: .leading)
+                TimelineView(.periodic(from: .now, by: 0.4)) { context in
+                    let ticks = Int(context.date.timeIntervalSinceReferenceDate / 0.4)
+                    let dotCount = (ticks % 3) + 1
+                    HStack(spacing: 0) {
+                        Text("Thinking")
+                        Text(String(repeating: ".", count: dotCount))
+                            .frame(width: 24, alignment: .leading)
+                    }
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(12)
+                    .background(.purple.opacity(0.1))
+                    .clipShape(ChatBubble(isUser: false))
                 }
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .padding(12)
-                .background(.purple.opacity(0.1))
-                .clipShape(ChatBubble(isUser: false))
             }
             Spacer(minLength: 60)
-        }
-        .onReceive(timer) { _ in
-            dotCount = (dotCount + 1) % 3
         }
     }
 }

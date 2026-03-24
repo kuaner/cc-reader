@@ -72,26 +72,21 @@ class JSONLParser {
 
     // MARK: - Private
 
+    private let decoder: JSONDecoder = JSONDecoder()
+
     private func parseData(_ data: Data) -> [RawMessageData] {
-        guard let string = String(data: data, encoding: .utf8) else { return [] }
-
-        let lines = string.components(separatedBy: .newlines)
         var messages: [RawMessageData] = []
+        let newline = UInt8(ascii: "\n")
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { continue }
-            guard let lineData = trimmed.data(using: .utf8) else { continue }
-
+        // Dataのまま行分割することでString変換→再Data変換の二重コストを回避
+        for lineSlice in data.split(separator: newline, omittingEmptySubsequences: true) {
             do {
-                let message = try decoder.decode(RawMessageData.self, from: lineData)
+                let lineData = Data(lineSlice)
+                var message = try decoder.decode(RawMessageData.self, from: lineData)
+                message.originalLineData = lineData
                 messages.append(message)
             } catch {
-                // パースできない行はスキップ（ログは必要に応じて）
-                print("Failed to parse line: \(error)")
+                // パースできない行はスキップ
             }
         }
 

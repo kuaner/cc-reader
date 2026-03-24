@@ -13,143 +13,108 @@ class Message {
     var parentUuid: String?
     var type: MessageType
     var timestamp: Date
-    var rawJson: Data                          // 元のJSONを保持
+    var rawJson: Data
 
-    // デコード結果のキャッシュ（@Transientでpersistしない）
-    @Transient private var _cachedRaw: RawMessageData?
-    @Transient private var _isCacheValid: Bool = false
+    // --- 解码済みキャッシュ（@Transient: メモリのみ、DBに保存しない）---
+    // rawJson が変わらない限り再解码不要。全プロパティが ensureDecoded() 経由で一度だけ解码される。
+    @Transient private var _decoded = false
+    @Transient private var _content: String?
+    @Transient private var _thinking: String?
+    @Transient private var _model: String?
+    @Transient private var _toolUses: [ToolUseInfo] = []
+    @Transient private var _toolResults: [ToolResultData]?
+    @Transient private var _patchMap: [String: [StructuredPatchHunk]]?
 
-    // Computed properties from rawJson
-    var thinking: String? {
-        guard let content = decodedContent else { return nil }
-        return content.filter { $0.type == "thinking" }.first?.thinking
-    }
+    var content: String? { ensureDecoded(); return _content }
+    var thinking: String? { ensureDecoded(); return _thinking }
+    var model: String? { ensureDecoded(); return _model }
+    var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
+    var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
+    var toolUseResultsWithPatch: [String: [StructuredPatchHunk]]? { ensureDecoded(); return _patchMap }
 
-    var content: String? {
-        guard let message = decodedMessage else { return nil }
-        // contentが文字列の場合（ユーザー入力）
-        if let stringContent = message.contentString {
-            return stringContent
-        }
-        // contentが配列の場合
-        guard let content = message.content else { return nil }
-        return content.filter { $0.type == "text" }.compactMap { $0.text }.joined(separator: "\n")
-    }
+    // 全フィールドを一度だけ解码して全キャッシュに格納する
+    private func ensureDecoded() {
+        guard !_decoded else { return }
+        _decoded = true
 
-    var model: String? {
-        guard let decoded = decodedMessage else { return nil }
-        return decoded.model
-    }
+        guard let raw = try? Self.sharedDecoder.decode(RawMessageData.self, from: rawJson),
+              let message = raw.message else { return }
 
-    var toolResults: [ToolResultData]? {
-        guard let content = decodedContent else { return nil }
-        let results = content
-            .filter { $0.type == "tool_result" }
-            .compactMap { block -> ToolResultData? in
-                guard let toolUseId = block.tool_use_id else { return nil }
-                // contentは文字列または配列
-                var contentStr: String? = nil
-                if let strContent = block.content?.value as? String {
-                    contentStr = strContent
-                } else if let arrContent = block.content?.value as? [[String: Any]] {
-                    // 配列の場合、textを結合
-                    contentStr = arrContent.compactMap { $0["text"] as? String }.joined(separator: "\n")
-                }
-                return ToolResultData(
-                    type: block.type,
-                    tool_use_id: toolUseId,
-                    content: contentStr,
-                    is_error: block.is_error
-                )
-            }
-        return results.isEmpty ? nil : results
-    }
+        _model = message.model
 
-    /// tool_resultからstructuredPatchを取得（tool_use_idをキーにマップ）
-    var toolUseResultsWithPatch: [String: [StructuredPatchHunk]]? {
-        guard let content = decodedContent else { return nil }
-        var map: [String: [StructuredPatchHunk]] = [:]
+        if let str = message.contentString {
+            _content = str
+        } else if let blocks = message.content {
+            _content = blocks.filter { $0.type == "text" }.compactMap { $0.text }.joined(separator: "\n")
+            _thinking = blocks.first(where: { $0.type == "thinking" })?.thinking
 
-        for block in content where block.type == "tool_result" {
-            guard let toolUseId = block.tool_use_id else { continue }
-
-            // tool_resultのcontentがオブジェクトでtoolUseResultを含む場合
-            if let contentDict = block.content?.value as? [String: Any],
-               let toolUseResult = contentDict["toolUseResult"] as? [String: Any],
-               let patchesArray = toolUseResult["structuredPatch"] as? [[String: Any]] {
-
-                let patches = patchesArray.compactMap { patchDict -> StructuredPatchHunk? in
-                    guard let oldStart = patchDict["oldStart"] as? Int,
-                          let oldLines = patchDict["oldLines"] as? Int,
-                          let newStart = patchDict["newStart"] as? Int,
-                          let newLines = patchDict["newLines"] as? Int,
-                          let lines = patchDict["lines"] as? [String] else {
-                        return nil
-                    }
-                    return StructuredPatchHunk(
-                        oldStart: oldStart,
-                        oldLines: oldLines,
-                        newStart: newStart,
-                        newLines: newLines,
-                        lines: lines
-                    )
-                }
-
-                if !patches.isEmpty {
-                    map[toolUseId] = patches
-                }
-            }
-        }
-
-        return map.isEmpty ? nil : map
-    }
-
-    // ツール使用情報を取得
-    var toolUses: [ToolUseInfo] {
-        guard let content = decodedContent else { return [] }
-        return content
-            .filter { $0.type == "tool_use" }
-            .compactMap { block -> ToolUseInfo? in
-                guard let name = block.name else { return nil }
+            // toolUses（assistant）
+            _toolUses = blocks.compactMap { block -> ToolUseInfo? in
+                guard block.type == "tool_use", let name = block.name else { return nil }
                 var filePath: String?
                 var command: String?
                 var oldString: String?
                 var newString: String?
-
+                var inputSummary: String?
                 if let input = block.input?.value as? [String: Any] {
                     filePath = input["file_path"] as? String
                     command = input["command"] as? String
                     oldString = input["old_string"] as? String
                     newString = input["new_string"] as? String
+                    if filePath == nil && command == nil {
+                        inputSummary = (input["description"] as? String)
+                            ?? (input["prompt"] as? String)
+                            ?? (input["query"] as? String)
+                            ?? (input["content"] as? String)
+                            ?? (input["text"] as? String)
+                            ?? (input["pattern"] as? String)
+                    }
                 }
-
-                return ToolUseInfo(id: block.id ?? "", name: name, filePath: filePath, command: command, oldString: oldString, newString: newString)
+                return ToolUseInfo(id: block.id ?? "", name: name, filePath: filePath, command: command, oldString: oldString, newString: newString, inputSummary: inputSummary)
             }
-    }
 
-    // Private helpers
-    private var decodedRaw: RawMessageData? {
-        if _isCacheValid {
-            return _cachedRaw
+            // toolResults（user）
+            let results: [ToolResultData] = blocks.compactMap { block in
+                guard block.type == "tool_result", let toolUseId = block.tool_use_id else { return nil }
+                var contentStr: String?
+                if let s = block.content?.value as? String {
+                    contentStr = s
+                } else if let arr = block.content?.value as? [[String: Any]] {
+                    contentStr = arr.compactMap { $0["text"] as? String }.joined(separator: "\n")
+                }
+                return ToolResultData(type: block.type, tool_use_id: toolUseId, content: contentStr, is_error: block.is_error)
+            }
+            _toolResults = results.isEmpty ? nil : results
+
+            // patchMap（user の tool_result に含まれる structuredPatch）
+            var pMap: [String: [StructuredPatchHunk]] = [:]
+            for block in blocks where block.type == "tool_result" {
+                guard let toolUseId = block.tool_use_id,
+                      let dict = block.content?.value as? [String: Any],
+                      let tur = dict["toolUseResult"] as? [String: Any],
+                      let arr = tur["structuredPatch"] as? [[String: Any]] else { continue }
+                let hunks = arr.compactMap { d -> StructuredPatchHunk? in
+                    guard let os = d["oldStart"] as? Int, let ol = d["oldLines"] as? Int,
+                          let ns = d["newStart"] as? Int, let nl = d["newLines"] as? Int,
+                          let lines = d["lines"] as? [String] else { return nil }
+                    return StructuredPatchHunk(oldStart: os, oldLines: ol, newStart: ns, newLines: nl, lines: lines)
+                }
+                if !hunks.isEmpty { pMap[toolUseId] = hunks }
+            }
+            _patchMap = pMap.isEmpty ? nil : pMap
         }
-        _cachedRaw = try? JSONDecoder().decode(RawMessageData.self, from: rawJson)
-        _isCacheValid = true
-        return _cachedRaw
     }
 
-    /// キャッシュを無効化（rawJsonが更新された場合に呼ぶ）
+    /// 全プロパティを事前にデコードしてキャッシュに格納する（スクロール時のメインスレッドデコードを防ぐ）
+    func preload() { ensureDecoded() }
+
     func invalidateCache() {
-        _isCacheValid = false
-        _cachedRaw = nil
+        _decoded = false
+        _content = nil; _thinking = nil; _model = nil
+        _toolUses = []; _toolResults = nil; _patchMap = nil
     }
 
-    private var decodedMessage: RawMessageContent? {
-        decodedRaw?.message
-    }
-
-    private var decodedContent: [ContentBlock]? {
-        decodedMessage?.content
-    }
+    private static let sharedDecoder = JSONDecoder()
 
     init(uuid: String, type: MessageType, timestamp: Date, rawJson: Data, parentUuid: String? = nil) {
         self.uuid = uuid
@@ -172,6 +137,36 @@ struct RawMessageData: Codable {
     var gitBranch: String?
     var slug: String?
     var message: RawMessageContent?
+    // JSONL 元行のバイト列（DB保存時に再エンコードを回避するため）
+    var originalLineData: Data?
+
+    enum CodingKeys: String, CodingKey {
+        case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
+    }
+
+    init(
+        type: String,
+        uuid: String,
+        parentUuid: String?,
+        sessionId: String,
+        timestamp: String,
+        cwd: String?,
+        gitBranch: String?,
+        slug: String?,
+        message: RawMessageContent?,
+        originalLineData: Data? = nil
+    ) {
+        self.type = type
+        self.uuid = uuid
+        self.parentUuid = parentUuid
+        self.sessionId = sessionId
+        self.timestamp = timestamp
+        self.cwd = cwd
+        self.gitBranch = gitBranch
+        self.slug = slug
+        self.message = message
+        self.originalLineData = originalLineData
+    }
 }
 
 struct RawMessageContent: Codable {
@@ -246,13 +241,14 @@ struct ToolUseResultData: Codable {
     var structuredPatch: [StructuredPatchHunk]?
 }
 
-struct ToolUseInfo {
+struct ToolUseInfo: Identifiable {
     var id: String
     var name: String           // "Read", "Edit", "Bash" etc.
     var filePath: String?      // ファイルパス（Read, Edit, Write）
     var command: String?       // コマンド（Bash）
     var oldString: String?     // Edit用: 置換前
     var newString: String?     // Edit用: 置換後
+    var inputSummary: String?  // filePath/command が無いツール向けの入力要約（Agent, Task 等）
 }
 
 // Helper for decoding arbitrary JSON

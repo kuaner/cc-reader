@@ -5,6 +5,7 @@ import SwiftData
 class SyncService: ObservableObject {
     private let parser = JSONLParser()
     private let modelContext: ModelContext
+    private static let sharedEncoder = JSONEncoder()
 
     @Published private(set) var isSyncing = false
     @Published private(set) var lastSyncedFile: URL?
@@ -20,14 +21,15 @@ class SyncService: ObservableObject {
         isSyncing = true
         syncProgress = "ファイルを検索中..."
 
-        // 既存のセッションIDを取得
-        let existingSessionIds = await getExistingSessionIds()
-
         let files = FileWatcherService.existingJSONLFiles()
         // 新規ファイルのみフィルタ
-        let newFiles = files.filter { file in
-            guard let sessionId = JSONLParser.sessionId(from: file) else { return false }
-            return !existingSessionIds.contains(sessionId)
+        var newFiles: [URL] = []
+        newFiles.reserveCapacity(files.count)
+        for file in files {
+            guard let sessionId = JSONLParser.sessionId(from: file) else { continue }
+            if !(await sessionExists(sessionId: sessionId)) {
+                newFiles.append(file)
+            }
         }
 
         print("Full sync: \(files.count) files, \(newFiles.count) new")
@@ -51,10 +53,11 @@ class SyncService: ObservableObject {
         print("Full sync completed: \(syncedMessageCount) messages")
     }
 
-    private func getExistingSessionIds() async -> Set<String> {
-        let descriptor = FetchDescriptor<Session>()
-        guard let sessions = try? modelContext.fetch(descriptor) else { return [] }
-        return Set(sessions.map { $0.sessionId })
+    private func sessionExists(sessionId: String) async -> Bool {
+        let predicate = #Predicate<Session> { $0.sessionId == sessionId }
+        var descriptor = FetchDescriptor<Session>(predicate: predicate)
+        descriptor.fetchLimit = 1
+        return (try? modelContext.fetch(descriptor).isEmpty == false) ?? false
     }
 
     // ファイル変更時: 差分のみ追加
@@ -210,9 +213,14 @@ class SyncService: ObservableObject {
     /// 重複チェックなしでメッセージを追加（バッチ処理用）
     private func addMessageWithoutCheck(raw: RawMessageData, to session: Session) {
         let timestamp = parseTimestamp(raw.timestamp) ?? Date()
-
-        let encoder = JSONEncoder()
-        guard let rawJson = try? encoder.encode(raw) else { return }
+        let rawJson: Data
+        if let original = raw.originalLineData {
+            rawJson = original
+        } else if let encoded = try? Self.sharedEncoder.encode(raw) {
+            rawJson = encoded
+        } else {
+            return
+        }
 
         let messageType: MessageType = raw.type == "user" ? .user : .assistant
         let message = Message(
@@ -228,18 +236,25 @@ class SyncService: ObservableObject {
 
         syncedMessageCount += 1
 
-        // セッションのキャッシュを更新
+        // セッションのキャッシュを更新（rawから直接取得してJSONの再デコードを回避）
         if messageType == .user {
-            // userメッセージの場合（contentがあるもののみカウント）
-            if let content = message.content, !content.isEmpty {
+            let contentText: String? = {
+                if let str = raw.message?.contentString, !str.isEmpty { return str }
+                return raw.message?.content?
+                    .filter { $0.type == "text" }
+                    .compactMap { $0.text }
+                    .joined(separator: "\n")
+            }()
+            if let content = contentText, !content.isEmpty {
                 session.cachedTurnCount += 1
                 session.lastUserMessageAt = timestamp
-
-                // 最初のユーザーメッセージならタイトルをキャッシュ
+                session.cachedUnacknowledgedCount = 0
                 if session.cachedTitle == nil {
                     session.cachedTitle = extractTitle(from: content)
                 }
             }
+        } else if let lastUserAt = session.lastUserMessageAt, timestamp > lastUserAt {
+            session.cachedUnacknowledgedCount += 1
         }
     }
 
@@ -248,6 +263,7 @@ class SyncService: ObservableObject {
         var turnCount = 0
         var firstUserContent: String?
         var lastUserMessageAt: Date?
+        var assistantAfterLastUser = 0
 
         for message in session.messages where message.type == .user {
             if let content = message.content, !content.isEmpty {
@@ -261,6 +277,12 @@ class SyncService: ObservableObject {
 
         session.cachedTurnCount = turnCount
         session.lastUserMessageAt = lastUserMessageAt
+        if let lastUserMessageAt {
+            assistantAfterLastUser = session.messages.filter {
+                $0.type == .assistant && $0.timestamp > lastUserMessageAt
+            }.count
+        }
+        session.cachedUnacknowledgedCount = assistantAfterLastUser
         if let content = firstUserContent {
             session.cachedTitle = extractTitle(from: content)
         }
@@ -275,9 +297,13 @@ class SyncService: ObservableObject {
         return trimmed.isEmpty ? "..." : trimmed
     }
 
+    private static let timestampFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
     private func parseTimestamp(_ string: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.date(from: string)
+        Self.timestampFormatter.date(from: string)
     }
 }

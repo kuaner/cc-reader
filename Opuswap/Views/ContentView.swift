@@ -4,85 +4,54 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var coordinator: AppCoordinator
-    @StateObject private var layoutManager = LayoutManager()
 
     @State private var selectedProject: Project?
     @State private var selectedSession: Session?
-    @State private var showTerminal = true
 
     init(modelContext: ModelContext) {
         _coordinator = StateObject(wrappedValue: AppCoordinator(modelContext: modelContext))
     }
 
     var body: some View {
-        HSplitView {
-            // 左側: 会話ビュー
-            NavigationSplitView {
-                ProjectListView(selectedProject: $selectedProject, selectedSession: $selectedSession)
-                    .environmentObject(layoutManager)
-                    .frame(minWidth: 200)
-            } detail: {
-                if let session = selectedSession {
-                    SessionMessagesView(session: session)
-                        .toolbar {
-                            ToolbarItem(placement: .automatic) {
-                                Button {
-                                    Task {
-                                        await coordinator.syncSession(session)
-                                    }
-                                } label: {
-                                    Image(systemName: "arrow.clockwise")
+        NavigationSplitView {
+            ProjectListView(selectedProject: $selectedProject, selectedSession: $selectedSession)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 360)
+        } detail: {
+            if let session = selectedSession {
+                SessionMessagesView(session: session)
+                    .id(session.sessionId)
+                    .toolbar {
+                        ToolbarItem(placement: .automatic) {
+                            Button {
+                                Task {
+                                    await coordinator.syncSession(session)
                                 }
-                                .help("メッセージを更新")
-                                .disabled(coordinator.isSyncing)
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
                             }
+                            .help("メッセージを更新")
+                            .disabled(coordinator.isSyncing)
                         }
-                } else {
-                    ContentUnavailableView("セッションを選択", systemImage: "message")
-                }
-            }
-            .onChange(of: selectedSession) { _, newSession in
-                // セッション切り替え時に差分同期
-                if let session = newSession {
-                    Task {
-                        await coordinator.syncSession(session)
                     }
-                }
+            } else {
+                ContentUnavailableView("セッションを選択", systemImage: "message")
             }
-            .frame(minWidth: 500)
-
-            // 右側: ターミナル
-            if showTerminal, let pane = layoutManager.allPanes().first {
-                TerminalContainerView(
-                    paneId: pane.id,
-                    cwd: FileManager.default.homeDirectoryForCurrentUser.path
-                )
-                .id(pane.id)  // paneIdが変わらない限り再生成しない
-                .frame(minWidth: 400)
+        }
+        .onChange(of: selectedSession) { _, newSession in
+            if let session = newSession {
+                Task(priority: .utility) {
+                    await coordinator.syncSession(session)
+                }
             }
         }
         .navigationTitle("Opuswap")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    withAnimation { showTerminal.toggle() }
-                } label: {
-                    Image(systemName: "terminal")
-                        .symbolVariant(showTerminal ? .fill : .none)
-                }
-                .help("内蔵ターミナル表示")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                externalTerminalMenu
-            }
-            ToolbarItem(placement: .primaryAction) {
-                statusIndicator
+                SyncStatusView(coordinator: coordinator)
             }
         }
         .overlay {
-            if coordinator.isSyncing && !coordinator.syncProgress.isEmpty {
-                syncOverlay
-            }
+            SyncOverlayView(coordinator: coordinator)
         }
         .task {
             await coordinator.start()
@@ -91,34 +60,12 @@ struct ContentView: View {
             coordinator.stop()
         }
     }
+}
 
-    @ViewBuilder
-    private var externalTerminalMenu: some View {
-        let terminals = ExternalTerminalLauncher.availableTerminals()
-        Menu {
-            ForEach(terminals) { terminal in
-                Button {
-                    openExternalTerminal(terminal)
-                } label: {
-                    Label(terminal.rawValue, systemImage: terminal.icon)
-                }
-            }
-        } label: {
-            Image(systemName: "arrow.up.forward.app")
-        }
-        .menuIndicator(.hidden)
-        .help("外部ターミナルで開く")
-    }
+private struct SyncStatusView: View {
+    @ObservedObject var coordinator: AppCoordinator
 
-    private func openExternalTerminal(_ app: TerminalApp) {
-        // 選択中のプロジェクトのディレクトリ、なければホーム
-        let directory = selectedProject?.path
-            ?? FileManager.default.homeDirectoryForCurrentUser.path
-        ExternalTerminalLauncher.open(app, at: directory)
-    }
-
-    @ViewBuilder
-    private var statusIndicator: some View {
+    var body: some View {
         HStack(spacing: 8) {
             if coordinator.isSyncing {
                 ProgressView()
@@ -132,20 +79,25 @@ struct ContentView: View {
                 .foregroundStyle(.tertiary)
         }
     }
+}
 
-    @ViewBuilder
-    private var syncOverlay: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text(coordinator.syncProgress)
-                .font(.headline)
-            Text("初回同期中...")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+private struct SyncOverlayView: View {
+    @ObservedObject var coordinator: AppCoordinator
+
+    var body: some View {
+        if coordinator.isSyncing && !coordinator.syncProgress.isEmpty {
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(coordinator.syncProgress)
+                    .font(.headline)
+                Text("初回同期中...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .padding(24)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

@@ -19,6 +19,7 @@ class Session {
     var cachedTurnCount: Int = 0               // ユーザーの指示回数（キャッシュ）
     var cachedTitle: String?                   // セッションタイトル（キャッシュ）
     var needsAttention: Bool = false           // 未読の回答あり
+    var cachedUnacknowledgedCount: Int = 0     // 未確認アシスタントメッセージ数（キャッシュ）
 
     init(sessionId: String, cwd: String, gitBranch: String? = nil, slug: String? = nil, startedAt: Date = Date(), updatedAt: Date = Date()) {
         self.sessionId = sessionId
@@ -38,6 +39,12 @@ class Session {
 
     // MARK: - Computed Properties for UI
 
+    private static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "M/d HH:mm"
+        return f
+    }()
+
     /// 表示用タイトル
     var displayTitle: String {
         if let slug = slug {
@@ -48,14 +55,11 @@ class Session {
         if let cachedTitle = cachedTitle {
             return cachedTitle
         }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M/d HH:mm"
-        return formatter.string(from: startedAt)
+        return Self.shortDateFormatter.string(from: startedAt)
     }
 
     /// 未確認メッセージ数
     var unacknowledgedCount: Int {
-        guard let lastUserAt = lastUserMessageAt else { return 0 }
-        return messages.filter { $0.type == .assistant && $0.timestamp > lastUserAt }.count
+        cachedUnacknowledgedCount
     }
 }

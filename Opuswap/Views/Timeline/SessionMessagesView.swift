@@ -6,6 +6,9 @@ struct SessionMessagesView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var showContext = true
 
+    // SQLiteがtimestampでソート → View側のO(n log n)ソート完全不要
+    @Query private var messages: [Message]
+
     // Surgery Mode
     @State private var isSurgeryMode = false
     @State private var selectedMessageIds: Set<String> = []
@@ -29,111 +32,80 @@ struct SessionMessagesView: View {
     @State private var showError = false
 
     // ローディング状態
-    @State private var isLoading = true
-    @State private var isDeleting = false  // 削除中はスクロールしない
+    @State private var isDeleting = false
 
-    // ソート済みメッセージをキャッシュ
-    private var messagesWithContext: [(message: Message, prevUserTime: Date?)] {
-        let sorted = session.messages.sorted { $0.timestamp < $1.timestamp }
-        var result: [(Message, Date?)] = []
-        var lastUserTime: Date? = nil
+    // 予計算済みデータ（メッセージ数変化時のみ更新）
+    @State private var prevTimestampMap: [String: Date] = [:]
+    @State private var lastProcessedMessageCount = 0
+    @State private var derivedPatchMap: [String: [StructuredPatchHunk]] = [:]
+    @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
+    @State private var derivedContextMap: [String: ContextItem] = [:]
+    @State private var derivedLatestThinking: String? = nil
+    @State private var derivedHasSummaryThinking = false
+    @State private var tokenCountByMessageId: [String: Int] = [:]
+    @State private var cachedTotalTokens = 0
+    @StateObject private var patchMapStore = PatchMapStore()
 
-        for msg in sorted {
-            if msg.type == .assistant {
-                result.append((msg, lastUserTime))
-            } else {
-                result.append((msg, nil))
-                lastUserTime = msg.timestamp
-            }
-        }
-        return result
-    }
+    // ContextPanel 用のキャッシュ（重複 @Query 排除）
+    @State private var ctxLatestThinking: String? = nil
+    @State private var ctxReadFiles: [ContextItem] = []
+    @State private var ctxEditedFiles: [ContextItem] = []
+    @State private var ctxWrittenFiles: [ContextItem] = []
 
-    // structuredPatchマップ: tool_use_idをキーに[StructuredPatchHunk]を保持
-    private var structuredPatchMap: [String: [StructuredPatchHunk]] {
-        var map: [String: [StructuredPatchHunk]] = [:]
-        for msg in session.messages where msg.type == .user {
-            if let results = msg.toolUseResultsWithPatch {
-                for (toolUseId, patches) in results {
-                    map[toolUseId] = patches
-                }
-            }
-        }
-        return map
+    init(session: Session) {
+        self.session = session
+        let sid = session.sessionId
+        _messages = Query(
+            filter: #Predicate<Message> { $0.session?.sessionId == sid },
+            sort: \Message.timestamp,
+            order: .forward
+        )
     }
 
     private var isWaitingForResponse: Bool {
-        guard let last = session.messages.max(by: { $0.timestamp < $1.timestamp }) else { return false }
-        return last.type == .user
+        messages.last?.type == MessageType.user
     }
 
-    // Surgery Mode: 選択したメッセージの合計トークン数（Surgery Mode時のみ計算）
     private var selectedTokenCount: Int {
         guard isSurgeryMode else { return 0 }
-        return session.messages
-            .filter { selectedMessageIds.contains($0.uuid) }
-            .map { TokenEstimator.estimateTokens(for: $0) }
-            .reduce(0, +)
+        return selectedMessageIds.reduce(0) { partial, id in
+            partial + (tokenCountByMessageId[id] ?? 0)
+        }
     }
 
-    // 全メッセージの合計トークン数（Surgery Mode時のみ計算）
     private var totalTokenCount: Int {
-        guard isSurgeryMode else { return 0 }
-        return TokenEstimator.totalTokens(for: Array(session.messages))
+        isSurgeryMode ? cachedTotalTokens : 0
     }
 
     var body: some View {
-        HSplitView {
+        HStack(spacing: 0) {
+            // メインタイムライン
             VStack(spacing: 0) {
-                // Surgery Mode ツールバー
                 if isSurgeryMode {
                     surgeryToolbar
                 }
 
-                // ローディング中
-                if isLoading {
+                if messages.isEmpty {
                     Spacer()
-                    ProgressView("読み込み中...")
-                        .progressViewStyle(.circular)
+                    Text("メッセージなし")
+                        .foregroundStyle(.secondary)
                     Spacer()
                 } else {
-                    // メインタイムライン
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVStack(alignment: .leading, spacing: 12) {
-                                ForEach(messagesWithContext, id: \.message.uuid) { item in
+                                ForEach(messages) { message in
                                     MessageRow(
-                                        message: item.message,
-                                        previousUserTimestamp: item.prevUserTime,
-                                        structuredPatchMap: structuredPatchMap,
+                                        message: message,
+                                        previousUserTimestamp: prevTimestampMap[message.uuid],
                                         isInSurgeryMode: isSurgeryMode,
-                                        isSelected: selectedMessageIds.contains(item.message.uuid),
-                                        tokenCount: isSurgeryMode ? TokenEstimator.estimateTokens(for: item.message) : 0,
-                                        onToggleSelection: {
-                                            toggleSelection(item.message.uuid)
-                                        },
-                                        onRewindHere: {
-                                            rewindTargetId = item.message.uuid
-                                            showRewindConfirm = true
-                                        },
-                                        onDelete: {
-                                            deleteTargetMessage = item.message
-                                            if skipDeleteConfirmation {
-                                                performSingleDelete()
-                                            } else {
-                                                showDeleteConfirm = true
-                                            }
-                                        },
-                                        onEditSummary: {
-                                            editingSummaryMessage = item.message
-                                            editedSummaryContent = item.message.content ?? ""
-                                            showSummaryEditor = true
-                                        }
+                                        isSelected: selectedMessageIds.contains(message.uuid),
+                                        tokenCount: isSurgeryMode ? TokenEstimator.estimateTokens(for: message) : 0,
+                                        onAction: handleRowAction
                                     )
-                                    .id(item.message.uuid)
+                                    .id(message.uuid)
                                 }
 
-                                // 最新がuserメッセージなら、Claudeが考え中
                                 if isWaitingForResponse && !isSurgeryMode {
                                     WaitingForResponseBubble()
                                         .id("waiting")
@@ -141,24 +113,30 @@ struct SessionMessagesView: View {
                             }
                             .padding()
                         }
-                        .onChange(of: session.messages.count) { oldCount, newCount in
-                            // 削除時（カウント減少時）はスクロールしない
+                        .environmentObject(patchMapStore)
+                        .onChange(of: messages.count) { oldCount, newCount in
+                            rebuildDerivedData()
                             guard newCount > oldCount, !isDeleting else { return }
-                            if let lastItem = messagesWithContext.last {
+                            if let last = messages.last {
                                 withAnimation {
-                                    proxy.scrollTo(lastItem.message.uuid, anchor: .bottom)
+                                    proxy.scrollTo(last.uuid, anchor: .bottom)
                                 }
                             }
                         }
                     }
                 }
             }
-            .frame(minWidth: 400)
 
-            // コンテキストパネル
+            // コンテキストパネル（固定幅サイドバー、@Query 排除済み）
             if showContext && !isSurgeryMode {
-                ContextPanel(sessionId: session.sessionId)
-                    .frame(minWidth: 250, maxWidth: 300)
+                Divider()
+                ContextPanel(
+                    latestThinking: ctxLatestThinking,
+                    readFiles: ctxReadFiles,
+                    editedFiles: ctxEditedFiles,
+                    writtenFiles: ctxWrittenFiles
+                )
+                .frame(width: 260)
             }
         }
         .navigationTitle(sessionTitle)
@@ -223,19 +201,169 @@ struct SessionMessagesView: View {
             Text(errorMessage ?? "")
         }
         .onAppear {
-            loadSession()
-        }
-        .onChange(of: session.sessionId) { _, _ in
-            loadSession()
+            rebuildDerivedData()
         }
     }
 
-    private func loadSession() {
-        isLoading = true
-        // 少し遅延してUIを更新（メインスレッドをブロックしない）
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            isLoading = false
+    // MARK: - Row Action Handler
+
+    private func handleRowAction(_ action: MessageRowAction) {
+        switch action {
+        case .toggleSelection(let uuid):
+            toggleSelection(uuid)
+        case .rewindHere(let uuid):
+            rewindTargetId = uuid
+            showRewindConfirm = true
+        case .delete(let message):
+            deleteTargetMessage = message
+            if skipDeleteConfirmation {
+                performSingleDelete()
+            } else {
+                showDeleteConfirm = true
+            }
+        case .editSummary(let message):
+            editingSummaryMessage = message
+            editedSummaryContent = message.content ?? ""
+            showSummaryEditor = true
         }
+    }
+
+    // MARK: - Derived Data
+
+    @State private var derivedDataGeneration = 0
+
+    /// Phase 1（同期・高速）: timestamp マップのみ構築。type / timestamp / uuid は SQLite 直接読み出しで JSON デコード不要。
+    /// Phase 2（非同期・yield 付き）: 全メッセージのデコード + patchMap + context を段階的に構築。
+    private func rebuildDerivedData() {
+        derivedDataGeneration += 1
+        let gen = derivedDataGeneration
+
+        // --- Phase 1: 同期（デコード不要のプロパティのみ） ---
+        var tsMap: [String: Date] = [:]
+        var lastUserTime: Date? = nil
+        for msg in messages {
+            if msg.type == .assistant, let t = lastUserTime {
+                tsMap[msg.uuid] = t
+            }
+            if msg.type == .user {
+                lastUserTime = msg.timestamp
+            }
+        }
+        prevTimestampMap = tsMap
+
+        // --- Phase 2: 非同期（デコード + patchMap + context） ---
+        let count = messages.count
+        let needsFullRebuild = count < lastProcessedMessageCount
+        let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount
+        guard startIndex <= count else { return }
+        let deltaMessages = Array(messages[startIndex..<count])
+
+        var initialPatchMap = needsFullRebuild ? [:] : derivedPatchMap
+        var initialToolUseMap = needsFullRebuild ? [:] : derivedToolUseMap
+        var initialContextMap = needsFullRebuild ? [:] : derivedContextMap
+        var initialLatestThinking = needsFullRebuild ? nil : derivedLatestThinking
+        var initialHasSummaryThinking = needsFullRebuild ? false : derivedHasSummaryThinking
+        var initialTokenMap = needsFullRebuild ? [:] : tokenCountByMessageId
+
+        if deltaMessages.isEmpty {
+            publishContext(
+                patchMap: initialPatchMap,
+                contextMap: initialContextMap,
+                latestThinking: initialLatestThinking
+            )
+            return
+        }
+
+        Task { @MainActor in
+            for (i, msg) in deltaMessages.enumerated() {
+                guard gen == derivedDataGeneration else { return }
+                msg.preload()
+                initialTokenMap[msg.uuid] = TokenEstimator.estimateTokens(for: msg)
+
+                if msg.type == .assistant {
+                    for toolUse in msg.toolUses {
+                        initialToolUseMap[toolUse.id] = toolUse
+                        if let key = toolUse.filePath ?? toolUse.command {
+                            if initialContextMap[key] == nil {
+                                initialContextMap[key] = ContextItem(
+                                    id: key, toolName: toolUse.name,
+                                    filePath: toolUse.filePath, command: toolUse.command,
+                                    content: "(実行中...)", isError: false
+                                )
+                            }
+                        }
+                    }
+                    if !initialHasSummaryThinking, let t = msg.thinking, !t.isEmpty {
+                        initialLatestThinking = t
+                    }
+                } else {
+                    if let patches = msg.toolUseResultsWithPatch {
+                        for (id, hunks) in patches { initialPatchMap[id] = hunks }
+                    }
+                    if let c = msg.content, c.contains("This session is being continued") {
+                        initialLatestThinking = c
+                        initialHasSummaryThinking = true
+                    }
+                    if let results = msg.toolResults {
+                        for result in results {
+                            guard let toolUseId = result.tool_use_id,
+                                  let toolUse = initialToolUseMap[toolUseId] else { continue }
+                            let content = result.content ?? ""
+                            let key = toolUse.filePath ?? toolUse.command ?? toolUseId
+                            initialContextMap[key] = ContextItem(
+                                id: key, toolName: toolUse.name,
+                                filePath: toolUse.filePath, command: toolUse.command,
+                                content: content.isEmpty ? "(成功)" : content,
+                                isError: result.is_error ?? false
+                            )
+                        }
+                    }
+                }
+                if i.isMultiple(of: 40) { await Task.yield() }
+            }
+
+            guard gen == derivedDataGeneration else { return }
+            lastProcessedMessageCount = count
+            derivedPatchMap = initialPatchMap
+            derivedToolUseMap = initialToolUseMap
+            derivedContextMap = initialContextMap
+            derivedLatestThinking = initialLatestThinking
+            derivedHasSummaryThinking = initialHasSummaryThinking
+            tokenCountByMessageId = initialTokenMap
+            cachedTotalTokens = initialTokenMap.values.reduce(0, +)
+            publishContext(
+                patchMap: initialPatchMap,
+                contextMap: initialContextMap,
+                latestThinking: initialLatestThinking
+            )
+        }
+    }
+
+    private func publishContext(
+        patchMap: [String: [StructuredPatchHunk]],
+        contextMap: [String: ContextItem],
+        latestThinking: String?
+    ) {
+        patchMapStore.map = patchMap
+        let sorted = contextMap.values.sorted { ($0.filePath ?? "") < ($1.filePath ?? "") }
+        var reads: [ContextItem] = []
+        var edits: [ContextItem] = []
+        var writes: [ContextItem] = []
+        reads.reserveCapacity(sorted.count)
+        edits.reserveCapacity(sorted.count)
+        writes.reserveCapacity(sorted.count)
+        for item in sorted {
+            switch item.toolName {
+            case "Read": reads.append(item)
+            case "Edit": edits.append(item)
+            case "Write": writes.append(item)
+            default: break
+            }
+        }
+        ctxLatestThinking = latestThinking
+        ctxReadFiles = reads
+        ctxEditedFiles = edits
+        ctxWrittenFiles = writes
     }
 
     // MARK: - Surgery Mode Toolbar
@@ -302,26 +430,27 @@ struct SessionMessagesView: View {
             showError = true
             return
         }
+        let deleteIds = Array(selectedMessageIds)
+        Task {
+            isDeleting = true
+            defer { isDeleting = false }
 
-        isDeleting = true
-        defer { isDeleting = false }
+            do {
+                try await JSONLWriter.backup(url: fileURL)
+                try await JSONLWriter.deleteMessages(uuids: deleteIds, from: fileURL)
 
-        do {
-            try JSONLWriter.backup(url: fileURL)
-            try JSONLWriter.deleteMessages(uuids: Array(selectedMessageIds), from: fileURL)
+                let messagesToDelete = session.messages.filter { selectedMessageIds.contains($0.uuid) }
+                for message in messagesToDelete {
+                    modelContext.delete(message)
+                }
+                try? modelContext.save()
 
-            // SwiftDataからも削除
-            let messagesToDelete = session.messages.filter { selectedMessageIds.contains($0.uuid) }
-            for message in messagesToDelete {
-                modelContext.delete(message)
+                selectedMessageIds.removeAll()
+                isSurgeryMode = false
+            } catch {
+                errorMessage = "削除に失敗しました: \(error.localizedDescription)"
+                showError = true
             }
-            try? modelContext.save()
-
-            selectedMessageIds.removeAll()
-            isSurgeryMode = false
-        } catch {
-            errorMessage = "削除に失敗しました: \(error.localizedDescription)"
-            showError = true
         }
     }
 
@@ -333,21 +462,22 @@ struct SessionMessagesView: View {
             return
         }
 
-        isDeleting = true
-        defer { isDeleting = false }
+        Task {
+            isDeleting = true
+            defer { isDeleting = false }
 
-        do {
-            try JSONLWriter.backup(url: fileURL)
-            try JSONLWriter.deleteMessages(uuids: [message.uuid], from: fileURL)
+            do {
+                try await JSONLWriter.backup(url: fileURL)
+                try await JSONLWriter.deleteMessages(uuids: [message.uuid], from: fileURL)
 
-            // SwiftDataからも削除
-            modelContext.delete(message)
-            try? modelContext.save()
+                modelContext.delete(message)
+                try? modelContext.save()
 
-            deleteTargetMessage = nil
-        } catch {
-            errorMessage = "削除に失敗しました: \(error.localizedDescription)"
-            showError = true
+                deleteTargetMessage = nil
+            } catch {
+                errorMessage = "削除に失敗しました: \(error.localizedDescription)"
+                showError = true
+            }
         }
     }
 
@@ -359,31 +489,31 @@ struct SessionMessagesView: View {
             return
         }
 
-        isDeleting = true
-        defer { isDeleting = false }
+        Task {
+            isDeleting = true
+            defer { isDeleting = false }
 
-        do {
-            try JSONLWriter.backup(url: fileURL)
-            try JSONLWriter.deleteMessagesAfter(uuid: targetId, from: fileURL, inclusive: false)
+            do {
+                try await JSONLWriter.backup(url: fileURL)
+                try await JSONLWriter.deleteMessagesAfter(uuid: targetId, from: fileURL, inclusive: false)
 
-            // SwiftDataからも削除（targetId以降のメッセージ）
-            let sortedMessages = session.messages.sorted { $0.timestamp < $1.timestamp }
-            var foundTarget = false
-            for message in sortedMessages {
-                if message.uuid == targetId {
-                    foundTarget = true
-                    continue
+                var foundTarget = false
+                for message in messages {
+                    if message.uuid == targetId {
+                        foundTarget = true
+                        continue
+                    }
+                    if foundTarget {
+                        modelContext.delete(message)
+                    }
                 }
-                if foundTarget {
-                    modelContext.delete(message)
-                }
+                try? modelContext.save()
+
+                rewindTargetId = nil
+            } catch {
+                errorMessage = "巻き戻しに失敗しました: \(error.localizedDescription)"
+                showError = true
             }
-            try? modelContext.save()
-
-            rewindTargetId = nil
-        } catch {
-            errorMessage = "巻き戻しに失敗しました: \(error.localizedDescription)"
-            showError = true
         }
     }
 
@@ -395,14 +525,16 @@ struct SessionMessagesView: View {
             return
         }
 
-        do {
-            try JSONLWriter.backup(url: fileURL)
-            try JSONLWriter.updateMessageContent(uuid: message.uuid, newContent: editedSummaryContent, in: fileURL)
-            showSummaryEditor = false
-            editingSummaryMessage = nil
-        } catch {
-            errorMessage = "保存に失敗しました: \(error.localizedDescription)"
-            showError = true
+        Task {
+            do {
+                try await JSONLWriter.backup(url: fileURL)
+                try await JSONLWriter.updateMessageContent(uuid: message.uuid, newContent: editedSummaryContent, in: fileURL)
+                showSummaryEditor = false
+                editingSummaryMessage = nil
+            } catch {
+                errorMessage = "保存に失敗しました: \(error.localizedDescription)"
+                showError = true
+            }
         }
     }
 
@@ -498,39 +630,30 @@ struct SummaryEditorSheet: View {
 // MARK: - Context Panel
 
 struct ContextPanel: View {
-    let sessionId: String
+    let latestThinking: String?
+    let readFiles: [ContextItem]
+    let editedFiles: [ContextItem]
+    let writtenFiles: [ContextItem]
 
-    @Query private var messages: [Message]
-
-    init(sessionId: String) {
-        self.sessionId = sessionId
-        let id = sessionId
-        _messages = Query(filter: #Predicate<Message> { message in
-            message.session?.sessionId == id
-        })
-    }
+    @State private var selectedFileItem: ContextItem? = nil
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
-                // 現在のClaude理解（最新の思考）
                 if let latest = latestThinking {
                     CurrentUnderstandingView(thinking: latest)
                 }
 
-                // 読み込んだファイル
                 if !readFiles.isEmpty {
-                    ContextSectionView(title: "読み込み済み", icon: "doc.text", color: .blue, items: readFiles)
+                    ContextSectionView(title: "読み込み済み", icon: "doc.text", color: .blue, items: readFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
-                // 編集したファイル
                 if !editedFiles.isEmpty {
-                    ContextSectionView(title: "編集済み", icon: "pencil", color: .orange, items: editedFiles)
+                    ContextSectionView(title: "編集済み", icon: "pencil", color: .orange, items: editedFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
-                // 作成したファイル
                 if !writtenFiles.isEmpty {
-                    ContextSectionView(title: "作成済み", icon: "doc.badge.plus", color: .green, items: writtenFiles)
+                    ContextSectionView(title: "作成済み", icon: "doc.badge.plus", color: .green, items: writtenFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if latestThinking == nil && readFiles.isEmpty && editedFiles.isEmpty && writtenFiles.isEmpty {
@@ -542,93 +665,14 @@ struct ContextPanel: View {
             .padding()
         }
         .background(.quaternary.opacity(0.5))
-    }
-
-    // compaction後のサマリー（Claudeの吟味された理解）
-    private var latestThinking: String? {
-        // "This session is being continued" で始まるメッセージを探す
-        let summaries = messages
-            .filter { $0.type == .user }
-            .sorted { $0.timestamp > $1.timestamp }
-            .compactMap { $0.content }
-            .filter { $0.contains("This session is being continued") }
-
-        // 最新のサマリーを返す
-        if let latest = summaries.first {
-            return latest
-        }
-
-        // サマリーがなければ最新のthinkingを返す
-        return messages
-            .filter { $0.type == .assistant }
-            .sorted { $0.timestamp > $1.timestamp }
-            .compactMap { $0.thinking }
-            .first
-    }
-
-    // ファイル別に重複排除（最新の内容を保持）
-    private var contextMap: [String: ContextItem] {
-        var map: [String: ContextItem] = [:]
-        var toolUseMap: [String: ToolUseInfo] = [:]
-
-        // tool_useを収集（これだけで表示できるようにする）
-        for msg in messages where msg.type == .assistant {
-            for toolUse in msg.toolUses {
-                toolUseMap[toolUse.id] = toolUse
-
-                // tool_useだけでも表示（後でtool_resultで上書きされる）
-                if let key = toolUse.filePath ?? toolUse.command {
-                    if map[key] == nil {
-                        map[key] = ContextItem(
-                            id: key,
-                            toolName: toolUse.name,
-                            filePath: toolUse.filePath,
-                            command: toolUse.command,
-                            content: "(実行中...)",
-                            isError: false
-                        )
-                    }
-                }
+        .sheet(item: $selectedFileItem) { item in
+            if let path = item.filePath {
+                FileEditorSheet(filePath: path)
             }
         }
-
-        // tool_resultとマッチング（後から来たもので上書き = 最新）
-        for msg in messages where msg.type == .user {
-            guard let results = msg.toolResults else { continue }
-            for result in results {
-                guard let toolUseId = result.tool_use_id,
-                      let toolUse = toolUseMap[toolUseId] else { continue }
-
-                let content = result.content ?? ""
-                let key = toolUse.filePath ?? toolUse.command ?? toolUseId
-                map[key] = ContextItem(
-                    id: key,
-                    toolName: toolUse.name,
-                    filePath: toolUse.filePath,
-                    command: toolUse.command,
-                    content: content.isEmpty ? "(成功)" : content,
-                    isError: result.is_error ?? false
-                )
-            }
-        }
-
-        return map
-    }
-
-    private var readFiles: [ContextItem] {
-        contextMap.values.filter { $0.toolName == "Read" }.sorted { ($0.filePath ?? "") < ($1.filePath ?? "") }
-    }
-
-    private var editedFiles: [ContextItem] {
-        contextMap.values.filter { $0.toolName == "Edit" }.sorted { ($0.filePath ?? "") < ($1.filePath ?? "") }
-    }
-
-    private var writtenFiles: [ContextItem] {
-        contextMap.values.filter { $0.toolName == "Write" }.sorted { ($0.filePath ?? "") < ($1.filePath ?? "") }
     }
 }
 
-// Claudeの理解（蓄積された思考）
 struct CurrentUnderstandingView: View {
     let thinking: String
     @State private var isExpanded = true
@@ -668,17 +712,25 @@ struct CurrentUnderstandingView: View {
             }
 
             if isExpanded {
-                ScrollView {
-                    Text(thinking)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Text(thinking)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(15)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(.orange.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                if thinking.count > 500 {
+                    Button {
+                        showModal = true
+                    } label: {
+                        Text("全文を表示…")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .frame(maxHeight: 300)
-                .padding(10)
-                .background(.orange.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .sheet(isPresented: $showModal) {
@@ -729,35 +781,47 @@ struct UnderstandingModalView: View {
     }
 }
 
-// セクションビュー
 struct ContextSectionView: View {
     let title: String
     let icon: String
     let color: Color
     let items: [ContextItem]
+    var onOpenFile: ((ContextItem) -> Void)? = nil
+
+    @State private var isExpanded = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                Text(title)
-                    .fontWeight(.semibold)
-                Text("\(items.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .foregroundStyle(color)
+                    Text(title)
+                        .fontWeight(.semibold)
+                    Text("\(items.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .font(.subheadline)
             }
-            .font(.subheadline)
+            .buttonStyle(.plain)
 
-            ForEach(items) { item in
-                ContextItemView(item: item)
+            if isExpanded {
+                ForEach(items) { item in
+                    ContextItemView(item: item, onOpenFile: { onOpenFile?(item) })
+                }
             }
         }
     }
 }
 
-// コンテキストアイテム
-struct ContextItem: Identifiable {
+struct ContextItem: Identifiable, Hashable {
     let id: String
     let toolName: String
     let filePath: String?
@@ -798,12 +862,11 @@ struct ContextItem: Identifiable {
 
 struct ContextItemView: View {
     let item: ContextItem
+    var onOpenFile: (() -> Void)? = nil
     @State private var isExpanded = false
-    @State private var showEditor = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // ヘッダー（クリックで展開）
             HStack(spacing: 6) {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -824,10 +887,9 @@ struct ContextItemView: View {
                 }
                 .buttonStyle(.plain)
 
-                // ファイルを開くボタン
                 if item.filePath != nil {
                     Button {
-                        showEditor = true
+                        onOpenFile?()
                     } label: {
                         Image(systemName: "pencil.and.outline")
                             .font(.caption)
@@ -842,7 +904,6 @@ struct ContextItemView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // 内容（展開時）
             if isExpanded {
                 Text(item.content)
                     .font(.system(.caption2, design: .monospaced))
@@ -857,11 +918,6 @@ struct ContextItemView: View {
         .padding(8)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .sheet(isPresented: $showEditor) {
-            if let path = item.filePath {
-                FileEditorSheet(filePath: path)
-            }
-        }
     }
 }
 

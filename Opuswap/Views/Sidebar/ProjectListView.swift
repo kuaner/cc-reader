@@ -84,7 +84,6 @@ struct ProjectListView: View {
 struct SessionRow: View {
     @Bindable var session: Session
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject var layoutManager: LayoutManager
     @Binding var skipDeleteConfirmation: Bool
     @State private var isEditing = false
     @State private var editingName = ""
@@ -149,12 +148,6 @@ struct SessionRow: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .contextMenu {
             Button {
-                layoutManager.resumeSession(session.sessionId, cwd: session.cwd)
-            } label: {
-                Label("セッション再開", systemImage: "play.circle")
-            }
-
-            Button {
                 editingName = session.slug ?? ""
                 isEditing = true
             } label: {
@@ -210,10 +203,14 @@ struct SessionRow: View {
         try? modelContext.save()
     }
 
+    private static let sessionDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy/M/d HH:mm"
+        return f
+    }()
+
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/M/d HH:mm"
-        return formatter.string(from: session.updatedAt)
+        Self.sessionDateFormatter.string(from: session.updatedAt)
     }
 
     // ユーザーの指示回数（キャッシュを使用）
@@ -225,14 +222,10 @@ struct SessionRow: View {
         if let slug = session.slug {
             return formatSlug(slug)
         }
-        // キャッシュされたタイトルを使用
         if let cachedTitle = session.cachedTitle {
             return cachedTitle
         }
-        // フォールバック: 日時を表示
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M/d HH:mm"
-        return formatter.string(from: session.startedAt)
+        return session.displayTitle
     }
 
     private func formatSlug(_ slug: String) -> String {
