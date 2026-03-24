@@ -67,7 +67,7 @@ struct MessageRow: View, Equatable {
                     .padding(12)
                     .background(.blue)
                     .foregroundStyle(.white)
-                    .clipShape(ChatBubble(isUser: true))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .contextMenu { messageContextMenu }
             }
 
@@ -233,7 +233,7 @@ struct ResponseBubble<MenuContent: View>: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.purple.opacity(0.1))
-                .clipShape(ChatBubble(isUser: false))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
                 .contextMenu { contextMenu }
 
             HStack {
@@ -296,13 +296,20 @@ struct ToolUseTag: View {
         toolUse.name == "Edit" && structuredPatch != nil
     }
 
-    private var hasLongSummary: Bool {
-        guard let s = toolUse.inputSummary else { return false }
-        return s.count > 40 || s.contains("\n")
+    private var expandContent: String? {
+        if let cmd = toolUse.command { return cmd }
+        if let old = toolUse.oldString, let new = toolUse.newString {
+            return "<<<\n\(old)\n===\n\(new)\n>>>"
+        }
+        if let old = toolUse.oldString { return old }
+        if let new = toolUse.newString { return new }
+        if let summary = toolUse.inputSummary { return summary }
+        if let path = toolUse.filePath { return path }
+        return nil
     }
 
     private var canExpand: Bool {
-        hasEditPatch || hasLongSummary
+        hasEditPatch || expandContent != nil
     }
 
     var body: some View {
@@ -339,12 +346,11 @@ struct ToolUseTag: View {
                         filePath: toolUse.filePath ?? "",
                         patch: patch
                     )
-                } else if let summary = toolUse.inputSummary {
-                    Text(summary)
-                        .font(.caption)
+                } else if let content = expandContent {
+                    Text(verbatim: content)
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                        .lineLimit(12)
                         .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(backgroundColor.opacity(0.5))
@@ -565,8 +571,15 @@ struct FlowLayout: Layout {
             cache.width = width
             cache.result = arrange(proposal: proposal, subviews: subviews)
         }
+        let maxWidth = proposal.width ?? .infinity
         for (index, position) in cache.result.positions.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y), proposal: .unspecified)
+            let size = cache.result.positions.count > index
+                ? subviews[index].sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+                : .zero
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
+                proposal: ProposedViewSize(width: maxWidth - position.x, height: nil)
+            )
         }
     }
 
@@ -578,7 +591,8 @@ struct FlowLayout: Layout {
         var lineHeight: CGFloat = 0
 
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            // Measure with constrained width so Text wraps correctly
+            let size = subview.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
             if currentX + size.width > maxWidth && currentX > 0 {
                 currentX = 0
                 currentY += lineHeight + spacing
@@ -597,14 +611,23 @@ struct FlowLayout: Layout {
 
 struct ToolResultBubble: View {
     let result: ToolResultData
+    @State private var isExpanded = false
+
+    private var isLong: Bool {
+        guard let c = result.content else { return false }
+        return c.count > 200 || c.components(separatedBy: "\n").count > 5
+    }
 
     var body: some View {
+        let isError = result.is_error == true
+        let bgColor = isError ? Color.red.opacity(0.1) : Color.green.opacity(0.1)
+
         VStack(alignment: .trailing, spacing: 2) {
             HStack(spacing: 4) {
-            Text(String(localized: "timeline.toolResult.label"))
+                Text(String(localized: "timeline.toolResult.label"))
                     .font(.caption2)
                     .fontWeight(.medium)
-                if result.is_error == true {
+                if isError {
                     Text(String(localized: "timeline.error.label"))
                         .font(.caption2)
                         .fontWeight(.bold)
@@ -615,17 +638,34 @@ struct ToolResultBubble: View {
                         .clipShape(Capsule())
                 }
             }
-            .foregroundStyle(result.is_error == true ? .red : .green)
+            .foregroundStyle(isError ? .red : .green)
 
             if let content = result.content, !content.isEmpty {
-                Text(content)
-                    .font(.system(.caption, design: .monospaced))
-                    .lineLimit(5)
-                    .textSelection(.enabled)
-                    .padding(8)
-                    .frame(maxWidth: 300, alignment: .leading)
-                    .background(result.is_error == true ? .red.opacity(0.1) : .green.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(verbatim: content)
+                        .font(.system(.caption, design: .monospaced))
+                        .lineLimit(isExpanded ? nil : 5)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if isLong {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isExpanded.toggle()
+                            }
+                        } label: {
+                            Text(isExpanded
+                                 ? String(localized: "common.collapse")
+                                 : String(localized: "common.expand"))
+                                .font(.caption2)
+                                .foregroundStyle(isError ? .red : .green)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(8)
+                .background(bgColor)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
     }
@@ -656,37 +696,10 @@ struct WaitingForResponseBubble: View {
                 .onAppear { pulse = true }
                 .padding(12)
                 .background(.purple.opacity(0.1))
-                .clipShape(ChatBubble(isUser: false))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             Spacer(minLength: 60)
         }
-    }
-}
-
-// MARK: - Chat Bubble Shape
-
-struct ChatBubble: Shape {
-    let isUser: Bool
-
-    func path(in rect: CGRect) -> Path {
-        let radius: CGFloat = 12
-        var path = Path()
-
-        if isUser {
-            // 右下に尻尾
-            path.addRoundedRect(in: CGRect(x: 0, y: 0, width: rect.width - 6, height: rect.height), cornerSize: CGSize(width: radius, height: radius))
-            path.move(to: CGPoint(x: rect.width - 6, y: rect.height - 16))
-            path.addLine(to: CGPoint(x: rect.width, y: rect.height - 8))
-            path.addLine(to: CGPoint(x: rect.width - 6, y: rect.height - 4))
-        } else {
-            // 左下に尻尾
-            path.addRoundedRect(in: CGRect(x: 6, y: 0, width: rect.width - 6, height: rect.height), cornerSize: CGSize(width: radius, height: radius))
-            path.move(to: CGPoint(x: 6, y: rect.height - 16))
-            path.addLine(to: CGPoint(x: 0, y: rect.height - 8))
-            path.addLine(to: CGPoint(x: 6, y: rect.height - 4))
-        }
-
-        return path
     }
 }
 
