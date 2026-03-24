@@ -6,6 +6,7 @@ class SyncService: ObservableObject {
     private let parser = JSONLParser()
     private let modelContext: ModelContext
     private static let sharedEncoder = JSONEncoder()
+    private var loggedFilteredEventTypes: Set<String> = []
 
     @Published private(set) var isSyncing = false
     @Published private(set) var lastSyncedFile: URL?
@@ -216,6 +217,14 @@ class SyncService: ObservableObject {
 
     /// 重複チェックなしでメッセージを追加（バッチ処理用）
     private func addMessageWithoutCheck(raw: RawMessageData, to session: Session) {
+        // Claude Code JSONL には progress などの非会話イベントが混在する。
+        // それらを assistant として保存すると「空白メッセージ行」が発生するため、
+        // user / assistant（または message.role で同等判定できるもの）のみ取り込む。
+        guard let messageType = resolveMessageType(from: raw) else {
+            logFilteredEventIfNeeded(raw)
+            return
+        }
+
         let timestamp = parseTimestamp(raw.timestamp) ?? Date()
         let rawJson: Data
         if let original = raw.originalLineData {
@@ -226,7 +235,6 @@ class SyncService: ObservableObject {
             return
         }
 
-        let messageType: MessageType = raw.type == "user" ? .user : .assistant
         let message = Message(
             uuid: raw.uuid,
             type: messageType,
@@ -260,6 +268,48 @@ class SyncService: ObservableObject {
         } else if let lastUserAt = session.lastUserMessageAt, timestamp > lastUserAt {
             session.cachedUnacknowledgedCount += 1
         }
+    }
+
+    private func resolveMessageType(from raw: RawMessageData) -> MessageType? {
+        switch raw.type.lowercased() {
+        case "user":
+            return .user
+        case "assistant":
+            return .assistant
+        default:
+            break
+        }
+
+        guard let role = raw.message?.role.lowercased() else { return nil }
+        switch role {
+        case "user":
+            return .user
+        case "assistant":
+            return .assistant
+        default:
+            return nil
+        }
+    }
+
+    /// 非会話イベントのフィルタ状況を必要時のみログ表示する
+    /// 有効化方法:
+    /// - defaults write com.your.bundle.id debug.logFilteredSessionEvents -bool true
+    /// - 環境変数 OPUSWAP_DEBUG_FILTERED_EVENTS=1
+    private func logFilteredEventIfNeeded(_ raw: RawMessageData) {
+        guard isFilteredEventLoggingEnabled else { return }
+        let eventType = raw.type.lowercased()
+        guard !loggedFilteredEventTypes.contains(eventType) else { return }
+        loggedFilteredEventTypes.insert(eventType)
+
+        let role = raw.message?.role ?? "nil"
+        print("[Opuswap][SyncService] Filtered non-conversation event type=\(eventType), role=\(role), uuid=\(raw.uuid)")
+    }
+
+    private var isFilteredEventLoggingEnabled: Bool {
+        if ProcessInfo.processInfo.environment["OPUSWAP_DEBUG_FILTERED_EVENTS"] == "1" {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: "debug.logFilteredSessionEvents")
     }
 
     /// 既存セッションのキャッシュを再計算（マイグレーション用）

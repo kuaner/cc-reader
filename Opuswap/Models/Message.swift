@@ -45,7 +45,27 @@ class Message {
         if let str = message.contentString {
             _content = str
         } else if let blocks = message.content {
-            _content = blocks.filter { $0.type == "text" }.compactMap { $0.text }.joined(separator: "\n")
+            let textSegments = blocks.compactMap { block -> String? in
+                // 標準 text block
+                if block.type == "text", let text = block.text, !text.isEmpty {
+                    return text
+                }
+                // 将来追加される text-like block への兜底
+                if block.type != "thinking",
+                   block.type != "tool_use",
+                   block.type != "tool_result",
+                   let text = block.text,
+                   !text.isEmpty {
+                    return text
+                }
+                // content に文字列が入るケースへの兜底
+                if let contentText = Self.extractText(from: block.content?.value), !contentText.isEmpty {
+                    return contentText
+                }
+                return nil
+            }
+            let mergedText = textSegments.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            _content = mergedText.isEmpty ? nil : mergedText
             _thinking = blocks.first(where: { $0.type == "thinking" })?.thinking
 
             // toolUses（assistant）
@@ -115,6 +135,29 @@ class Message {
     }
 
     private static let sharedDecoder = JSONDecoder()
+    private static func extractText(from raw: Any?) -> String? {
+        switch raw {
+        case let str as String:
+            return str
+        case let dict as [String: Any]:
+            if let text = dict["text"] as? String, !text.isEmpty {
+                return text
+            }
+            if let content = dict["content"] as? String, !content.isEmpty {
+                return content
+            }
+            return nil
+        case let arr as [[String: Any]]:
+            let pieces = arr.compactMap { item -> String? in
+                if let text = item["text"] as? String, !text.isEmpty { return text }
+                if let content = item["content"] as? String, !content.isEmpty { return content }
+                return nil
+            }
+            return pieces.isEmpty ? nil : pieces.joined(separator: "\n")
+        default:
+            return nil
+        }
+    }
 
     init(uuid: String, type: MessageType, timestamp: Date, rawJson: Data, parentUuid: String? = nil) {
         self.uuid = uuid

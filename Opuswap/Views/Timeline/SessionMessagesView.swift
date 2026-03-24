@@ -63,8 +63,22 @@ struct SessionMessagesView: View {
     }
 
     private var isWaitingForResponse: Bool {
-        messages.last?.type == MessageType.user
+        visibleMessages.last?.type == MessageType.user
     }
+    private var visibleMessages: [Message] {
+        messages.filter { message in
+            switch message.type {
+            case .user:
+                return !(message.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            case .assistant:
+                let hasContent = !(message.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                let hasThinking = !(message.thinking?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                let hasToolUses = !message.toolUses.isEmpty
+                return hasContent || hasThinking || hasToolUses
+            }
+        }
+    }
+
 
     private var selectedTokenCount: Int {
         guard isSurgeryMode else { return 0 }
@@ -85,7 +99,7 @@ struct SessionMessagesView: View {
                     surgeryToolbar
                 }
 
-                if messages.isEmpty {
+                if visibleMessages.isEmpty {
                     Spacer()
                     Text(String(localized: "timeline.noMessages"))
                         .foregroundStyle(.secondary)
@@ -94,7 +108,7 @@ struct SessionMessagesView: View {
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVStack(alignment: .leading, spacing: 12) {
-                                ForEach(messages) { message in
+                                ForEach(visibleMessages) { message in
                                     MessageRow(
                                         message: message,
                                         previousUserTimestamp: prevTimestampMap[message.uuid],
@@ -114,10 +128,10 @@ struct SessionMessagesView: View {
                             .padding()
                         }
                         .environmentObject(patchMapStore)
-                        .onChange(of: messages.count) { oldCount, newCount in
+                        .onChange(of: visibleMessages.count) { oldCount, newCount in
                             rebuildDerivedData()
                             guard newCount > oldCount, !isDeleting else { return }
-                            if let last = messages.last {
+                            if let last = visibleMessages.last {
                                 withAnimation {
                                     proxy.scrollTo(last.uuid, anchor: .bottom)
                                 }
@@ -241,7 +255,7 @@ struct SessionMessagesView: View {
         // --- Phase 1: 同期（デコード不要のプロパティのみ） ---
         var tsMap: [String: Date] = [:]
         var lastUserTime: Date? = nil
-        for msg in messages {
+        for msg in visibleMessages {
             if msg.type == .assistant, let t = lastUserTime {
                 tsMap[msg.uuid] = t
             }
@@ -252,11 +266,11 @@ struct SessionMessagesView: View {
         prevTimestampMap = tsMap
 
         // --- Phase 2: 非同期（デコード + patchMap + context） ---
-        let count = messages.count
+        let count = visibleMessages.count
         let needsFullRebuild = count < lastProcessedMessageCount
         let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount
         guard startIndex <= count else { return }
-        let deltaMessages = Array(messages[startIndex..<count])
+        let deltaMessages = Array(visibleMessages[startIndex..<count])
 
         var initialPatchMap = needsFullRebuild ? [:] : derivedPatchMap
         var initialToolUseMap = needsFullRebuild ? [:] : derivedToolUseMap
