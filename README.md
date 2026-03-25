@@ -84,6 +84,57 @@ make publish VERSION=0.2.0 BUILD_NUMBER=2
 
 `make publish` pushes the release tag to GitHub, which triggers the release workflow. The workflow builds a universal Release app, packages it as a DMG, and uploads it to GitHub Releases.
 
+## Swift Package (CCReaderKit)
+
+cc-reader can also be embedded in other macOS apps as a Swift Package.
+
+### Add Dependency
+
+In Xcode: **File → Add Package Dependencies…** → enter the repository URL:
+
+```
+https://github.com/kuaner/cc-reader.git
+```
+
+Or add it to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/kuaner/cc-reader.git", from: "0.1.0"),
+]
+```
+
+Then add `CCReaderKit` to your target:
+
+```swift
+.target(
+    name: "YourApp",
+    dependencies: [
+        .product(name: "CCReaderKit", package: "cc-reader"),
+    ]
+)
+```
+
+### Usage
+
+```swift
+import CCReaderKit
+
+// Option 1: Open as a standalone window
+CCReaderKit.open()
+
+// Option 2: Embed as a SwiftUI View
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            CCReaderKit.makeView()
+        }
+    }
+}
+```
+
+> Requires macOS 14.0+. The package bundles marked.js, highlight.js, and localization resources.
+
 ## Tech Stack
 
 | Category | Technology |

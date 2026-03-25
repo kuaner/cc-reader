@@ -84,6 +84,57 @@ make publish VERSION=0.2.0 BUILD_NUMBER=2
 
 执行 `make publish` 后，GitHub Actions 会在收到 release tag 时自动构建 universal Release app、生成 DMG，并上传到 GitHub Releases。
 
+## Swift Package (CCReaderKit)
+
+cc-reader 也可以作为 Swift Package 嵌入到其他 macOS 应用中。
+
+### 添加依赖
+
+在 Xcode 中：**File → Add Package Dependencies…** → 输入仓库地址：
+
+```
+https://github.com/kuaner/cc-reader.git
+```
+
+或在 `Package.swift` 中添加：
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/kuaner/cc-reader.git", from: "0.1.0"),
+]
+```
+
+然后在 target 中引用 `CCReaderKit`：
+
+```swift
+.target(
+    name: "YourApp",
+    dependencies: [
+        .product(name: "CCReaderKit", package: "cc-reader"),
+    ]
+)
+```
+
+### 使用方式
+
+```swift
+import CCReaderKit
+
+// 方式一：打开独立窗口
+CCReaderKit.open()
+
+// 方式二：作为 SwiftUI View 嵌入
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            CCReaderKit.makeView()
+        }
+    }
+}
+```
+
+> 需要 macOS 14.0+。Package 内已打包 marked.js、highlight.js 及多语言资源。
+
 ## 技术栈
 
 | 类别 | 技术 |

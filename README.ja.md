@@ -84,6 +84,57 @@ make publish VERSION=0.2.0 BUILD_NUMBER=2
 
 `make publish` で release tag を GitHub に push すると、GitHub Actions が universal Release アプリをビルドし、DMG を生成して GitHub Releases にアップロードします。
 
+## Swift Package (CCReaderKit)
+
+cc-reader は Swift Package として他の macOS アプリに組み込むこともできます。
+
+### 依存関係を追加
+
+Xcode で：**File → Add Package Dependencies…** → リポジトリ URL を入力：
+
+```
+https://github.com/kuaner/cc-reader.git
+```
+
+または `Package.swift` に追加：
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/kuaner/cc-reader.git", from: "0.1.0"),
+]
+```
+
+ターゲットに `CCReaderKit` を追加：
+
+```swift
+.target(
+    name: "YourApp",
+    dependencies: [
+        .product(name: "CCReaderKit", package: "cc-reader"),
+    ]
+)
+```
+
+### 使い方
+
+```swift
+import CCReaderKit
+
+// 方法1：独立ウィンドウとして開く
+CCReaderKit.open()
+
+// 方法2：SwiftUI View として埋め込む
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            CCReaderKit.makeView()
+        }
+    }
+}
+```
+
+> macOS 14.0+ が必要です。marked.js、highlight.js、ローカライズリソースはパッケージに同梱されています。
+
 ## 技術スタック
 
 | カテゴリ | 技術 |
