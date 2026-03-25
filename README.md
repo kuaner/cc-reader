@@ -6,6 +6,8 @@ A macOS app for reading and managing [Claude Code](https://docs.anthropic.com/en
 
 Monitors JSONL files under `~/.claude/projects/` and displays conversation timelines, thinking processes, and tool usage in a rich native UI.
 
+![cc-reader demo](assets/screenshot.gif)
+
 > **⚠️ Disclaimer**
 > This is an **unofficial** third-party tool. Claude Code's JSONL format is not a public API and may change without notice. Some management actions may modify local session files. Always keep backups.
 

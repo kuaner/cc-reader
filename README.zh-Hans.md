@@ -6,6 +6,8 @@
 
 它会监控 `~/.claude/projects/` 下的 JSONL 文件，并以原生 UI 展示会话时间线、思考过程和工具使用记录。
 
+![cc-reader demo](assets/screenshot.gif)
+
 > **⚠️ 免责声明**
 > 这是一个**非官方**第三方工具。Claude Code 的 JSONL 格式并非公开 API，可能在无通知的情况下变化。部分管理操作可能会修改本地会话文件，请务必保留备份。
 
