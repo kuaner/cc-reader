@@ -2,21 +2,21 @@
 
 English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md)
 
-A macOS app for real-time visualization and management of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session history.
+A macOS app for reading and managing [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session history.
 
 Monitors JSONL files under `~/.claude/projects/` and displays conversation timelines, thinking processes, and tool usage in a rich native UI.
 
 > **⚠️ Disclaimer**
-> This is an **unofficial** third-party tool. Claude Code's JSONL format is not a public API and may change without notice. Surgery Mode directly edits session files — **use at your own risk**. Always keep backups.
+> This is an **unofficial** third-party tool. Claude Code's JSONL format is not a public API and may change without notice. Some management actions may modify local session files. Always keep backups.
 
 ## Features
 
-- **Session Viewer** — WKWebView timeline with markdown rendering, syntax highlighting, and per-message copy actions
+- **Session Reader** — WKWebView timeline with markdown rendering, syntax highlighting, code block tools, and per-message copy actions
 - **Real-time Sync** — FSEvents file monitoring with incremental JSONL parsing
+- **Session Management** — Rename or delete sessions from the sidebar
 - **Multi-pane Layout** — Up to 12 panes for simultaneous session monitoring
-- **Surgery Mode** — Directly edit JSONL to optimize context tokens (bulk delete, rollback, summary editing)
 - **Context Panel** — View Claude's understanding, loaded/edited files at a glance
-- **Long Timeline Optimization** — Windowed rendering + near-top auto-load older messages
+- **Long Timeline Optimization** — Windowed rendering + near-top auto-load for older messages
 
 ## Requirements
 
@@ -34,7 +34,7 @@ brew install xcodegen
 git clone https://github.com/kuaner/cc-reader.git
 cd cc-reader
 xcodegen
-open Opuswap.xcodeproj
+open CCReader.xcodeproj
 ```
 
 Build & Run with `Cmd + R` in Xcode.
@@ -71,8 +71,7 @@ See [docs/SPEC.md](docs/SPEC.md) for the full specification.
 
 ## Acknowledgement
 
-This repository is based on [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap),
-licensed under the MIT License.
+Originally forked from [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap), licensed under the MIT License.
 
 ## License
 

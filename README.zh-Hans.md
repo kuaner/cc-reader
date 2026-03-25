@@ -2,19 +2,19 @@
 
 [English](README.md) | [日本語](README.ja.md) | 简体中文
 
-一个用于实时可视化和管理 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 会话历史的 macOS 应用。
+一个用于阅读和管理 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 会话历史的 macOS 应用。
 
 它会监控 `~/.claude/projects/` 下的 JSONL 文件，并以原生 UI 展示会话时间线、思考过程和工具使用记录。
 
 > **⚠️ 免责声明**
-> 这是一个**非官方**第三方工具。Claude Code 的 JSONL 格式并非公开 API，可能在无通知的情况下变化。Surgery Mode 会直接修改会话文件 —— **请自行承担风险**，并务必保留备份。
+> 这是一个**非官方**第三方工具。Claude Code 的 JSONL 格式并非公开 API，可能在无通知的情况下变化。部分管理操作可能会修改本地会话文件，请务必保留备份。
 
 ## 功能
 
-- **会话查看器** — 基于 WKWebView 的时间线，支持 Markdown 渲染、语法高亮和单条消息复制
+- **会话阅读器** — 基于 WKWebView 的时间线，支持 Markdown 渲染、语法高亮、代码块操作和单条消息复制
 - **实时同步** — 使用 FSEvents 监听文件变化，增量解析 JSONL
+- **会话管理** — 支持在侧边栏中重命名或删除会话
 - **多窗格布局** — 最多 12 个窗格同时监控多个会话
-- **Surgery Mode** — 直接编辑 JSONL 优化上下文 token（批量删除、回滚、摘要编辑）
 - **上下文面板** — 一眼查看 Claude 的理解状态以及已读/已编辑文件
 - **长时间线优化** — 窗口化渲染 + 接近顶部自动加载更早消息
 
@@ -34,7 +34,7 @@ brew install xcodegen
 git clone https://github.com/kuaner/cc-reader.git
 cd cc-reader
 xcodegen
-open Opuswap.xcodeproj
+open CCReader.xcodeproj
 ```
 
 在 Xcode 中按 `Cmd + R` 构建并运行。
@@ -71,8 +71,7 @@ TimelineHostView（单一 WKWebView，窗口化渲染）
 
 ## 致谢
 
-本仓库基于 [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap) 修改而来，
-原项目采用 MIT License。
+本仓库 fork 自 [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap)，原项目采用 MIT License。
 
 ## 许可证
 
