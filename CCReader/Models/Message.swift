@@ -1,19 +1,19 @@
 import Foundation
 import SwiftData
 
-enum MessageType: String, Codable {
+public enum MessageType: String, Codable {
     case user
     case assistant
 }
 
 @Model
-class Message {
-    @Attribute(.unique) var uuid: String
-    var session: Session?
-    var parentUuid: String?
-    var type: MessageType
-    var timestamp: Date
-    var rawJson: Data
+public class Message {
+    @Attribute(.unique) public var uuid: String
+    public var session: Session?
+    public var parentUuid: String?
+    public var type: MessageType
+    public var timestamp: Date
+    public var rawJson: Data
 
     // --- Decoded cache (@Transient: memory only, never persisted) ---
     // As long as rawJson stays unchanged, ensureDecoded() only decodes once.
@@ -25,12 +25,12 @@ class Message {
     @Transient private var _toolResults: [ToolResultData]?
     @Transient private var _patchMap: [String: [StructuredPatchHunk]]?
 
-    var content: String? { ensureDecoded(); return _content }
-    var thinking: String? { ensureDecoded(); return _thinking }
-    var model: String? { ensureDecoded(); return _model }
-    var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
-    var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
-    var toolUseResultsWithPatch: [String: [StructuredPatchHunk]]? { ensureDecoded(); return _patchMap }
+    public var content: String? { ensureDecoded(); return _content }
+    public var thinking: String? { ensureDecoded(); return _thinking }
+    public var model: String? { ensureDecoded(); return _model }
+    public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
+    public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
+    public var toolUseResultsWithPatch: [String: [StructuredPatchHunk]]? { ensureDecoded(); return _patchMap }
 
     // Decode all fields once and populate every cache slot.
     private func ensureDecoded() {
@@ -126,10 +126,10 @@ class Message {
     }
 
     /// Preload all decoded properties to avoid doing work on the main thread while scrolling.
-    func preload() { ensureDecoded() }
+    public func preload() { ensureDecoded() }
 
     /// Lightweight external check for whether decoding already happened.
-    var isDecoded: Bool { _decoded }
+    public var isDecoded: Bool { _decoded }
 
     func invalidateCache() {
         _decoded = false
@@ -162,7 +162,7 @@ class Message {
         }
     }
 
-    init(uuid: String, type: MessageType, timestamp: Date, rawJson: Data, parentUuid: String? = nil) {
+    public init(uuid: String, type: MessageType, timestamp: Date, rawJson: Data, parentUuid: String? = nil) {
         self.uuid = uuid
         self.type = type
         self.timestamp = timestamp
@@ -173,24 +173,23 @@ class Message {
 
 // MARK: - JSON Decoding Structures
 
-struct RawMessageData: Codable {
-    var type: String
-    var uuid: String
-    var parentUuid: String?
-    var sessionId: String
-    var timestamp: String
-    var cwd: String?
-    var gitBranch: String?
-    var slug: String?
-    var message: RawMessageContent?
-    // Original JSONL line bytes to avoid re-encoding before persistence.
-    var originalLineData: Data?
+public struct RawMessageData: Codable {
+    public var type: String
+    public var uuid: String
+    public var parentUuid: String?
+    public var sessionId: String
+    public var timestamp: String
+    public var cwd: String?
+    public var gitBranch: String?
+    public var slug: String?
+    public var message: RawMessageContent?
+    public var originalLineData: Data?
 
     enum CodingKeys: String, CodingKey {
         case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
     }
 
-    init(
+    public init(
         type: String,
         uuid: String,
         parentUuid: String?,
@@ -215,13 +214,13 @@ struct RawMessageData: Codable {
     }
 }
 
-struct RawMessageContent: Codable {
-    var role: String
-    var content: [ContentBlock]?
-    var contentString: String?  // Used when content is encoded as a string.
-    var model: String?
+public struct RawMessageContent: Codable {
+    public var role: String
+    public var content: [ContentBlock]?
+    public var contentString: String?
+    public var model: String?
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         role = try container.decode(String.self, forKey: .role)
         model = try container.decodeIfPresent(String.self, forKey: .model)
@@ -240,7 +239,7 @@ struct RawMessageContent: Codable {
         case role, content, model
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(role, forKey: .role)
         try container.encodeIfPresent(model, forKey: .model)
@@ -252,60 +251,59 @@ struct RawMessageContent: Codable {
     }
 }
 
-struct ContentBlock: Codable {
-    var type: String
-    var text: String?
-    var thinking: String?
-    var id: String?
-    var name: String?
-    var input: AnyCodable?
-    // tool_result payload fields
-    var tool_use_id: String?
-    var content: AnyCodable?  // String or array
-    var is_error: Bool?
+public struct ContentBlock: Codable {
+    public var type: String
+    public var text: String?
+    public var thinking: String?
+    public var id: String?
+    public var name: String?
+    public var input: AnyCodable?
+    public var tool_use_id: String?
+    public var content: AnyCodable?
+    public var is_error: Bool?
 }
 
-struct ToolResultData: Codable {
-    var type: String?
-    var tool_use_id: String?
-    var content: String?
-    var is_error: Bool?
+public struct ToolResultData: Codable {
+    public var type: String?
+    public var tool_use_id: String?
+    public var content: String?
+    public var is_error: Bool?
 }
 
 // MARK: - StructuredPatch (diff metadata from Edit results)
 
-struct StructuredPatchHunk: Codable, Equatable {
-    var oldStart: Int
-    var oldLines: Int
-    var newStart: Int
-    var newLines: Int
-    var lines: [String]
+public struct StructuredPatchHunk: Codable, Equatable {
+    public var oldStart: Int
+    public var oldLines: Int
+    public var newStart: Int
+    public var newLines: Int
+    public var lines: [String]
 }
 
-struct ToolUseResultData: Codable {
-    var filePath: String?
-    var structuredPatch: [StructuredPatchHunk]?
+public struct ToolUseResultData: Codable {
+    public var filePath: String?
+    public var structuredPatch: [StructuredPatchHunk]?
 }
 
-struct ToolUseInfo: Identifiable {
-    var id: String
-    var name: String           // "Read", "Edit", "Bash" etc.
-    var filePath: String?      // File path for Read, Edit, Write, etc.
-    var command: String?       // Command for Bash-like tools.
-    var oldString: String?     // Original string for Edit.
-    var newString: String?     // Replacement string for Edit.
-    var inputSummary: String?  // Fallback summary for tools without filePath or command.
+public struct ToolUseInfo: Identifiable {
+    public var id: String
+    public var name: String
+    public var filePath: String?
+    public var command: String?
+    public var oldString: String?
+    public var newString: String?
+    public var inputSummary: String?
 }
 
 // Helper for decoding arbitrary JSON
-struct AnyCodable: Codable {
-    let value: Any
+public struct AnyCodable: Codable {
+    public let value: Any
 
-    init(_ value: Any) {
+    public init(_ value: Any) {
         self.value = value
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let intVal = try? container.decode(Int.self) {
             value = intVal
@@ -324,7 +322,7 @@ struct AnyCodable: Codable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch value {
         case let intVal as Int:

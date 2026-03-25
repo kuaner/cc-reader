@@ -1,29 +1,29 @@
 import Foundation
 
 /// Split direction for a layout node.
-enum SplitDirection: String, Codable {
+public enum SplitDirection: String, Codable {
     case horizontal  // Split side by side
     case vertical    // Split top and bottom
 }
 
 /// A single pane in the workspace.
-struct Pane: Identifiable, Codable, Equatable {
-    let id: UUID
-    var sessionId: String?      // Active session, or nil when the pane is empty.
+public struct Pane: Identifiable, Codable, Equatable {
+    public let id: UUID
+    public var sessionId: String?
 
-    init(id: UUID = UUID(), sessionId: String? = nil) {
+    public init(id: UUID = UUID(), sessionId: String? = nil) {
         self.id = id
         self.sessionId = sessionId
     }
 }
 
 /// Recursive workspace layout tree.
-indirect enum LayoutNode: Codable, Equatable {
+public indirect enum LayoutNode: Codable, Equatable {
     case pane(Pane)
     case split(direction: SplitDirection, first: LayoutNode, second: LayoutNode, ratio: CGFloat)
 
     /// Return a copy with an updated split ratio.
-    func withRatio(_ newRatio: CGFloat) -> LayoutNode {
+    public func withRatio(_ newRatio: CGFloat) -> LayoutNode {
         switch self {
         case .pane:
             return self
@@ -38,7 +38,7 @@ indirect enum LayoutNode: Codable, Equatable {
         case type, pane, direction, first, second, ratio
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
 
@@ -57,7 +57,7 @@ indirect enum LayoutNode: Codable, Equatable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
@@ -75,17 +75,17 @@ indirect enum LayoutNode: Codable, Equatable {
 }
 
 /// Whole workspace layout state.
-struct WorkspaceLayout: Codable, Equatable {
-    var root: LayoutNode
-    var name: String?
+public struct WorkspaceLayout: Codable, Equatable {
+    public var root: LayoutNode
+    public var name: String?
 
     /// Default single-pane layout.
-    static var single: WorkspaceLayout {
+    public static var single: WorkspaceLayout {
         WorkspaceLayout(root: .pane(Pane()))
     }
 
     /// Two-column layout.
-    static var twoColumn: WorkspaceLayout {
+    public static var twoColumn: WorkspaceLayout {
         WorkspaceLayout(root: .split(
             direction: .horizontal,
             first: .pane(Pane()),
@@ -95,7 +95,7 @@ struct WorkspaceLayout: Codable, Equatable {
     }
 
     /// 2x2 grid layout.
-    static var grid2x2: WorkspaceLayout {
+    public static var grid2x2: WorkspaceLayout {
         WorkspaceLayout(root: .split(
             direction: .vertical,
             first: .split(direction: .horizontal, first: .pane(Pane()), second: .pane(Pane()), ratio: 0.5),
@@ -105,7 +105,7 @@ struct WorkspaceLayout: Codable, Equatable {
     }
 
     /// Build an N by M grid layout.
-    static func grid(columns: Int, rows: Int) -> WorkspaceLayout {
+    public static func grid(columns: Int, rows: Int) -> WorkspaceLayout {
         func makeRow(count: Int) -> LayoutNode {
             if count == 1 { return .pane(Pane()) }
             return .split(

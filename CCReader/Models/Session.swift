@@ -2,26 +2,26 @@ import Foundation
 import SwiftData
 
 @Model
-class Session {
-    @Attribute(.unique) var sessionId: String  // UUID
-    var project: Project?
+public class Session {
+    @Attribute(.unique) public var sessionId: String
+    public var project: Project?
     @Relationship(deleteRule: .cascade, inverse: \Message.session)
-    var messages: [Message] = []
-    var slug: String?                          // "streamed-skipping-tarjan"
-    var isSlugManual: Bool = false             // Do not overwrite a manually assigned slug.
-    var additionalSessionIds: [String] = []   // Merged sessionIds from plan/subagent runs.
-    var cwd: String
-    var gitBranch: String?
-    var startedAt: Date
-    var updatedAt: Date
-    var isCompacted: Bool = false              // Indicates whether compaction was detected.
-    var lastUserMessageAt: Date?               // Timestamp of the most recent user message.
-    var cachedTurnCount: Int = 0               // Cached number of user turns.
-    var cachedTitle: String?                   // Cached session title.
-    var needsAttention: Bool = false           // Whether unread assistant replies exist.
-    var cachedUnacknowledgedCount: Int = 0     // Cached count of unacknowledged assistant messages.
+    public var messages: [Message] = []
+    public var slug: String?
+    public var isSlugManual: Bool = false
+    public var additionalSessionIds: [String] = []
+    public var cwd: String
+    public var gitBranch: String?
+    public var startedAt: Date
+    public var updatedAt: Date
+    public var isCompacted: Bool = false
+    public var lastUserMessageAt: Date?
+    public var cachedTurnCount: Int = 0
+    public var cachedTitle: String?
+    public var needsAttention: Bool = false
+    public var cachedUnacknowledgedCount: Int = 0
 
-    init(sessionId: String, cwd: String, gitBranch: String? = nil, slug: String? = nil, startedAt: Date = Date(), updatedAt: Date = Date()) {
+    public init(sessionId: String, cwd: String, gitBranch: String? = nil, slug: String? = nil, startedAt: Date = Date(), updatedAt: Date = Date()) {
         self.sessionId = sessionId
         self.cwd = cwd
         self.gitBranch = gitBranch
@@ -30,7 +30,7 @@ class Session {
         self.updatedAt = updatedAt
     }
 
-    var jsonlFileURL: URL? {
+    public var jsonlFileURL: URL? {
         guard let projectPath = project?.path else { return nil }
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let filePath = "\(home)/.claude/projects/\(projectPath)/\(sessionId).jsonl"
@@ -46,7 +46,7 @@ class Session {
     }()
 
     /// Title shown in the UI.
-    var displayTitle: String {
+    public var displayTitle: String {
         if let slug = slug {
             return slug.split(separator: "-")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst() }
@@ -59,7 +59,7 @@ class Session {
     }
 
     /// Number of unacknowledged assistant messages.
-    var unacknowledgedCount: Int {
+    public var unacknowledgedCount: Int {
         cachedUnacknowledgedCount
     }
 }

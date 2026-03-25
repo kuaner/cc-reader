@@ -21,6 +21,7 @@
 		556F7DAE0F1D8479C6EACD85 /* JSONLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC01B30FA58E55B743817E8F /* JSONLParser.swift */; };
 		603A696DFA507FD48885E6C8 /* LayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE036CD00B746A0350550D54 /* LayoutView.swift */; };
 		603E97954358B9A36B72ABEB /* PaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63821F7A934EBCE8CF6F23C1 /* PaneView.swift */; };
+		66B0F0489CDF9CCC299B3E7D /* CCReaderKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3863D4C2B5F8EA23DB0D5394 /* CCReaderKit.swift */; };
 		673CAD5D15307B6EBB15B539 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF52D695A7233D2060A85CB /* Session.swift */; };
 		742824E2E219D04C567825AA /* WebRenderAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02309040AE8F13550DD331F5 /* WebRenderAssets.swift */; };
 		81D42952889C0944484E70A7 /* TimelineModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A35445FEDF37567C35285BA /* TimelineModels.swift */; };
@@ -46,6 +47,7 @@
 		2DA8A1AAA6346DA78009DD7B /* TimelineHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineHostView.swift; sourceTree = "<group>"; };
 		2DCDD199E047D6B9E4E621BA /* FileWatcherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatcherService.swift; sourceTree = "<group>"; };
 		30A14AA57D43E0F035D268F3 /* LayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutManager.swift; sourceTree = "<group>"; };
+		3863D4C2B5F8EA23DB0D5394 /* CCReaderKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CCReaderKit.swift; sourceTree = "<group>"; };
 		3AFEC18E2D24630701A08135 /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
 		3BD59754370E7DE31A957028 /* CCReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CCReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		43DF818ED2E3C487E69B68FA /* CCReader.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CCReader.entitlements; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 			children = (
 				43DF818ED2E3C487E69B68FA /* CCReader.entitlements */,
 				2BE44074D7FEE630B2DDE2D0 /* CCReaderApp.swift */,
+				3863D4C2B5F8EA23DB0D5394 /* CCReaderKit.swift */,
 				991F0ED7EA3FAC094890D0D0 /* Models */,
 				ED2A861DB38390B237DA2918 /* Resources */,
 				7B19C1EE1CFBCE63201C3C4F /* Services */,
@@ -264,6 +267,7 @@
 			files = (
 				FCD5C75CD51DA6D7C30ADFC0 /* AppCoordinator.swift in Sources */,
 				FBCC2E48A569BD7E53AF11E2 /* CCReaderApp.swift in Sources */,
+				66B0F0489CDF9CCC299B3E7D /* CCReaderKit.swift in Sources */,
 				37116010913859DACF933795 /* ConfirmationDetector.swift in Sources */,
 				3DEB64E600E58389580E7104 /* ContentView.swift in Sources */,
 				16E272CCDDCBC936DDA9105B /* FileWatcherService.swift in Sources */,
@@ -311,7 +315,7 @@
 				CODE_SIGN_ENTITLEMENTS = CCReader/CCReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -321,7 +325,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kuaner.ccreader;
 				PRODUCT_NAME = "CC Reader";
 				SDKROOT = macosx;
@@ -336,7 +340,7 @@
 				CODE_SIGN_ENTITLEMENTS = CCReader/CCReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -346,7 +350,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kuaner.ccreader;
 				PRODUCT_NAME = "CC Reader";
 				SDKROOT = macosx;
