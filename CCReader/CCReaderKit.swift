@@ -58,15 +58,12 @@ public enum CCReaderKit {
             return
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
+        let hostingController = NSHostingController(rootView: makeView())
+        let window = NSWindow(contentViewController: hostingController)
         window.title = title
+        window.toolbarStyle = .unified
+        window.setContentSize(NSSize(width: width, height: height))
         window.center()
-        window.contentView = NSHostingView(rootView: makeView())
         window.isReleasedWhenClosed = false
         window.makeKeyAndOrderFront(nil)
 

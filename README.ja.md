@@ -117,21 +117,62 @@ dependencies: [
 
 ### 使い方
 
+#### クイックスタート — 独立ウィンドウ
+
+最もシンプルな方法、1行で CC Reader を開けます：
+
 ```swift
 import CCReaderKit
 
-// 方法1：独立ウィンドウとして開く
 CCReaderKit.open()
+```
 
-// 方法2：SwiftUI View として埋め込む
-struct MyApp: App {
-    var body: some Scene {
-        WindowGroup {
-            CCReaderKit.makeView()
+ウィンドウはシングルトンとして管理され、再度呼び出すと既存のウィンドウが再利用されます。
+
+#### フルインテグレーション — NSWindow + Toolbar
+
+ウィンドウのライフサイクルを完全に制御する必要があるアプリ（メニューバーアプリなど）では、`CCReaderKit.makeView()` を使って `NSWindow` を自分で作成・管理します：
+
+```swift
+import SwiftUI
+import CCReaderKit
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    private var readerWindow: NSWindow?
+
+    func openReader() {
+        if readerWindow == nil {
+            let readerView = CCReaderKit.makeView()
+            readerWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            readerWindow?.title = "CC Reader"
+
+            // 必須：NSToolbar + .unified スタイルにより、SwiftUI の toolbar items
+            //（パス、Resume、更新ボタン）がタイトルバーに表示されます。
+            let toolbar = NSToolbar(identifier: "CCReaderToolbar")
+            toolbar.displayMode = .iconOnly
+            readerWindow?.toolbar = toolbar
+            readerWindow?.toolbarStyle = .unified
+
+            readerWindow?.contentViewController = NSHostingController(rootView: readerView)
+            readerWindow?.setContentSize(NSSize(width: 1200, height: 800))
+            readerWindow?.center()
+            readerWindow?.isReleasedWhenClosed = false
         }
+        readerWindow?.makeKeyAndOrderFront(nil)
     }
 }
 ```
+
+> **ポイント：**
+> - SwiftUI の toolbar を正しくブリッジするには、`NSHostingView` ではなく `NSHostingController` を使用してください。
+> - `NSToolbar` を追加し `.unified` スタイルを設定すると、toolbar items がタイトルバーに表示されます。
+> - `styleMask` に `.fullSizeContentView` を含めると、`NavigationSplitView` のレイアウトが正しく動作します。
+> - `isReleasedWhenClosed = false` を設定してウィンドウインスタンスを再利用してください。
 
 > macOS 14.0+ が必要です。marked.js、highlight.js、ローカライズリソースはパッケージに同梱されています。
 

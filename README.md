@@ -117,21 +117,62 @@ Then add `CCReaderKit` to your target:
 
 ### Usage
 
+#### Quick Start — Standalone Window
+
+The simplest way to open CC Reader — one line of code:
+
 ```swift
 import CCReaderKit
 
-// Option 1: Open as a standalone window
 CCReaderKit.open()
+```
 
-// Option 2: Embed as a SwiftUI View
-struct MyApp: App {
-    var body: some Scene {
-        WindowGroup {
-            CCReaderKit.makeView()
+The window is managed as a singleton and reuses the existing instance on subsequent calls.
+
+#### Full Integration — NSWindow with Toolbar
+
+For apps that need full control over window lifecycle (e.g., menu bar apps), create and manage the `NSWindow` yourself using `CCReaderKit.makeView()`:
+
+```swift
+import SwiftUI
+import CCReaderKit
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    private var readerWindow: NSWindow?
+
+    func openReader() {
+        if readerWindow == nil {
+            let readerView = CCReaderKit.makeView()
+            readerWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            readerWindow?.title = "CC Reader"
+
+            // Required: NSToolbar + .unified style enables SwiftUI toolbar
+            // items (cwd path, Resume, refresh) to render in the title bar.
+            let toolbar = NSToolbar(identifier: "CCReaderToolbar")
+            toolbar.displayMode = .iconOnly
+            readerWindow?.toolbar = toolbar
+            readerWindow?.toolbarStyle = .unified
+
+            readerWindow?.contentViewController = NSHostingController(rootView: readerView)
+            readerWindow?.setContentSize(NSSize(width: 1200, height: 800))
+            readerWindow?.center()
+            readerWindow?.isReleasedWhenClosed = false
         }
+        readerWindow?.makeKeyAndOrderFront(nil)
     }
 }
 ```
+
+> **Key points:**
+> - Use `NSHostingController` (not `NSHostingView`) for proper SwiftUI toolbar bridging.
+> - Add an `NSToolbar` with `.unified` style so toolbar items appear in the title bar.
+> - Include `.fullSizeContentView` in `styleMask` for correct `NavigationSplitView` layout.
+> - Set `isReleasedWhenClosed = false` to reuse the window instance.
 
 > Requires macOS 14.0+. The package bundles marked.js, highlight.js, and localization resources.
 

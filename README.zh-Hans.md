@@ -117,21 +117,62 @@ dependencies: [
 
 ### 使用方式
 
+#### 快速上手 — 独立窗口
+
+最简单的打开方式，一行代码：
+
 ```swift
 import CCReaderKit
 
-// 方式一：打开独立窗口
 CCReaderKit.open()
+```
 
-// 方式二：作为 SwiftUI View 嵌入
-struct MyApp: App {
-    var body: some Scene {
-        WindowGroup {
-            CCReaderKit.makeView()
+窗口以单例方式管理，重复调用会复用已有窗口。
+
+#### 完整集成 — NSWindow + Toolbar
+
+对于需要完全控制窗口生命周期的应用（如菜单栏应用），使用 `CCReaderKit.makeView()` 自行创建和管理 `NSWindow`：
+
+```swift
+import SwiftUI
+import CCReaderKit
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    private var readerWindow: NSWindow?
+
+    func openReader() {
+        if readerWindow == nil {
+            let readerView = CCReaderKit.makeView()
+            readerWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            readerWindow?.title = "CC Reader"
+
+            // 必须：NSToolbar + .unified 样式，SwiftUI 的 toolbar items
+            //（路径、Resume、刷新按钮）才能渲染到标题栏。
+            let toolbar = NSToolbar(identifier: "CCReaderToolbar")
+            toolbar.displayMode = .iconOnly
+            readerWindow?.toolbar = toolbar
+            readerWindow?.toolbarStyle = .unified
+
+            readerWindow?.contentViewController = NSHostingController(rootView: readerView)
+            readerWindow?.setContentSize(NSSize(width: 1200, height: 800))
+            readerWindow?.center()
+            readerWindow?.isReleasedWhenClosed = false
         }
+        readerWindow?.makeKeyAndOrderFront(nil)
     }
 }
 ```
+
+> **要点：**
+> - 使用 `NSHostingController`（而非 `NSHostingView`），才能正确桥接 SwiftUI toolbar。
+> - 添加 `NSToolbar` 并设置 `.unified` 样式，toolbar items 才会显示在标题栏。
+> - `styleMask` 中包含 `.fullSizeContentView`，`NavigationSplitView` 布局才正确。
+> - 设置 `isReleasedWhenClosed = false` 以复用窗口实例。
 
 > 需要 macOS 14.0+。Package 内已打包 marked.js、highlight.js 及多语言资源。
 
