@@ -56,6 +56,8 @@
 "timeline.error.label" = "错误";
 "timeline.messageContext.delete" = "删除这条消息";
 "timeline.messageContext.rewind" = "回滚到这里";
+"timeline.message.copy" = "复制";
+"timeline.message.copied" = "已复制";
 "timeline.noMessages" = "暂无消息";
 "timeline.rewind.confirmMessage" = "将删除此消息之后的所有内容。此操作无法撤销。";
 "timeline.rewind.confirmTitle" = "确认回滚";

@@ -2,23 +2,6 @@ import Foundation
 import SwiftUI
 import WebKit
 
-enum MarkedJavaScriptLoader {
-    private static var cachedScript: String?
-
-    static var script: String {
-        if let cachedScript {
-            return cachedScript
-        }
-        if let url = Bundle.main.url(forResource: "marked.min", withExtension: "js"),
-           let script = try? String(contentsOf: url, encoding: .utf8) {
-            cachedScript = script
-            return script
-        }
-        cachedScript = ""
-        return ""
-    }
-}
-
 struct MarkdownRenderView: NSViewRepresentable {
     let markdown: String
 
@@ -44,6 +27,10 @@ struct MarkdownRenderView: NSViewRepresentable {
 
         func render(_ markdown: String, into webView: WKWebView) {
             lastMarkdown = markdown
+            let highlightStyles = HighlightThemeLoader.stylesheet
+            let highlightScript = HighlightJavaScriptLoader.script
+            let codeBlockStyles = WebRenderChrome.codeBlockStylesheet
+            let codeBlockScript = WebRenderChrome.codeBlockEnhancementScript()
             let fallback = markdown
                 .replacingOccurrences(of: "&", with: "&amp;")
                 .replacingOccurrences(of: "<", with: "&lt;")
@@ -61,14 +48,26 @@ struct MarkdownRenderView: NSViewRepresentable {
               :root {
                 color-scheme: light dark;
                 --text: #1d1d1f;
+                --muted: rgba(60,60,67,0.68);
                 --code-bg: rgba(60,60,67,0.08);
                 --border: rgba(60,60,67,0.20);
+                --code-block-border: rgba(60,60,67,0.16);
+                --code-header-bg: rgba(60,60,67,0.05);
+                --code-header-border: rgba(60,60,67,0.12);
+                --code-button-bg: rgba(60,60,67,0.08);
+                --code-button-border: rgba(60,60,67,0.14);
               }
               @media (prefers-color-scheme: dark) {
                 :root {
                   --text: #f5f5f7;
+                  --muted: rgba(235,235,245,0.60);
                   --code-bg: rgba(255,255,255,0.08);
                   --border: rgba(255,255,255,0.12);
+                  --code-block-border: rgba(255,255,255,0.14);
+                  --code-header-bg: rgba(255,255,255,0.05);
+                  --code-header-border: rgba(255,255,255,0.10);
+                  --code-button-bg: rgba(255,255,255,0.06);
+                  --code-button-border: rgba(255,255,255,0.14);
                 }
               }
               body {
@@ -145,19 +144,33 @@ struct MarkdownRenderView: NSViewRepresentable {
                 white-space: pre-wrap;
                 word-break: break-word;
               }
+              \(codeBlockStyles)
+              \(highlightStyles)
             </style>
             </head>
             <body>
             <div id="content" class="markdown" data-markdown-base64="\(encodedMarkdown)"><div class="plain-text">\(fallback)</div></div>
             <script>\(MarkedJavaScriptLoader.script)</script>
+            <script>\(highlightScript)</script>
             <script>
               (function() {
+                \(codeBlockScript)
                 const node = document.getElementById('content');
                 const source = node.getAttribute('data-markdown-base64') || '';
                 if (!source || typeof marked === 'undefined') { return; }
                 try {
                   const markdown = decodeURIComponent(escape(window.atob(source)));
                   node.innerHTML = marked.parse(markdown);
+                  if (typeof hljs !== 'undefined') {
+                    node.querySelectorAll('pre code').forEach(function(block) {
+                      try {
+                        hljs.highlightElement(block);
+                      } catch (highlightError) {
+                        console.error('markdown highlight failed', highlightError);
+                      }
+                    });
+                  }
+                  enhanceCodeBlocks(node);
                 } catch (error) {
                   console.error('markdown render failed', error);
                 }

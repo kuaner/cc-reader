@@ -25,7 +25,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        context.coordinator.apply(snapshot: snapshot)
+        context.coordinator.apply(sessionId: sessionId, snapshot: snapshot)
     }
 
     static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
@@ -34,19 +34,31 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         private static let renderBatchSize = 200
+        private static let autoLoadThreshold: CGFloat = 220
+        private static let followBottomThreshold: CGFloat = 96
+        private static let autoLoadDebounceMilliseconds = 900
 
         private weak var webView: WKWebView?
+        private var currentSessionId = ""
         private var snapshot = TimelineRenderSnapshot()
         private var renderedMessageRange: Range<Int> = 0..<0
+        private var previousVisibleMessageCount = 0
         private var lastDocumentFingerprint = ""
         private var shouldScrollToBottomAfterRender = true
+        private var isFollowingBottom = true
+        private var pendingScrollAnchorMessageId: String?
 
         func attach(to webView: WKWebView) {
             self.webView = webView
         }
 
-        func apply(snapshot: TimelineRenderSnapshot) {
+        func apply(sessionId: String, snapshot: TimelineRenderSnapshot) {
+            if currentSessionId != sessionId {
+                resetState(for: sessionId)
+            }
+
             self.snapshot = snapshot
+            shouldScrollToBottomAfterRender = isFollowingBottom
 
             updateRenderedRangeIfNeeded()
             let document = makeDocumentHTML()
@@ -79,33 +91,75 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
             let host = components.host ?? ""
 
-            if host == "load-older" {
+            if host == "load-older" || host == "load-older-auto" {
                 loadOlderMessages()
+                return
             }
+
+            if host == "scroll-state" {
+                let following = components.queryItems?.first(where: { $0.name == "following" })?.value == "1"
+                isFollowingBottom = following
+            }
+        }
+
+        private func resetState(for sessionId: String) {
+            currentSessionId = sessionId
+            snapshot = TimelineRenderSnapshot()
+            renderedMessageRange = 0..<0
+            previousVisibleMessageCount = 0
+            lastDocumentFingerprint = ""
+            shouldScrollToBottomAfterRender = true
+            isFollowingBottom = true
+            pendingScrollAnchorMessageId = nil
         }
 
         private func updateRenderedRangeIfNeeded() {
             let totalCount = snapshot.visibleMessages.count
             guard totalCount > 0 else {
                 renderedMessageRange = 0..<0
+                previousVisibleMessageCount = 0
+                return
+            }
+
+            if renderedMessageRange.isEmpty {
+                let lowerBound = max(0, totalCount - Self.renderBatchSize)
+                renderedMessageRange = lowerBound..<totalCount
+                previousVisibleMessageCount = totalCount
+                return
+            }
+
+            if totalCount > previousVisibleMessageCount,
+               renderedMessageRange.upperBound == previousVisibleMessageCount {
+                if isFollowingBottom {
+                    let windowSize = max(Self.renderBatchSize, renderedMessageRange.count)
+                    let lowerBound = max(0, totalCount - windowSize)
+                    renderedMessageRange = lowerBound..<totalCount
+                } else {
+                    renderedMessageRange = renderedMessageRange.lowerBound..<(renderedMessageRange.upperBound + (totalCount - previousVisibleMessageCount))
+                }
+                previousVisibleMessageCount = totalCount
                 return
             }
 
             if renderedMessageRange.upperBound == totalCount,
                renderedMessageRange.lowerBound >= 0,
                renderedMessageRange.lowerBound < renderedMessageRange.upperBound {
+                previousVisibleMessageCount = totalCount
                 return
             }
 
             let lowerBound = max(0, totalCount - Self.renderBatchSize)
             renderedMessageRange = lowerBound..<totalCount
+            previousVisibleMessageCount = totalCount
         }
 
         private func loadOlderMessages() {
             guard renderedMessageRange.lowerBound > 0 else { return }
+            pendingScrollAnchorMessageId = currentRenderedMessages().first?.uuid
             renderedMessageRange = max(0, renderedMessageRange.lowerBound - Self.renderBatchSize)..<renderedMessageRange.upperBound
             lastDocumentFingerprint = ""
             shouldScrollToBottomAfterRender = false
+            isFollowingBottom = false
             guard let webView else { return }
             let document = makeDocumentHTML()
             lastDocumentFingerprint = document
@@ -117,11 +171,19 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let hasOlder = renderedMessageRange.lowerBound > 0
             let waiting = snapshot.visibleMessages.last?.type == .user
             let labels = TimelineWebLabels.localized()
+            let highlightStyles = HighlightThemeLoader.stylesheet
+            let codeBlockStyles = WebRenderChrome.codeBlockStylesheet
+            let messageActionStyles = WebRenderChrome.messageActionStylesheet
 
             let messageHTML = messages.map { renderMessage($0, labels: labels) }.joined(separator: "\n")
             let loadOlderHTML = hasOlder ? "<div class=\"topbar\"><a class=\"pill\" href=\"opuswap://load-older\">\(escapeHTML(labels.loadOlder))</a></div>" : ""
             let waitingHTML = waiting ? "<div class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>" : ""
-            let renderScript = makeRenderScript(markedJS: MarkedJavaScriptLoader.script)
+            let renderScript = makeRenderScript(
+                markedJS: MarkedJavaScriptLoader.script,
+                highlightJS: HighlightJavaScriptLoader.script,
+                hasOlderMessages: hasOlder,
+                scrollAnchorMessageId: pendingScrollAnchorMessageId
+            )
 
             return """
             <!DOCTYPE html>
@@ -143,6 +205,13 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                   --surface-summary: rgba(255,149,0,0.14);
                   --button: rgba(60,60,67,0.08);
                   --code-bg: rgba(60,60,67,0.08);
+                                    --code-block-border: rgba(60,60,67,0.16);
+                                    --code-header-bg: rgba(60,60,67,0.05);
+                                    --code-header-border: rgba(60,60,67,0.12);
+                                    --code-button-bg: rgba(60,60,67,0.08);
+                                    --code-button-border: rgba(60,60,67,0.14);
+                                      --message-button-bg: rgba(60,60,67,0.08);
+                                      --message-button-border: rgba(60,60,67,0.14);
                   --max-width: clamp(560px, 72vw, 980px);
                 }
                 @media (prefers-color-scheme: dark) {
@@ -156,6 +225,13 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                     --surface-summary: rgba(255,149,0,0.16);
                     --button: rgba(255,255,255,0.08);
                     --code-bg: rgba(255,255,255,0.08);
+                                        --code-block-border: rgba(255,255,255,0.14);
+                                        --code-header-bg: rgba(255,255,255,0.05);
+                                        --code-header-border: rgba(255,255,255,0.10);
+                                        --code-button-bg: rgba(255,255,255,0.06);
+                                        --code-button-border: rgba(255,255,255,0.14);
+                                                                                --message-button-bg: rgba(255,255,255,0.06);
+                                                                                --message-button-border: rgba(255,255,255,0.14);
                   }
                 }
                 * { box-sizing: border-box; }
@@ -173,7 +249,15 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 .row.assistant { justify-content: flex-start; }
                 .stack { display: flex; flex-direction: column; gap: 8px; width: min(100%, var(--max-width)); max-width: 100%; }
                 .bubble { border-radius: 14px; padding: 10px 12px; overflow-wrap: anywhere; word-break: break-word; }
-                .bubble.user { background: var(--surface-user); color: var(--surface-user-text); }
+                                .bubble.user {
+                                    background: var(--surface-user);
+                                    color: var(--surface-user-text);
+                                    --code-block-border: rgba(255,255,255,0.22);
+                                    --code-header-bg: rgba(255,255,255,0.10);
+                                    --code-header-border: rgba(255,255,255,0.18);
+                                    --code-button-bg: rgba(255,255,255,0.10);
+                                    --code-button-border: rgba(255,255,255,0.18);
+                                }
                 .bubble.assistant { background: var(--surface-assistant); }
                 .bubble.thinking { background: var(--surface-thinking); }
                 .bubble.tool { background: var(--surface-tool); }
@@ -276,6 +360,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                                 .bubble.user .markdown pre { background: rgba(255,255,255,0.16); }
                                 .bubble.user .summary-title,
                                 .bubble.user .markdown blockquote { color: rgba(255,255,255,0.82); }
+                                                                \(codeBlockStyles)
+                                \(messageActionStyles)
+                                \(highlightStyles)
               </style>
             </head>
             <body>
@@ -286,32 +373,116 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             """
         }
 
-                private func makeRenderScript(markedJS: String) -> String {
-                        let renderMarkdown = markedJS.isEmpty ? "" : """
-                            \(markedJS)
-                            document.querySelectorAll('[data-markdown-base64]').forEach(function(node) {
-                                const source = node.getAttribute('data-markdown-base64') || '';
-                                if (!source) { return; }
-                                try {
-                                    const markdown = decodeURIComponent(escape(window.atob(source)));
-                                    node.innerHTML = marked.parse(markdown);
-                                } catch (error) {
-                                    console.error('timeline markdown render failed', error);
-                                }
-                            });
-                        """
+        private func makeRenderScript(markedJS: String, highlightJS: String, hasOlderMessages: Bool, scrollAnchorMessageId: String?) -> String {
+            let scrollAnchorDomId = scrollAnchorMessageId.map(messageDOMId(for:))
+            let labels = TimelineWebLabels.localized()
+            let codeBlockScript = WebRenderChrome.codeBlockEnhancementScript(copyLabel: labels.copy, copiedLabel: labels.copied)
+            let messageCopyScript = WebRenderChrome.messageCopyEnhancementScript(copiedLabel: labels.copied)
+            let initialScrollAction: String
 
-                        let scrollToBottom = shouldScrollToBottomAfterRender ? "window.scrollTo(0, document.body.scrollHeight);" : ""
-                        shouldScrollToBottomAfterRender = true
-                        return """
-                        <script>
-                            window.addEventListener('load', function() {
-                                \(renderMarkdown)
-                                \(scrollToBottom)
-                            });
-                        </script>
-                        """
+            if let scrollAnchorDomId {
+                initialScrollAction = """
+                const anchorNode = document.getElementById('\(escapeJavaScript(scrollAnchorDomId))');
+                if (anchorNode) {
+                    anchorNode.scrollIntoView({ block: 'start' });
+                    window.scrollBy(0, -24);
                 }
+                """
+            } else if shouldScrollToBottomAfterRender {
+                initialScrollAction = "window.scrollTo(0, document.body.scrollHeight);"
+            } else {
+                initialScrollAction = ""
+            }
+
+            pendingScrollAnchorMessageId = nil
+            shouldScrollToBottomAfterRender = true
+
+            return """
+            <script>
+                \(markedJS)
+                \(highlightJS)
+                window.addEventListener('load', function() {
+                    \(codeBlockScript)
+                    \(messageCopyScript)
+                    const hasOlderMessages = \(hasOlderMessages ? "true" : "false");
+                    const state = {
+                        followingBottom: \(isFollowingBottom ? "true" : "false"),
+                        lastAutoLoadAt: 0,
+                        scrollTicking: false
+                    };
+
+                    function decodeMarkdownBase64(source) {
+                        return decodeURIComponent(escape(window.atob(source)));
+                    }
+
+                    function renderMarkdown() {
+                        if (typeof marked === 'undefined') { return; }
+                        document.querySelectorAll('[data-markdown-base64]').forEach(function(node) {
+                            const source = node.getAttribute('data-markdown-base64') || '';
+                            if (!source) { return; }
+                            try {
+                                const markdown = decodeMarkdownBase64(source);
+                                node.innerHTML = marked.parse(markdown);
+                            } catch (error) {
+                                console.error('timeline markdown render failed', error);
+                            }
+                        });
+                    }
+
+                    function highlightCodeBlocks() {
+                        if (typeof hljs === 'undefined') { return; }
+                        document.querySelectorAll('pre code').forEach(function(block) {
+                            try {
+                                hljs.highlightElement(block);
+                            } catch (error) {
+                                console.error('timeline highlight failed', error);
+                            }
+                        });
+                    }
+
+                    function isNearBottom() {
+                        return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - \(Int(Self.followBottomThreshold));
+                    }
+
+                    function emitFollowingStateIfNeeded() {
+                        const following = isNearBottom();
+                        if (following === state.followingBottom) { return; }
+                        state.followingBottom = following;
+                        window.location.href = 'opuswap://scroll-state?following=' + (following ? '1' : '0');
+                    }
+
+                    function maybeLoadOlderMessages() {
+                        if (!hasOlderMessages || window.scrollY > \(Int(Self.autoLoadThreshold))) { return; }
+                        const now = Date.now();
+                        if (now - state.lastAutoLoadAt < \(Self.autoLoadDebounceMilliseconds)) { return; }
+                        state.lastAutoLoadAt = now;
+                        window.location.href = 'opuswap://load-older-auto';
+                    }
+
+                    function onScroll() {
+                        if (state.scrollTicking) { return; }
+                        state.scrollTicking = true;
+                        window.requestAnimationFrame(function() {
+                            state.scrollTicking = false;
+                            emitFollowingStateIfNeeded();
+                            maybeLoadOlderMessages();
+                        });
+                    }
+
+                    renderMarkdown();
+                    highlightCodeBlocks();
+                    enhanceCodeBlocks(document);
+                    enhanceMessageCopyButtons(document);
+                    \(initialScrollAction)
+                    window.addEventListener('scroll', onScroll, { passive: true });
+                    window.setTimeout(function() {
+                        emitFollowingStateIfNeeded();
+                        maybeLoadOlderMessages();
+                    }, 0);
+                });
+            </script>
+            """
+        }
 
         private func currentRenderedMessages() -> [TimelineMessageDisplayData] {
             let total = snapshot.visibleMessages
@@ -329,17 +500,20 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         private func renderUserMessage(_ message: TimelineMessageDisplayData, labels: TimelineWebLabels) -> String {
             let bubble: String
+            let domId = escapeHTML(messageDOMId(for: message.uuid))
+            let copyButton = messageCopyButtonHTML(for: message.content, labels: labels)
             if isSummaryMessage(message) {
                 bubble = "<div class=\"bubble summary\"><div class=\"summary-title\">\(escapeHTML(labels.summaryLabel))</div>\(messageBodyHTML(message.content ?? ""))</div>"
             } else {
                 bubble = "<div class=\"bubble user\">\(messageBodyHTML(message.content ?? ""))</div>"
             }
-            let meta = "<div class=\"meta\" style=\"text-align:right\">\(escapeHTML(Self.timeFormatter.string(from: message.timestamp)))</div>"
-            return "<div class=\"row user\"><div class=\"stack\">\(bubble)\(meta)</div></div>"
+            let meta = "<div class=\"footer\"><span class=\"spacer\"></span>\(copyButton)<span>\(escapeHTML(Self.timeFormatter.string(from: message.timestamp)))</span></div>"
+            return "<div class=\"row user\" id=\"\(domId)\"><div class=\"stack\">\(bubble)\(meta)</div></div>"
         }
 
         private func renderAssistantMessage(_ message: TimelineMessageDisplayData, labels: TimelineWebLabels) -> String {
             var sections: [String] = []
+            let domId = escapeHTML(messageDOMId(for: message.uuid))
 
             let headerTitle = escapeHTML(labels.assistant)
             let model = modelTitle(message.model).map { "<span class=\"pill\">\(escapeHTML($0))</span>" } ?? ""
@@ -358,9 +532,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 sections.append("<div class=\"bubble assistant\">\(messageBodyHTML(content))</div>")
             }
 
-            let footer = "<div class=\"footer\"><span class=\"spacer\"></span><span>\(escapeHTML(Self.timeFormatter.string(from: message.timestamp)))</span></div>"
+            let copyButton = messageCopyButtonHTML(for: message.content, labels: labels)
+            let footer = "<div class=\"footer\"><span class=\"spacer\"></span>\(copyButton)<span>\(escapeHTML(Self.timeFormatter.string(from: message.timestamp)))</span></div>"
             sections.append(footer)
-            return "<div class=\"row assistant\"><div class=\"stack\">\(sections.joined())</div></div>"
+            return "<div class=\"row assistant\" id=\"\(domId)\"><div class=\"stack\">\(sections.joined())</div></div>"
         }
 
         private func renderToolUses(_ message: TimelineMessageDisplayData, labels: TimelineWebLabels) -> String {
@@ -435,8 +610,19 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             return "<div class=\"markdown\" data-markdown-base64=\"\(encoded)\"><div class=\"plain-text\">\(fallback)</div></div>"
         }
 
+        private func messageCopyButtonHTML(for text: String?, labels: TimelineWebLabels) -> String {
+            guard let text, !text.isEmpty else { return "" }
+            let encoded = encodeBase64(text)
+            let copyLabel = escapeHTML(labels.copy)
+            return "<button type=\"button\" class=\"message-copy-button\" data-message-copy-base64=\"\(encoded)\" data-copy-label=\"\(copyLabel)\">\(copyLabel)</button>"
+        }
+
         private func encodeBase64(_ text: String) -> String {
             Data(text.utf8).base64EncodedString()
+        }
+
+        private func messageDOMId(for messageId: String) -> String {
+            "message-\(messageId)"
         }
 
         private func escapeHTML(_ text: String) -> String {
@@ -447,6 +633,14 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 .replacingOccurrences(of: "\"", with: "&quot;")
                 .replacingOccurrences(of: "'", with: "&#39;")
         }
+
+            private func escapeJavaScript(_ text: String) -> String {
+                text
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "")
+            }
 
         private static let timeFormatter: DateFormatter = {
             let formatter = DateFormatter()
@@ -464,6 +658,8 @@ private struct TimelineWebLabels {
     let thinking: String
     let waiting: String
     let loadOlder: String
+    let copy: String
+    let copied: String
 
     static func localized() -> TimelineWebLabels {
         TimelineWebLabels(
@@ -472,7 +668,9 @@ private struct TimelineWebLabels {
             assistant: String(localized: "timeline.claude.label"),
             thinking: String(localized: "timeline.thinking.label"),
             waiting: String(localized: "timeline.thinking.label") + "...",
-            loadOlder: "Load older messages"
+            loadOlder: "Load older messages",
+            copy: String(localized: "timeline.message.copy"),
+            copied: String(localized: "timeline.message.copied")
         )
     }
 }

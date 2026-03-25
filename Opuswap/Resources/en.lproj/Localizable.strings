@@ -56,6 +56,8 @@
 "timeline.error.label" = "ERROR";
 "timeline.messageContext.delete" = "Delete this message";
 "timeline.messageContext.rewind" = "Rewind to here";
+"timeline.message.copy" = "Copy";
+"timeline.message.copied" = "Copied";
 "timeline.noMessages" = "No messages";
 "timeline.rewind.confirmMessage" = "All messages after this one will be deleted. This action cannot be undone.";
 "timeline.rewind.confirmTitle" = "Confirm Rewind";
