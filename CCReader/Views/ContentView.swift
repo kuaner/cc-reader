@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import AppKit
 
-struct ContentView: View {
+public struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var coordinator: AppCoordinator
 
@@ -10,11 +10,11 @@ struct ContentView: View {
     @State private var selectedSession: Session?
     @State private var currentVisibleMessageCount = 0
 
-    init(modelContext: ModelContext) {
-        _coordinator = StateObject(wrappedValue: AppCoordinator(modelContext: modelContext))
+    public init(modelContainer: ModelContainer) {
+        _coordinator = StateObject(wrappedValue: AppCoordinator(modelContainer: modelContainer))
     }
 
-    var body: some View {
+    public var body: some View {
         NavigationSplitView {
             ProjectListView(selectedProject: $selectedProject, selectedSession: $selectedSession)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 360)
@@ -154,6 +154,6 @@ private struct SyncOverlayView: View {
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: Project.self, Session.self, Message.self, configurations: config)
-    return ContentView(modelContext: container.mainContext)
+    return ContentView(modelContainer: container)
         .modelContainer(container)
 }

@@ -1,42 +1,38 @@
 import Foundation
 import SwiftData
-import Combine
 
 @MainActor
-class AppCoordinator: ObservableObject {
-    @Published private(set) var isInitialized = false
-    @Published private(set) var isSyncing = false
-    @Published private(set) var syncProgress: String = ""
+public class AppCoordinator: ObservableObject {
+    @Published public private(set) var isInitialized = false
+    @Published public private(set) var isSyncing = false
+    @Published public private(set) var syncProgress: String = ""
 
     private var syncService: SyncService?
     private var fileWatcher: FileWatcherService?
-    private let modelContext: ModelContext
-    private var cancellables = Set<AnyCancellable>()
+    private let modelContainer: ModelContainer
 
     // Debounce file watcher bursts into a single sync pass.
     private var debounceTask: Task<Void, Never>?
     private var pendingFiles: Set<URL> = []
     private let debounceInterval: UInt64 = 500_000_000 // 0.5 seconds
 
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    public init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
     }
 
-    func start() async {
+    public func start() async {
         guard !isInitialized else { return }
 
-        // Initialize SyncService.
-        let sync = SyncService(modelContext: modelContext)
+        // Initialize SyncService with the container so it creates its own background contexts.
+        let sync = SyncService(modelContainer: modelContainer)
+
+        // Wire up state callbacks from the background actor to MainActor properties.
+        await sync.setStateCallback { [weak self] syncing, progress in
+            self?.isSyncing = syncing
+            self?.syncProgress = progress
+        }
+
         syncService = sync
-
-        // Observe SyncService state.
-        sync.$isSyncing
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$isSyncing)
-
-        sync.$syncProgress
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$syncProgress)
 
         // Run the initial full sync.
         await sync.fullSync()
@@ -87,12 +83,12 @@ class AppCoordinator: ObservableObject {
     }
 
     /// Sync a specific session incrementally for manual refresh actions.
-    func syncSession(_ session: Session) async {
+    public func syncSession(_ session: Session) async {
         guard let fileURL = session.jsonlFileURL else { return }
         await syncService?.incrementalSync(fileURL: fileURL)
     }
 
-    func stop() {
+    public func stop() {
         debounceTask?.cancel()
         debounceTask = nil
         pendingFiles.removeAll()

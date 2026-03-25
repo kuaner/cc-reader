@@ -24,7 +24,7 @@ struct CCReaderApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(modelContext: container.mainContext)
+            ContentView(modelContainer: container)
                 .modelContainer(container)
         }
         .windowStyle(.titleBar)

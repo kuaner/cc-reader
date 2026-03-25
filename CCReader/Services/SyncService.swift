@@ -1,34 +1,49 @@
 import Foundation
 import SwiftData
 
-@MainActor
-class SyncService: ObservableObject {
+@ModelActor
+actor SyncService {
     private let parser = JSONLParser()
-    private let modelContext: ModelContext
     private static let sharedEncoder = JSONEncoder()
     private var loggedFilteredEventTypes: Set<String> = []
+    private var syncedMessageCount = 0
 
-    @Published private(set) var isSyncing = false
-    @Published private(set) var lastSyncedFile: URL?
-    @Published private(set) var syncedMessageCount = 0
-    @Published private(set) var syncProgress: String = ""
+    /// Callbacks for UI state updates (invoked on MainActor by the caller).
+    private var onSyncStateChanged: (@MainActor @Sendable (Bool, String) -> Void)?
 
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    func setStateCallback(_ callback: @escaping @MainActor @Sendable (Bool, String) -> Void) {
+        self.onSyncStateChanged = callback
+    }
+
+    private func updateUI(syncing: Bool, progress: String) async {
+        if let callback = onSyncStateChanged {
+            await callback(syncing, progress)
+        }
     }
 
     // On first launch, scan only files that are not already imported.
     func fullSync() async {
-        isSyncing = true
-        syncProgress = String(localized: "sync.searchingFiles")
+        await updateUI(syncing: true, progress: String(localized: "sync.searchingFiles"))
 
+        // Enumerate files off the main thread (already off main — we're an actor).
         let files = FileWatcherService.existingJSONLFiles()
-        // Keep only files that do not already have a matching session.
+
+        // Pre-fetch all known sessionIds in one query to avoid N sequential fetches.
+        let existingIds: Set<String>
+        do {
+            let descriptor = FetchDescriptor<Session>()
+            let sessions = try modelContext.fetch(descriptor)
+            existingIds = Set(sessions.map(\.sessionId))
+        } catch {
+            existingIds = []
+        }
+
+        // Filter new files in memory.
         var newFiles: [URL] = []
         newFiles.reserveCapacity(files.count)
         for file in files {
             guard let sessionId = JSONLParser.sessionId(from: file) else { continue }
-            if !(await sessionExists(sessionId: sessionId)) {
+            if !existingIds.contains(sessionId) {
                 newFiles.append(file)
             }
         }
@@ -36,71 +51,40 @@ class SyncService: ObservableObject {
         print("Full sync: \(files.count) files, \(newFiles.count) new")
 
         for (index, file) in newFiles.enumerated() {
-            syncProgress = String(
+            let progress = String(
                 format: String(localized: "sync.progress.indexed"),
                 index + 1,
                 newFiles.count
             )
+            await updateUI(syncing: true, progress: progress)
 
-            // Parse in the background.
-            let rawMessages = await parseFileInBackground(file)
+            // Parse the file (we're already off main thread).
+            let rawMessages = (try? parser.parseFile(url: file)) ?? []
 
-            // Persist on the main actor.
-            await processMessages(rawMessages, from: file)
+            // Record the byte offset for future incremental parses.
+            if let fileSize = try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? UInt64 {
+                parser.setOffset(fileSize, for: file)
+            }
 
-            // Yield briefly to keep the UI responsive.
-            try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+            // Persist using the actor's own ModelContext.
+            processMessages(rawMessages, from: file)
         }
 
         try? modelContext.save()
-        syncProgress = ""
-        isSyncing = false
+        await updateUI(syncing: false, progress: "")
         print("Full sync completed: \(syncedMessageCount) messages")
     }
 
-    private func sessionExists(sessionId: String) async -> Bool {
-        let predicate = #Predicate<Session> { $0.sessionId == sessionId }
-        var descriptor = FetchDescriptor<Session>(predicate: predicate)
-        descriptor.fetchLimit = 1
-        return (try? modelContext.fetch(descriptor).isEmpty == false) ?? false
-    }
-
     // On file changes, import only newly appended data.
-    func incrementalSync(fileURL: URL) async {
-        let rawMessages = await parseNewLinesInBackground(fileURL)
-        await processMessages(rawMessages, from: fileURL)
+    func incrementalSync(fileURL: URL) {
+        let rawMessages = (try? parser.parseNewLines(url: fileURL)) ?? []
+        processMessages(rawMessages, from: fileURL)
         try? modelContext.save()
-    }
-
-    // MARK: - Background Parsing
-
-    private func parseFileInBackground(_ fileURL: URL) async -> [RawMessageData] {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [parser] in
-                let messages = (try? parser.parseFile(url: fileURL)) ?? []
-                // Record the file size after a full sync completes.
-                if let fileSize = try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? UInt64 {
-                    DispatchQueue.main.async {
-                        parser.setOffset(fileSize, for: fileURL)
-                    }
-                }
-                continuation.resume(returning: messages)
-            }
-        }
-    }
-
-    private func parseNewLinesInBackground(_ fileURL: URL) async -> [RawMessageData] {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [parser] in
-                let messages = (try? parser.parseNewLines(url: fileURL)) ?? []
-                continuation.resume(returning: messages)
-            }
-        }
     }
 
     // MARK: - Database Operations
 
-    private func processMessages(_ rawMessages: [RawMessageData], from fileURL: URL) async {
+    private func processMessages(_ rawMessages: [RawMessageData], from fileURL: URL) {
         guard !rawMessages.isEmpty else { return }
 
         // Fetch or create the project.
@@ -116,7 +100,6 @@ class SyncService: ObservableObject {
 
         // Add new messages in a batch.
         for raw in rawMessages {
-            // Check duplicates in memory.
             if existingUuids.contains(raw.uuid) { continue }
             addMessageWithoutCheck(raw: raw, to: session)
         }
@@ -137,8 +120,6 @@ class SyncService: ObservableObject {
                 project.updatedAt = lastTimestamp
             }
         }
-
-        lastSyncedFile = fileURL
     }
 
     private func getOrCreateProject(path: String) -> Project {
