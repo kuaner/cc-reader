@@ -1,4 +1,4 @@
-# Opuswap
+# cc-reader
 
 [English](README.md) | 日本語 | [简体中文](README.zh-Hans.md)
 
@@ -11,11 +11,12 @@
 
 ## 機能
 
-- **セッションビューア** — thinking / ツール使用 / diff をタイムライン表示
+- **セッションビューア** — Markdown レンダリング・シンタックスハイライト・メッセージ単位コピー対応の WKWebView タイムライン
 - **リアルタイム同期** — FSEvents でファイル変更を検出、差分パースで即座に反映
 - **マルチペイン** — 最大12ペインで複数セッションを同時監視
 - **Surgery Mode** — JSONL を直接編集してコンテキストのトークンを最適化（一括削除・巻き戻し・要約編集）
 - **コンテキストパネル** — Claude の理解状況、読み込み/編集済みファイルを一覧表示
+- **長大タイムライン最適化** — ウィンドウ化レンダリング + 上端付近での過去メッセージ自動ロード
 
 ## 必要環境
 
@@ -30,8 +31,8 @@
 brew install xcodegen
 
 # クローンしてビルド
-git clone https://github.com/Mutafika/Opuswap.git
-cd Opuswap
+git clone https://github.com/kuaner/cc-reader.git
+cd cc-reader
 xcodegen
 open Opuswap.xcodeproj
 ```
@@ -42,9 +43,10 @@ Xcode で `Cmd + R` でビルド＆実行。
 
 | カテゴリ | 技術 |
 |---------|------|
-| UI | SwiftUI |
-| データベース | [SQLite.swift](https://github.com/nicklama/SQLite.swift) |
+| UI | SwiftUI + WKWebView（Timeline） |
+| 永続化 | SwiftData |
 | ファイル監視 | FSEvents |
+| Web レンダリング | marked.js + highlight.js（バンドル） |
 | ビルド | XcodeGen (`project.yml`) |
 
 ## アーキテクチャ
@@ -52,14 +54,25 @@ Xcode で `Cmd + R` でビルド＆実行。
 ```
 データソース: ~/.claude/projects/**/*.jsonl
     ↓ FSEvents
-FileWatcherService → SyncService → JSONLParser (差分パース)
+FileWatcherService → SyncService → JSONLParser（差分パース）
     ↓
-StorageManager (SQLite.swift)
+SwiftData ModelContext
     ↓
-SwiftUI Views (ContentView / LayoutView)
+SessionMessagesView（スナップショット構築）
+    ↓
+TimelineHostView（単一 WKWebView / ウィンドウ化レンダリング）
 ```
 
 詳細は [docs/SPEC.md](docs/SPEC.md) を参照。
+
+## ドキュメント
+
+- [Architecture & Specification](docs/SPEC.md)
+
+## 謝辞
+
+このリポジトリは [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap) をベースにしています。
+原プロジェクトは MIT License で提供されています。
 
 ## ライセンス
 

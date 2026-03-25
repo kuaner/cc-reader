@@ -1,4 +1,4 @@
-# Opuswap
+# cc-reader
 
 [English](README.md) | [日本語](README.ja.md) | 简体中文
 
@@ -11,11 +11,12 @@
 
 ## 功能
 
-- **会话查看器** — 以时间线形式展示 thinking / 工具调用 / diff（含语法高亮）
+- **会话查看器** — 基于 WKWebView 的时间线，支持 Markdown 渲染、语法高亮和单条消息复制
 - **实时同步** — 使用 FSEvents 监听文件变化，增量解析 JSONL
 - **多窗格布局** — 最多 12 个窗格同时监控多个会话
 - **Surgery Mode** — 直接编辑 JSONL 优化上下文 token（批量删除、回滚、摘要编辑）
 - **上下文面板** — 一眼查看 Claude 的理解状态以及已读/已编辑文件
+- **长时间线优化** — 窗口化渲染 + 接近顶部自动加载更早消息
 
 ## 环境要求
 
@@ -30,8 +31,8 @@
 brew install xcodegen
 
 # 克隆并构建
-git clone https://github.com/Mutafika/Opuswap.git
-cd Opuswap
+git clone https://github.com/kuaner/cc-reader.git
+cd cc-reader
 xcodegen
 open Opuswap.xcodeproj
 ```
@@ -42,9 +43,10 @@ open Opuswap.xcodeproj
 
 | 类别 | 技术 |
 |------|------|
-| UI | SwiftUI |
-| 数据库 | [SQLite.swift](https://github.com/nicklama/SQLite.swift) |
+| UI | SwiftUI + WKWebView（Timeline） |
+| 持久化 | SwiftData |
 | 文件监听 | FSEvents |
+| Web 渲染 | marked.js + highlight.js（本地打包） |
 | 构建 | XcodeGen (`project.yml`) |
 
 ## 架构
@@ -54,9 +56,11 @@ open Opuswap.xcodeproj
     ↓ FSEvents
 FileWatcherService → SyncService → JSONLParser (增量解析)
     ↓
-StorageManager (SQLite.swift)
+SwiftData ModelContext
     ↓
-SwiftUI Views (ContentView / LayoutView)
+SessionMessagesView（快照构建）
+    ↓
+TimelineHostView（单一 WKWebView，窗口化渲染）
 ```
 
 完整规格请见 [docs/SPEC.md](docs/SPEC.md)。
@@ -64,6 +68,11 @@ SwiftUI Views (ContentView / LayoutView)
 ## 文档
 
 - [架构与规格说明](docs/SPEC.md)
+
+## 致谢
+
+本仓库基于 [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap) 修改而来，
+原项目采用 MIT License。
 
 ## 许可证
 

@@ -1,4 +1,4 @@
-# Opuswap
+# cc-reader
 
 English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md)
 
@@ -31,8 +31,8 @@ Monitors JSONL files under `~/.claude/projects/` and displays conversation timel
 brew install xcodegen
 
 # Clone and build
-git clone https://github.com/Mutafika/Opuswap.git
-cd Opuswap
+git clone https://github.com/kuaner/cc-reader.git
+cd cc-reader
 xcodegen
 open Opuswap.xcodeproj
 ```
@@ -68,6 +68,11 @@ See [docs/SPEC.md](docs/SPEC.md) for the full specification.
 ## Documentation
 
 - [Architecture & Specification](docs/SPEC.md)
+
+## Acknowledgement
+
+This repository is based on [Mutafika/Opuswap](https://github.com/Mutafika/Opuswap),
+licensed under the MIT License.
 
 ## License
 
