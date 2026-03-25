@@ -58,6 +58,7 @@
 "timeline.messageContext.rewind" = "Rewind to here";
 "timeline.message.copy" = "Copy";
 "timeline.message.copied" = "Copied";
+"timeline.message.rawdata" = "Raw";
 "timeline.noMessages" = "No messages";
 "timeline.rewind.confirmMessage" = "All messages after this one will be deleted. This action cannot be undone.";
 "timeline.rewind.confirmTitle" = "Confirm Rewind";
@@ -67,6 +68,11 @@
 "timeline.summary.label" = "Session Summary";
 "timeline.summaryEditor.title" = "Edit Summary";
 "timeline.thinking.label" = "Thinking";
+"timeline.legend.user" = "User";
+"timeline.legend.assistant" = "Reply";
+"timeline.legend.thinking" = "Thinking";
+"timeline.legend.tool" = "Tool";
+"timeline.legend.summary" = "Summary";
 "timeline.thinking.seconds" = "%d s";
 "timeline.tokenUsage" = "Token Usage";
 "timeline.tool.running" = "(Running...)";

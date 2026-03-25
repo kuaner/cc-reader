@@ -11,6 +11,7 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
     let model: String?
     let toolUses: [ToolUseInfo]
     let toolResults: [ToolResultData]?
+    let rawJsonString: String
 
     var id: String { uuid }
 
@@ -24,6 +25,13 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
         self.model = message.model
         self.toolUses = message.toolUses
         self.toolResults = message.toolResults
+        if let obj = try? JSONSerialization.jsonObject(with: message.rawJson),
+           let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
+           let str = String(data: pretty, encoding: .utf8) {
+            self.rawJsonString = str
+        } else {
+            self.rawJsonString = String(data: message.rawJson, encoding: .utf8) ?? ""
+        }
     }
 
     static func == (lhs: TimelineMessageDisplayData, rhs: TimelineMessageDisplayData) -> Bool {

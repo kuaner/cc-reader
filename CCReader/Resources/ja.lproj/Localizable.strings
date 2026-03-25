@@ -58,6 +58,7 @@
 "timeline.messageContext.rewind" = "ここまで巻き戻す";
 "timeline.message.copy" = "コピー";
 "timeline.message.copied" = "コピー済み";
+"timeline.message.rawdata" = "Raw";
 "timeline.noMessages" = "メッセージなし";
 "timeline.rewind.confirmMessage" = "このメッセージ以降を全て削除します。この操作は取り消せません。";
 "timeline.rewind.confirmTitle" = "巻き戻し確認";
@@ -67,6 +68,11 @@
 "timeline.summary.label" = "セッション要約";
 "timeline.summaryEditor.title" = "要約を編集";
 "timeline.thinking.label" = "Thinking";
+"timeline.legend.user" = "ユーザー";
+"timeline.legend.assistant" = "返信";
+"timeline.legend.thinking" = "思考";
+"timeline.legend.tool" = "ツール";
+"timeline.legend.summary" = "要約";
 "timeline.thinking.seconds" = "%d秒";
 "timeline.tokenUsage" = "トークン使用量";
 "timeline.tool.running" = "(実行中...)";

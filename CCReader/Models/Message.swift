@@ -43,7 +43,8 @@ public class Message {
         _model = message.model
 
         if let str = message.contentString {
-            _content = str
+            let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
+            _content = (trimmed.isEmpty || trimmed == "[]" || trimmed == "\"\"") ? nil : str
         } else if let blocks = message.content {
             let textSegments = blocks.compactMap { block -> String? in
                 // Standard text block.
@@ -90,7 +91,13 @@ public class Message {
                             ?? (input["pattern"] as? String)
                     }
                 }
-                return ToolUseInfo(id: block.id ?? "", name: name, filePath: filePath, command: command, oldString: oldString, newString: newString, inputSummary: inputSummary)
+                let rawInput: String? = {
+                    guard let input = block.input?.value as? [String: Any] else { return nil }
+                    guard let data = try? JSONSerialization.data(withJSONObject: input, options: [.sortedKeys, .prettyPrinted]),
+                          let str = String(data: data, encoding: .utf8) else { return nil }
+                    return str
+                }()
+                return ToolUseInfo(id: block.id ?? "", name: name, filePath: filePath, command: command, oldString: oldString, newString: newString, inputSummary: inputSummary, rawInput: rawInput)
             }
 
             // toolResults from user messages.
@@ -293,6 +300,7 @@ public struct ToolUseInfo: Identifiable {
     public var oldString: String?
     public var newString: String?
     public var inputSummary: String?
+    public var rawInput: String?
 }
 
 // Helper for decoding arbitrary JSON

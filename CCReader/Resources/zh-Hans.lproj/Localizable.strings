@@ -58,6 +58,7 @@
 "timeline.messageContext.rewind" = "回滚到这里";
 "timeline.message.copy" = "复制";
 "timeline.message.copied" = "已复制";
+"timeline.message.rawdata" = "原数据";
 "timeline.noMessages" = "暂无消息";
 "timeline.rewind.confirmMessage" = "将删除此消息之后的所有内容。此操作无法撤销。";
 "timeline.rewind.confirmTitle" = "确认回滚";
@@ -67,6 +68,11 @@
 "timeline.summary.label" = "会话摘要";
 "timeline.summaryEditor.title" = "编辑摘要";
 "timeline.thinking.label" = "思考中";
+"timeline.legend.user" = "用户";
+"timeline.legend.assistant" = "回复";
+"timeline.legend.thinking" = "思考";
+"timeline.legend.tool" = "工具";
+"timeline.legend.summary" = "摘要";
 "timeline.thinking.seconds" = "%d 秒";
 "timeline.tokenUsage" = "Token 使用量";
 "timeline.tool.running" = "（执行中...）";
