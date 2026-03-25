@@ -46,6 +46,12 @@ public enum CCReaderKit {
     /// Open CC Reader in a new macOS window.
     @MainActor
     public static func open(title: String = "CC Reader", width: CGFloat = 1200, height: CGFloat = 800) {
+        // Reuse existing window if still around
+        if let existing = _readerWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -55,20 +61,13 @@ public enum CCReaderKit {
         window.title = title
         window.center()
         window.contentView = NSHostingView(rootView: makeView())
+        window.isReleasedWhenClosed = false
         window.makeKeyAndOrderFront(nil)
 
-        // Prevent the window from being deallocated by retaining it.
-        _retainedWindows.append(window)
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: window,
-            queue: .main
-        ) { notification in
-            _retainedWindows.removeAll { $0 === notification.object as? NSWindow }
-        }
+        _readerWindow = window
     }
 
-    /// Retained windows to prevent deallocation.
+    /// Retained window reference to prevent deallocation.
     @MainActor
-    private static var _retainedWindows: [NSWindow] = []
+    private static var _readerWindow: NSWindow?
 }
