@@ -39,6 +39,49 @@ open CCReader.xcodeproj
 
 在 Xcode 中按 `Cmd + R` 构建并运行。
 
+## 本地构建命令
+
+仓库根目录提供了 [Makefile](Makefile)，用于本地构建、生成 universal 二进制和打包。
+
+```bash
+# 生成 Xcode 工程
+make gen
+
+# 构建 universal Debug / Release app
+make debug
+make release
+
+# 打开构建好的 app
+make run CONFIG=Release
+
+# 将 Release 打包成 DMG
+make dmg
+```
+
+默认输出位置：
+
+- App bundle: `build/DerivedData/Build/Products/Release/CC Reader.app`
+- DMG: `build/cc-reader.dmg`
+
+Makefile 默认会构建 universal macOS 二进制（`arm64` + `x86_64`）。
+
+## 发布流程
+
+版本更新和打标签通过本地 Makefile 完成。
+
+```bash
+# 更新 project.yml 中的 MARKETING_VERSION
+make version VERSION=0.2.0 BUILD_NUMBER=2
+
+# 更新版本、创建发布提交并打 v0.2.0 tag
+make release-tag VERSION=0.2.0 BUILD_NUMBER=2
+
+# 同时推送分支和 tag 到 GitHub
+make publish VERSION=0.2.0 BUILD_NUMBER=2
+```
+
+执行 `make publish` 后，GitHub Actions 会在收到 release tag 时自动构建 universal Release app、生成 DMG，并上传到 GitHub Releases。
+
 ## 技术栈
 
 | 类别 | 技术 |

@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_NAME: CC Reader ${{ github.ref_name }}
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build DMG
+        run: make dmg
+
+      - name: Generate checksum
+        run: shasum -a 256 build/cc-reader.dmg > build/cc-reader.dmg.sha256
+
+      - name: Prepare release notes
+        run: |
+          cat > build/release-notes.md <<EOF
+          ## Downloads
+
+          - cc-reader.dmg
+          - cc-reader.dmg.sha256
+
+          ## Build Details
+
+          - Version tag: ${{ github.ref_name }}
+          - Platform: macOS universal (arm64 + x86_64)
+          - Package: DMG
+
+          ## Verification
+
+          Verify the downloaded DMG with:
+
+          ```bash
+          shasum -a 256 cc-reader.dmg
+          ```
+
+          The expected checksum is included in cc-reader.dmg.sha256.
+          EOF
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ env.RELEASE_NAME }}
+          body_path: build/release-notes.md
+          generate_release_notes: true
+          files: |
+            build/cc-reader.dmg
+            build/cc-reader.dmg.sha256

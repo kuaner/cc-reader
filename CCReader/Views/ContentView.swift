@@ -54,7 +54,7 @@ struct ContentView: View {
                 }
             }
         }
-        .navigationTitle("cc-reader")
+        .navigationTitle("CC Reader")
         .overlay {
             SyncOverlayView(coordinator: coordinator)
         }

@@ -39,6 +39,49 @@ open CCReader.xcodeproj
 
 Build & Run with `Cmd + R` in Xcode.
 
+## Local Build Commands
+
+The repository includes a root [Makefile](Makefile) for local builds, universal binaries, and packaging.
+
+```bash
+# Generate the Xcode project
+make gen
+
+# Build universal Debug / Release apps
+make debug
+make release
+
+# Open the built app
+make run CONFIG=Release
+
+# Package Release as a DMG
+make dmg
+```
+
+Default output locations:
+
+- App bundle: `build/DerivedData/Build/Products/Release/CC Reader.app`
+- DMG: `build/cc-reader.dmg`
+
+The Makefile builds universal macOS binaries by default (`arm64` + `x86_64`).
+
+## Release Flow
+
+Version updates and tagging are handled locally through the Makefile.
+
+```bash
+# Update project.yml marketing version
+make version VERSION=0.2.0 BUILD_NUMBER=2
+
+# Update version metadata, create a release commit, and tag it as v0.2.0
+make release-tag VERSION=0.2.0 BUILD_NUMBER=2
+
+# Do the same and push branch + tag to GitHub
+make publish VERSION=0.2.0 BUILD_NUMBER=2
+```
+
+`make publish` pushes the release tag to GitHub, which triggers the release workflow. The workflow builds a universal Release app, packages it as a DMG, and uploads it to GitHub Releases.
+
 ## Tech Stack
 
 | Category | Technology |

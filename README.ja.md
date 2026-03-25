@@ -39,6 +39,49 @@ open CCReader.xcodeproj
 
 Xcode で `Cmd + R` でビルド＆実行。
 
+## ローカルビルドコマンド
+
+リポジトリ直下の [Makefile](Makefile) で、ローカルビルド・universal バイナリ生成・パッケージングをまとめて実行できます。
+
+```bash
+# Xcode プロジェクトを生成
+make gen
+
+# universal Debug / Release アプリをビルド
+make debug
+make release
+
+# ビルド済みアプリを起動
+make run CONFIG=Release
+
+# Release を DMG にパッケージ
+make dmg
+```
+
+デフォルトの出力先:
+
+- App bundle: `build/DerivedData/Build/Products/Release/CC Reader.app`
+- DMG: `build/cc-reader.dmg`
+
+Makefile はデフォルトで universal macOS バイナリ（`arm64` + `x86_64`）を生成します。
+
+## リリースフロー
+
+バージョン更新とタグ作成はローカルの Makefile で行います。
+
+```bash
+# project.yml の MARKETING_VERSION を更新
+make version VERSION=0.2.0 BUILD_NUMBER=2
+
+# バージョン更新、リリースコミット作成、v0.2.0 タグ作成
+make release-tag VERSION=0.2.0 BUILD_NUMBER=2
+
+# 上記に加えてブランチとタグを GitHub に push
+make publish VERSION=0.2.0 BUILD_NUMBER=2
+```
+
+`make publish` で release tag を GitHub に push すると、GitHub Actions が universal Release アプリをビルドし、DMG を生成して GitHub Releases にアップロードします。
+
 ## 技術スタック
 
 | カテゴリ | 技術 |
