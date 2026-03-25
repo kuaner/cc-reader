@@ -10,26 +10,28 @@
 		04395F8CFA0884D2B8F436E6 /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3F83804AE0CFA48AA1C7C7 /* SyncService.swift */; };
 		311D04F806C83959F8145C95 /* JSONLWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C970E9E12926ED72435B5B5 /* JSONLWriter.swift */; };
 		3953079EE4AB0C745D0E0E05 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AE2257E756984DB79D123E /* Session.swift */; };
+		3AEB29AECC35B7A53190882E /* MarkdownRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5A8E290F81FC6492CD1870 /* MarkdownRenderView.swift */; };
 		3FFD7AA398A31A9C48AF9DA5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0D483ED43F83810DA274F24B /* Assets.xcassets */; };
 		49BA30408004D660DF15D9E6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0A86E2955535140C8485D465 /* Localizable.strings */; };
 		60102EF2DDA4B23D87416E92 /* SessionMessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC025FDED5C0A4E25C3FE62 /* SessionMessagesView.swift */; };
 		6901EC9F618AEED5AC36513B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB080DDB2D78F7CCFEE24C14 /* ContentView.swift */; };
 		736C5B9FC58A0DA469588F67 /* LayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1DF13E9F964008EB5CD2299 /* LayoutManager.swift */; };
+		76AFC82EA9C2A66443799F71 /* marked.min.js in Resources */ = {isa = PBXBuildFile; fileRef = AA7959750B5746AFD4F56C11 /* marked.min.js */; };
 		79852A9522789BBC81CE2066 /* LayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E4127F94A73CDC23477FC9 /* LayoutView.swift */; };
 		7B6A341445542A4C2E1B3433 /* ConfirmationDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C0CE24B8E4C048AC610E9A /* ConfirmationDetector.swift */; };
 		7BD2F9C9FF0502D3437D5CBF /* FileWatcherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4248E169F6C731AD3805FF2 /* FileWatcherService.swift */; };
-		9C42ED88F2C9169D381B2EB2 /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 768CD017B5DC3ECFB007B235 /* MessageRow.swift */; };
 		9C43A72BBE1ECF95A14D2FA4 /* OpuswapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87402FDE3E7F421DEABB752 /* OpuswapApp.swift */; };
 		A53AF644E053317D1CFFC75D /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 866028B51841D86C8D5A2A8D /* ProjectListView.swift */; };
 		B3C5171B50B6C0F77FB3C756 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A04124BDC7477739AD997D /* Project.swift */; };
 		C196BE5F5FF00B0C737ECE4A /* WorkspaceLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF8BC129BBAC8BD3EABA88D /* WorkspaceLayout.swift */; };
 		C19DD216B342D536BE7647A2 /* PaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E62A8018EE9F7B5E548B74FB /* PaneView.swift */; };
 		D2619FEBAB7F26CE450A66B0 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3A9B5CD3EF499C937CBE8B /* Message.swift */; };
+		D41DFD65649B9C094D8DD2D6 /* TimelineHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A0CCE923A6189AD10B78EDF /* TimelineHostView.swift */; };
 		D71046965ED0E514E8EBC7DA /* JSONLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16247EBBB66B9C9F51A63C5D /* JSONLParser.swift */; };
+		DEA0D2F42D9D52460B79732F /* TimelineModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FCC7B8F3566A86E9256209 /* TimelineModels.swift */; };
 		E022366AEA9184BEE6153E47 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B0FC2762D81D97CD7CC570 /* AppCoordinator.swift */; };
 		F253B1242AA447FF2E4B0714 /* TokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A3667D7404351FD1BFD341 /* TokenEstimator.swift */; };
 		F62B69E7D5AF84DA0D0A2796 /* IgnoredSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B3499B0036259289402565 /* IgnoredSessionManager.swift */; };
-		AABB001122334455DEAD0001 /* marked.min.js in Resources */ = {isa = PBXBuildFile; fileRef = AABB001122334455DEAD0002 /* marked.min.js */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,15 +40,18 @@
 		16247EBBB66B9C9F51A63C5D /* JSONLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParser.swift; sourceTree = "<group>"; };
 		1C19652555C7A91B447373FD /* Opuswap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Opuswap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		20B0FC2762D81D97CD7CC570 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		2B5A8E290F81FC6492CD1870 /* MarkdownRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderView.swift; sourceTree = "<group>"; };
 		2C970E9E12926ED72435B5B5 /* JSONLWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLWriter.swift; sourceTree = "<group>"; };
 		31A3667D7404351FD1BFD341 /* TokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenEstimator.swift; sourceTree = "<group>"; };
+		58FCC7B8F3566A86E9256209 /* TimelineModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineModels.swift; sourceTree = "<group>"; };
 		75BFBBFEF7972B5A2E0D0BD8 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		768CD017B5DC3ECFB007B235 /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
+		7A0CCE923A6189AD10B78EDF /* TimelineHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineHostView.swift; sourceTree = "<group>"; };
 		866028B51841D86C8D5A2A8D /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
 		8A7C310811D8C94BBFE3872B /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9BC025FDED5C0A4E25C3FE62 /* SessionMessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionMessagesView.swift; sourceTree = "<group>"; };
 		A2A04124BDC7477739AD997D /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		A87402FDE3E7F421DEABB752 /* OpuswapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpuswapApp.swift; sourceTree = "<group>"; };
+		AA7959750B5746AFD4F56C11 /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = marked.min.js; sourceTree = "<group>"; };
 		AB080DDB2D78F7CCFEE24C14 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B4248E169F6C731AD3805FF2 /* FileWatcherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatcherService.swift; sourceTree = "<group>"; };
 		BB5635E4B63909A0AC025040 /* Opuswap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Opuswap.entitlements; sourceTree = "<group>"; };
@@ -59,7 +64,6 @@
 		EEF8BC129BBAC8BD3EABA88D /* WorkspaceLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLayout.swift; sourceTree = "<group>"; };
 		F8C0CE24B8E4C048AC610E9A /* ConfirmationDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmationDetector.swift; sourceTree = "<group>"; };
 		F8E4127F94A73CDC23477FC9 /* LayoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutView.swift; sourceTree = "<group>"; };
-		AABB001122334455DEAD0002 /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "marked.min.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -75,8 +79,8 @@
 			isa = PBXGroup;
 			children = (
 				0D483ED43F83810DA274F24B /* Assets.xcassets */,
+				AA7959750B5746AFD4F56C11 /* marked.min.js */,
 				0A86E2955535140C8485D465 /* Localizable.strings */,
-				AABB001122334455DEAD0002 /* marked.min.js */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -97,8 +101,10 @@
 		308CCA39CCF5B19943FE8878 /* Timeline */ = {
 			isa = PBXGroup;
 			children = (
-				768CD017B5DC3ECFB007B235 /* MessageRow.swift */,
+				2B5A8E290F81FC6492CD1870 /* MarkdownRenderView.swift */,
 				9BC025FDED5C0A4E25C3FE62 /* SessionMessagesView.swift */,
+				7A0CCE923A6189AD10B78EDF /* TimelineHostView.swift */,
+				58FCC7B8F3566A86E9256209 /* TimelineModels.swift */,
 			);
 			path = Timeline;
 			sourceTree = "<group>";
@@ -230,7 +236,7 @@
 			files = (
 				3FFD7AA398A31A9C48AF9DA5 /* Assets.xcassets in Resources */,
 				49BA30408004D660DF15D9E6 /* Localizable.strings in Resources */,
-				AABB001122334455DEAD0001 /* marked.min.js in Resources */,
+				76AFC82EA9C2A66443799F71 /* marked.min.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -250,8 +256,8 @@
 				311D04F806C83959F8145C95 /* JSONLWriter.swift in Sources */,
 				736C5B9FC58A0DA469588F67 /* LayoutManager.swift in Sources */,
 				79852A9522789BBC81CE2066 /* LayoutView.swift in Sources */,
+				3AEB29AECC35B7A53190882E /* MarkdownRenderView.swift in Sources */,
 				D2619FEBAB7F26CE450A66B0 /* Message.swift in Sources */,
-				9C42ED88F2C9169D381B2EB2 /* MessageRow.swift in Sources */,
 				9C43A72BBE1ECF95A14D2FA4 /* OpuswapApp.swift in Sources */,
 				C19DD216B342D536BE7647A2 /* PaneView.swift in Sources */,
 				B3C5171B50B6C0F77FB3C756 /* Project.swift in Sources */,
@@ -259,6 +265,8 @@
 				3953079EE4AB0C745D0E0E05 /* Session.swift in Sources */,
 				60102EF2DDA4B23D87416E92 /* SessionMessagesView.swift in Sources */,
 				04395F8CFA0884D2B8F436E6 /* SyncService.swift in Sources */,
+				D41DFD65649B9C094D8DD2D6 /* TimelineHostView.swift in Sources */,
+				DEA0D2F42D9D52460B79732F /* TimelineModels.swift in Sources */,
 				F253B1242AA447FF2E4B0714 /* TokenEstimator.swift in Sources */,
 				C196BE5F5FF00B0C737ECE4A /* WorkspaceLayout.swift in Sources */,
 			);
