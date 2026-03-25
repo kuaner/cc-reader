@@ -52,7 +52,7 @@ struct SessionMessagesView: View {
                 } label: {
                     Image(systemName: showContextPanel ? "sidebar.right" : "sidebar.left")
                 }
-                .help(String(localized: "timeline.context.help"))
+                .help(L("timeline.context.help"))
             }
         }
         .onAppear {
@@ -161,7 +161,7 @@ struct SessionMessagesView: View {
                                 contextMap[key] = ContextItem(
                                     id: key, toolName: toolUse.name,
                                     filePath: toolUse.filePath, command: toolUse.command,
-                                    content: String(localized: "timeline.tool.running"), isError: false
+                                    content: L("timeline.tool.running"), isError: false
                                 )
                             }
                         }
@@ -200,7 +200,7 @@ struct SessionMessagesView: View {
                             contextMap[key] = ContextItem(
                                 id: key, toolName: toolUse.name,
                                 filePath: toolUse.filePath, command: toolUse.command,
-                                content: content.isEmpty ? String(localized: "timeline.tool.success") : content,
+                                content: content.isEmpty ? L("timeline.tool.success") : content,
                                 isError: result.is_error ?? false
                             )
                         }
@@ -276,19 +276,19 @@ struct ContextPanel: View {
                 }
 
                 if !snapshot.readFiles.isEmpty {
-                    ContextSectionView(title: String(localized: "context.section.read"), icon: "doc.text", color: .blue, items: snapshot.readFiles, onOpenFile: { selectedFileItem = $0 })
+                    ContextSectionView(title: L("context.section.read"), icon: "doc.text", color: .blue, items: snapshot.readFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if !snapshot.editedFiles.isEmpty {
-                    ContextSectionView(title: String(localized: "context.section.edited"), icon: "pencil", color: .orange, items: snapshot.editedFiles, onOpenFile: { selectedFileItem = $0 })
+                    ContextSectionView(title: L("context.section.edited"), icon: "pencil", color: .orange, items: snapshot.editedFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if !snapshot.writtenFiles.isEmpty {
-                    ContextSectionView(title: String(localized: "context.section.created"), icon: "doc.badge.plus", color: .green, items: snapshot.writtenFiles, onOpenFile: { selectedFileItem = $0 })
+                    ContextSectionView(title: L("context.section.created"), icon: "doc.badge.plus", color: .green, items: snapshot.writtenFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
                 if snapshot.latestThinking == nil && snapshot.readFiles.isEmpty && snapshot.editedFiles.isEmpty && snapshot.writtenFiles.isEmpty {
-                    Text(String(localized: "context.empty"))
+                    Text(L("context.empty"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -320,7 +320,7 @@ struct CurrentUnderstandingView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "brain.head.profile")
                             .foregroundStyle(.orange)
-                        Text(String(localized: "context.understanding.title"))
+                        Text(L("context.understanding.title"))
                             .fontWeight(.semibold)
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -339,7 +339,7 @@ struct CurrentUnderstandingView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help(String(localized: "context.expand.help"))
+                .help(L("context.expand.help"))
             }
 
             if isExpanded {
@@ -356,7 +356,7 @@ struct CurrentUnderstandingView: View {
                     Button {
                         showModal = true
                     } label: {
-                        Text(String(localized: "context.showFull"))
+                        Text(L("context.showFull"))
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }
@@ -380,13 +380,13 @@ struct UnderstandingModalView: View {
             HStack {
                 Image(systemName: "brain.head.profile")
                     .foregroundStyle(.orange)
-                Text(String(localized: "context.understanding.title"))
+                Text(L("context.understanding.title"))
                     .font(.headline)
                 Spacer()
 
                 Picker("", selection: $showRendered) {
-                    Text(String(localized: "file.preview.source")).tag(false)
-                    Text(String(localized: "file.preview.rendered")).tag(true)
+                    Text(L("file.preview.source")).tag(false)
+                    Text(L("file.preview.rendered")).tag(true)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 160)
@@ -498,7 +498,7 @@ struct ContextItemView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help(String(localized: "file.preview.help"))
+                    .help(L("file.preview.help"))
                 }
 
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -557,17 +557,17 @@ struct FilePreviewSheet: View {
 
                 if isMarkdown && !content.isEmpty {
                     Picker("", selection: $showRendered) {
-                        Text(String(localized: "file.preview.source")).tag(false)
-                        Text(String(localized: "file.preview.rendered")).tag(true)
+                        Text(L("file.preview.source")).tag(false)
+                        Text(L("file.preview.rendered")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 160)
                 }
 
-                Button(String(localized: "file.open.external")) {
+                Button(L("file.open.external")) {
                     openInExternalEditor()
                 }
-                .help(String(localized: "file.open.defaultEditor.help"))
+                .help(L("file.open.defaultEditor.help"))
 
                 Button {
                     dismiss()
@@ -585,7 +585,7 @@ struct FilePreviewSheet: View {
 
             if isLoading {
                 Spacer()
-                ProgressView(String(localized: "common.loading"))
+                ProgressView(L("common.loading"))
                 Spacer()
             } else if let error = errorMessage {
                 Spacer()
@@ -626,7 +626,7 @@ struct FilePreviewSheet: View {
             if isMarkdown { showRendered = true }
         } catch {
             errorMessage = String(
-                format: String(localized: "error.file.read.failed"),
+                format: L("error.file.read.failed"),
                 error.localizedDescription
             )
         }

@@ -1,6 +1,12 @@
 import SwiftUI
 import SwiftData
 
+/// Localized string helper that always looks up from the package bundle.
+@usableFromInline
+internal func L(_ key: String.LocalizationValue) -> String {
+    String(localized: key, bundle: .module)
+}
+
 /// Public entry point for embedding CC Reader in another application.
 ///
 /// Usage:

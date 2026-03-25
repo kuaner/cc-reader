@@ -23,7 +23,7 @@ actor SyncService {
 
     // On first launch, scan only files that are not already imported.
     func fullSync() async {
-        await updateUI(syncing: true, progress: String(localized: "sync.searchingFiles"))
+        await updateUI(syncing: true, progress: L("sync.searchingFiles"))
 
         // Enumerate files off the main thread (already off main — we're an actor).
         let files = FileWatcherService.existingJSONLFiles()
@@ -52,7 +52,7 @@ actor SyncService {
 
         for (index, file) in newFiles.enumerated() {
             let progress = String(
-                format: String(localized: "sync.progress.indexed"),
+                format: L("sync.progress.indexed"),
                 index + 1,
                 newFiles.count
             )

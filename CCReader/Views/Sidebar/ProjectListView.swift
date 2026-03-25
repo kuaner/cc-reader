@@ -16,7 +16,7 @@ struct ProjectListView: View {
             // Toolbar
             if !selectedSessions.isEmpty {
                 HStack {
-                    Text(String(format: String(localized: "sidebar.selection.count"), selectedSessions.count))
+                    Text(String(format: L("sidebar.selection.count"), selectedSessions.count))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -27,7 +27,7 @@ struct ProjectListView: View {
                             showBulkDeleteConfirm = true
                         }
                     } label: {
-                        Label(String(localized: "common.delete"), systemImage: "trash")
+                        Label(L("common.delete"), systemImage: "trash")
                             .font(.caption)
                     }
                     .buttonStyle(.borderless)
@@ -45,17 +45,17 @@ struct ProjectListView: View {
             }
             .listStyle(.sidebar)
         }
-        .confirmationDialog(String(localized: "sidebar.deleteSession.title"), isPresented: $showBulkDeleteConfirm, titleVisibility: .visible) {
-            Button(String(localized: "common.delete"), role: .destructive) {
+        .confirmationDialog(L("sidebar.deleteSession.title"), isPresented: $showBulkDeleteConfirm, titleVisibility: .visible) {
+            Button(L("common.delete"), role: .destructive) {
                 deleteSessions(selectedSessions)
             }
-            Button(String(localized: "sidebar.deleteAndDontAsk"), role: .destructive) {
+            Button(L("sidebar.deleteAndDontAsk"), role: .destructive) {
                 skipDeleteConfirmation = true
                 deleteSessions(selectedSessions)
             }
-            Button(String(localized: "common.cancel"), role: .cancel) {}
+            Button(L("common.cancel"), role: .cancel) {}
         } message: {
-            Text(String(format: String(localized: "sidebar.deleteMany.confirm"), selectedSessions.count))
+            Text(String(format: L("sidebar.deleteMany.confirm"), selectedSessions.count))
         }
         .onChange(of: selectedSessions) { _, newValue in
             // Preserve the previous single-selection behavior.
@@ -93,7 +93,7 @@ struct SessionRow: View {
         VStack(alignment: .leading, spacing: 8) {
             // Title
             if isEditing {
-                TextField(String(localized: "sidebar.sessionName.placeholder"), text: $editingName, onCommit: {
+                TextField(L("sidebar.sessionName.placeholder"), text: $editingName, onCommit: {
                     saveSessionName()
                 })
                 .textFieldStyle(.plain)
@@ -151,7 +151,7 @@ struct SessionRow: View {
                 editingName = session.slug ?? ""
                 isEditing = true
             } label: {
-                Label(String(localized: "sidebar.rename"), systemImage: "pencil")
+                Label(L("sidebar.rename"), systemImage: "pencil")
             }
 
             Divider()
@@ -163,20 +163,20 @@ struct SessionRow: View {
                     showDeleteConfirm = true
                 }
             } label: {
-                Label(String(localized: "common.delete"), systemImage: "trash")
+                Label(L("common.delete"), systemImage: "trash")
             }
         }
-        .confirmationDialog(String(localized: "sidebar.deleteSession.title"), isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button(String(localized: "common.delete"), role: .destructive) {
+        .confirmationDialog(L("sidebar.deleteSession.title"), isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button(L("common.delete"), role: .destructive) {
                 deleteSession()
             }
-            Button(String(localized: "sidebar.deleteAndDontAsk"), role: .destructive) {
+            Button(L("sidebar.deleteAndDontAsk"), role: .destructive) {
                 skipDeleteConfirmation = true
                 deleteSession()
             }
-            Button(String(localized: "common.cancel"), role: .cancel) {}
+            Button(L("common.cancel"), role: .cancel) {}
         } message: {
-            Text(String(localized: "sidebar.deleteSession.confirmSingle"))
+            Text(L("sidebar.deleteSession.confirmSingle"))
         }
     }
 

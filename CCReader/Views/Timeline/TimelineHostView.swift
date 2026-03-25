@@ -799,7 +799,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             } else {
                 duration = 1
             }
-            return String(format: String(localized: "timeline.thinking.seconds"), duration)
+            return String(format: L("timeline.thinking.seconds"), duration)
         }
 
         private func isSummaryMessage(_ message: TimelineMessageDisplayData) -> Bool {
@@ -877,20 +877,20 @@ private struct TimelineWebLabels {
 
     static func localized() -> TimelineWebLabels {
         TimelineWebLabels(
-            summaryLabel: String(localized: "timeline.summary.label"),
-            context: String(localized: "timeline.context.label"),
-            assistant: String(localized: "timeline.claude.label"),
-            thinking: String(localized: "timeline.thinking.label"),
-            waiting: String(localized: "timeline.thinking.label") + "...",
+            summaryLabel: L("timeline.summary.label"),
+            context: L("timeline.context.label"),
+            assistant: L("timeline.claude.label"),
+            thinking: L("timeline.thinking.label"),
+            waiting: L("timeline.thinking.label") + "...",
             loadOlder: "Load older messages",
-            copy: String(localized: "timeline.message.copy"),
-            rawData: String(localized: "timeline.message.rawdata"),
-            copied: String(localized: "timeline.message.copied"),
-            legendUser: String(localized: "timeline.legend.user"),
-            legendAssistant: String(localized: "timeline.legend.assistant"),
-            legendThinking: String(localized: "timeline.legend.thinking"),
-            legendTool: String(localized: "timeline.legend.tool"),
-            legendSummary: String(localized: "timeline.legend.summary")
+            copy: L("timeline.message.copy"),
+            rawData: L("timeline.message.rawdata"),
+            copied: L("timeline.message.copied"),
+            legendUser: L("timeline.legend.user"),
+            legendAssistant: L("timeline.legend.assistant"),
+            legendThinking: L("timeline.legend.thinking"),
+            legendTool: L("timeline.legend.tool"),
+            legendSummary: L("timeline.legend.summary")
         )
     }
 }

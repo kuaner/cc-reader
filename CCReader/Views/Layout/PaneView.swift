@@ -66,7 +66,7 @@ struct PaneHeaderView: View {
                     Text(session.displayTitle)
                         .lineLimit(1)
                 } else {
-                    Text(String(localized: "layout.noSessionSelected"))
+                    Text(L("layout.noSessionSelected"))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -76,19 +76,19 @@ struct PaneHeaderView: View {
 
             // Split menu
             Menu {
-                Button(String(localized: "layout.split.horizontal")) {
+                Button(L("layout.split.horizontal")) {
                     layoutManager.splitPane(pane.id, direction: .horizontal)
                 }
                 .disabled(!layoutManager.canSplit())
 
-                Button(String(localized: "layout.split.vertical")) {
+                Button(L("layout.split.vertical")) {
                     layoutManager.splitPane(pane.id, direction: .vertical)
                 }
                 .disabled(!layoutManager.canSplit())
 
                 Divider()
 
-                Button(String(localized: "layout.pane.close"), role: .destructive) {
+                Button(L("layout.pane.close"), role: .destructive) {
                     layoutManager.closePane(pane.id)
                 }
                 .disabled(layoutManager.allPanes().count <= 1)
@@ -117,18 +117,18 @@ struct EmptyPaneView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.tertiary)
 
-            Text(String(localized: "content.selectSession"))
+            Text(L("content.selectSession"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Text(String(localized: "layout.emptyHint"))
+            Text(L("layout.emptyHint"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
             // Recent sessions for quick assignment.
             if !sessions.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(String(localized: "layout.recentSessions"))
+                    Text(L("layout.recentSessions"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
 

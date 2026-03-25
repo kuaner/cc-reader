@@ -38,12 +38,12 @@ public struct ContentView: View {
                             } label: {
                                 Image(systemName: "arrow.clockwise")
                             }
-                            .help(String(localized: "content.refresh.help"))
+                            .help(L("content.refresh.help"))
                             .disabled(coordinator.isSyncing)
                         }
                     }
             } else {
-                ContentUnavailableView(String(localized: "content.selectSession"), systemImage: "message")
+                ContentUnavailableView(L("content.selectSession"), systemImage: "message")
             }
         }
         .onChange(of: selectedSession) { _, newSession in
@@ -69,7 +69,7 @@ public struct ContentView: View {
     private var subtitleText: String {
         let count = currentVisibleMessageCount
         if count == 0 { return "" }
-        return String(format: String(localized: "status.messageCount"), count)
+        return String(format: L("status.messageCount"), count)
     }
 }
 
@@ -124,8 +124,8 @@ private struct SessionResumeButton: View {
             }
         }
         .help(copied
-              ? String(localized: "session.resume.copied")
-              : String(localized: "session.resume.help"))
+              ? L("session.resume.copied")
+              : L("session.resume.help"))
     }
 }
 
@@ -140,7 +140,7 @@ private struct SyncOverlayView: View {
                 ProgressView()
                 Text(coordinator.syncProgress)
                     .font(.headline)
-                Text(String(localized: "content.initialSyncing"))
+                Text(L("content.initialSyncing"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

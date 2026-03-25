@@ -141,7 +141,7 @@ enum JSONLWriterError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .backupNotFound:
-            return String(localized: "error.backup.notFound")
+            return L("error.backup.notFound")
         }
     }
 }
