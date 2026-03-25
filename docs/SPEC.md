@@ -14,8 +14,8 @@ Key capabilities: multi-pane session monitoring and surgical context editing (Su
 |----------|-----------|
 | Platform | macOS 14.0+ |
 | Language | Swift 5.9 |
-| UI | SwiftUI |
-| Database | SQLite.swift |
+| UI | SwiftUI + WKWebView (Timeline rendering) |
+| Persistence | SwiftData (ModelContainer) |
 | Build | Xcode + XcodeGen (`project.yml`) |
 
 ---
@@ -35,8 +35,8 @@ Key capabilities: multi-pane session monitoring and surgical context editing (Su
 │         │                 │                               │
 │  ┌──────┴──────────────────┴──────────────────────────┐  │
 │  │              Views Layer (SwiftUI)                  │  │
-│  │  ProjectListView / SessionMessagesView / MessageRow │  │
-│  │  PaneView / ContextPanel / SurgeryToolbar          │  │
+│  │  ProjectListView / SessionMessagesView / PaneView  │  │
+│  │  TimelineHostView (WKWebView) / ContextPanel       │  │
 │  └────────────────────┬───────────────────────────────┘  │
 │                       │                                  │
 │  ┌────────────────────┴───────────────────────────────┐  │
@@ -48,13 +48,8 @@ Key capabilities: multi-pane session monitoring and surgical context editing (Su
 │  └────────────────────┬───────────────────────────────┘  │
 │                       │                                  │
 │  ┌────────────────────┴───────────────────────────────┐  │
-│  │             Models Layer                            │  │
+│  │             Models Layer (SwiftData)               │  │
 │  │  Project / Session / Message / WorkspaceLayout     │  │
-│  └────────────────────┬───────────────────────────────┘  │
-│                       │                                  │
-│  ┌────────────────────┴───────────────────────────────┐  │
-│  │             Storage Layer (SQLite.swift)            │  │
-│  │  StorageManager / DatabaseSchema                   │  │
 │  └────────────────────┬───────────────────────────────┘  │
 │                       │                                  │
 │  ┌────────────────────┴───────────────────────────────┐  │
@@ -153,12 +148,12 @@ SyncService
     │
     ├── JSONLParser.parseNewLines()  ← Read delta from file offset
     │
-    ├── getOrCreateProject()         ← SQLite upsert
+    ├── getOrCreateProject()         ← SwiftData upsert
     ├── getOrCreateSession()         ← Merge by matching slug
     └── addMessage()                 ← Create Message + update caches
         │
         ▼
-    StorageManager (SQLite.swift → @Published for UI updates)
+    SwiftData ModelContext (drives @Query updates)
 ```
 
 ### Surgery Mode Flow
@@ -166,12 +161,29 @@ SyncService
 ```
 User action
     │
-    ├── Bulk delete  → JSONLWriter.deleteMessages()      → StorageManager.delete()
-    ├── Rewind       → JSONLWriter.deleteMessagesAfter() → StorageManager.delete()
+    ├── Bulk delete  → JSONLWriter.deleteMessages()      → SwiftData delete/save
+    ├── Rewind       → JSONLWriter.deleteMessagesAfter() → SwiftData delete/save
     └── Edit summary → JSONLWriter.updateMessageContent()
         │
         ├── Auto-backup (.bak file)
         └── Direct JSONL file rewrite
+
+### Timeline Render Flow
+
+```
+SwiftData Message (@Query)
+    ↓
+SessionMessagesView.rebuildDerivedData()
+    ↓
+TimelineRenderSnapshot / TimelineMessageDisplayData (value snapshots)
+    ↓
+TimelineHostView (single WKWebView)
+    ├── Windowed rendering (recent batch, default 200)
+    ├── Auto-load older messages near top (+ manual fallback action)
+    ├── Markdown progressive enhancement (marked.min.js)
+    ├── Syntax highlight (highlight.js, bundled)
+    └── Per-message copy actions (user/assistant)
+```
 ```
 
 ---
@@ -205,12 +217,19 @@ Opuswap/
 │   │   ├── Sidebar/
 │   │   │   └── ProjectListView.swift   # Project/session list
 │   │   ├── Timeline/
-│   │   │   ├── SessionMessagesView.swift   # Timeline + Surgery Mode
-│   │   │   └── MessageRow.swift        # Message row
+│   │   │   ├── SessionMessagesView.swift   # Timeline orchestration + Context panel
+│   │   │   ├── TimelineHostView.swift      # Single WKWebView timeline host
+│   │   │   ├── TimelineModels.swift        # Value snapshots for rendering boundary
+│   │   │   ├── MarkdownRenderView.swift    # Markdown preview WebView
+│   │   │   └── WebRenderAssets.swift       # Bundled JS/CSS loaders and web chrome
 │   │   └── Layout/
 │   │       ├── LayoutView.swift        # Multi-pane renderer
 │   │       └── PaneView.swift          # Individual pane
 │   ├── Resources/
+│   │   ├── marked.min.js
+│   │   ├── highlight.min.js
+│   │   ├── highlight-light.css
+│   │   ├── highlight-dark.css
 │   │   └── Assets.xcassets/
 │   └── Opuswap.entitlements
 ├── Opuswap.xcodeproj/
@@ -225,7 +244,7 @@ Opuswap/
 
 ### Raw JSON Preservation
 
-Messages store the original JSON as `Data` in SQLite, decoded on demand via computed properties. Rationale:
+Messages store the original JSON as `Data` in SwiftData, decoded on demand via computed properties. Rationale:
 - JSONL structure may change across Claude Code versions
 - Surgery Mode requires faithful editing and restoration of original data
 - In-memory caching mitigates repeated decoding cost
@@ -233,6 +252,16 @@ Messages store the original JSON as `Data` in SQLite, decoded on demand via comp
 ### Session Merging
 
 Sessions with the same slug but different sessionIds are merged into one. Claude Code's plan mode and subagents generate separate sessionIds. Tracked via `additionalSessionIds`.
+
+### Timeline Rendering Strategy
+
+The timeline is rendered in a single `WKWebView` instead of a SwiftUI row-by-row list.
+
+Rationale:
+- More stable scrolling for very long conversations
+- Better handling for large Markdown/code content
+- Clear render boundary via value snapshots (`TimelineRenderSnapshot`)
+- Progressive enhancement fallback (plain text first, then markdown/highlight)
 
 ### Token Estimation
 

@@ -11,11 +11,12 @@ Monitors JSONL files under `~/.claude/projects/` and displays conversation timel
 
 ## Features
 
-- **Session Viewer** — Timeline display of thinking / tool use / diffs with syntax highlighting
+- **Session Viewer** — WKWebView timeline with markdown rendering, syntax highlighting, and per-message copy actions
 - **Real-time Sync** — FSEvents file monitoring with incremental JSONL parsing
 - **Multi-pane Layout** — Up to 12 panes for simultaneous session monitoring
 - **Surgery Mode** — Directly edit JSONL to optimize context tokens (bulk delete, rollback, summary editing)
 - **Context Panel** — View Claude's understanding, loaded/edited files at a glance
+- **Long Timeline Optimization** — Windowed rendering + near-top auto-load older messages
 
 ## Requirements
 
@@ -42,9 +43,10 @@ Build & Run with `Cmd + R` in Xcode.
 
 | Category | Technology |
 |----------|-----------|
-| UI | SwiftUI |
-| Database | [SQLite.swift](https://github.com/nicklama/SQLite.swift) |
+| UI | SwiftUI + WKWebView (Timeline) |
+| Persistence | SwiftData |
 | File Watching | FSEvents |
+| Web Rendering | marked.js + highlight.js (bundled) |
 | Build | XcodeGen (`project.yml`) |
 
 ## Architecture
@@ -54,9 +56,11 @@ Data Source: ~/.claude/projects/**/*.jsonl
     ↓ FSEvents
 FileWatcherService → SyncService → JSONLParser (incremental)
     ↓
-StorageManager (SQLite.swift)
+SwiftData ModelContext
     ↓
-SwiftUI Views (ContentView / LayoutView)
+SessionMessagesView (snapshot builder)
+    ↓
+TimelineHostView (single WKWebView, windowed rendering)
 ```
 
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.
