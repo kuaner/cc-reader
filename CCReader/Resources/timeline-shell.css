@@ -130,47 +130,5 @@ body {
 .markdown img { max-width: 100%; height: auto; }
 .bubble.user .markdown :not(pre) > code, .bubble.user .markdown pre, .bubble.assistant-card .card-section .markdown pre { background: rgba(255,255,255,0.16); }
 .bubble.user .summary-title, .bubble.user .markdown blockquote { color: rgba(255,255,255,0.82); }
-.bubble.user .markdown pre,
-.bubble.user .markdown pre code,
-.bubble.user .markdown pre code.hljs {
-  color: rgba(255,255,255,0.92);
-}
-/* If markdown contains raw HTML blocks with light backgrounds, don't inherit user-bubble white text. */
-.bubble.user .markdown [style*="background:#f7f4ef"],
-.bubble.user .markdown [style*="background: #f7f4ef"],
-.bubble.user .markdown [style*="background:#f5f0e6"],
-.bubble.user .markdown [style*="background: #f5f0e6"],
-.bubble.user .markdown [style*="background:#fff"],
-.bubble.user .markdown [style*="background: #fff"],
-.bubble.user .markdown [style*="background:#fff8e1"],
-.bubble.user .markdown [style*="background: #fff8e1"],
-.bubble.user .markdown [style*="background:#fbe9e7"],
-.bubble.user .markdown [style*="background: #fbe9e7"],
-.bubble.user .markdown [style*="background:#e8f5e9"],
-.bubble.user .markdown [style*="background: #e8f5e9"],
-.bubble.user .markdown [style*="background:#e8eaf6"],
-.bubble.user .markdown [style*="background: #e8eaf6"],
-.bubble.user .markdown [style*="background:rgba(255,255,255"],
-.bubble.user .markdown [style*="background: rgba(255,255,255"] {
-  color: #1d1d1f !important;
-}
-.bubble.user .markdown [style*="background:#f7f4ef"] *,
-.bubble.user .markdown [style*="background: #f7f4ef"] *,
-.bubble.user .markdown [style*="background:#f5f0e6"] *,
-.bubble.user .markdown [style*="background: #f5f0e6"] *,
-.bubble.user .markdown [style*="background:#fff"] *,
-.bubble.user .markdown [style*="background: #fff"] *,
-.bubble.user .markdown [style*="background:#fff8e1"] *,
-.bubble.user .markdown [style*="background: #fff8e1"] *,
-.bubble.user .markdown [style*="background:#fbe9e7"] *,
-.bubble.user .markdown [style*="background: #fbe9e7"] *,
-.bubble.user .markdown [style*="background:#e8f5e9"] *,
-.bubble.user .markdown [style*="background: #e8f5e9"] *,
-.bubble.user .markdown [style*="background:#e8eaf6"] *,
-.bubble.user .markdown [style*="background: #e8eaf6"] *,
-.bubble.user .markdown [style*="background:rgba(255,255,255"] *,
-.bubble.user .markdown [style*="background: rgba(255,255,255"] * {
-  color: inherit !important;
-}
 .bubble.assistant-card .card-section .markdown :not(pre) > code { background: var(--code-bg); }
 

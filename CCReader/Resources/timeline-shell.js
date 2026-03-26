@@ -14,18 +14,28 @@ function renderMarkdownIn(root) {
       if (!window.__ccreader_marked_configured) {
         window.__ccreader_marked_configured = true;
         try {
+          function escapeHtmlText(s) {
+            return String(s || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
+          }
+
           marked.use({
             renderer: {
+              // Disable raw HTML in markdown: render HTML blocks as plain text.
+              html: function(html) {
+                return escapeHtmlText(html);
+              },
               image: function(href, title, text) {
                 var url = (href || '').trim();
-                var label = (text || url || 'image').trim();
-                var isWebp = /\.webp(\?|#|$)/i.test(url);
-                if (isWebp) {
-                  var safeUrl = (url || '').replace(/"/g, '&quot;');
-                  return '<a href="' + safeUrl + '" target="_blank" rel="noreferrer noopener">[image: ' + label + ']</a>';
-                }
-                // default behavior: emit an <img>; attributes tuned post-parse below
-                return false;
+                // Timeline rendering: treat markdown images as links to avoid WKWebView
+                // decoding issues (e.g. WebP) and reduce layout shifts.
+                var safeUrl = escapeHtmlText(url);
+                var safeLabel = safeUrl || 'image';
+                return '<a href="' + safeUrl + '" target="_blank" rel="noreferrer noopener">[image: ' + safeLabel + ']</a>';
               }
             }
           });
@@ -35,13 +45,6 @@ function renderMarkdownIn(root) {
       }
 
       node.innerHTML = marked.parse(decodeMarkdownBase64(source));
-
-      // Lazy-load images to reduce late layout shifts.
-      node.querySelectorAll('img').forEach(function(img) {
-        if (!img) { return; }
-        if (!img.getAttribute('loading')) { img.setAttribute('loading', 'lazy'); }
-        img.setAttribute('decoding', 'async');
-      });
       node.dataset.mdRendered = '1';
     } catch (e) {
       console.error('markdown render failed', e);
