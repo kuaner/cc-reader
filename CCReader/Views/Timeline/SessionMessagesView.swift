@@ -731,10 +731,6 @@ struct ContextItemView: View {
                     .buttonStyle(.plain)
                     .help(L("file.preview.help"))
                 }
-
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
 
             if isExpanded {
@@ -763,6 +759,7 @@ struct FilePreviewSheet: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showRendered = false
+    @State private var image: NSImage?
 
     private var fileName: String {
         (filePath as NSString).lastPathComponent
@@ -771,6 +768,11 @@ struct FilePreviewSheet: View {
     private var isMarkdown: Bool {
         let ext = (filePath as NSString).pathExtension.lowercased()
         return ext == "md" || ext == "markdown"
+    }
+
+    private var isImageFile: Bool {
+        let ext = (filePath as NSString).pathExtension.lowercased()
+        return ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "heic", "heif"].contains(ext)
     }
 
     var body: some View {
@@ -828,6 +830,17 @@ struct FilePreviewSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+            } else if let loadedImage = image {
+                GeometryReader { _ in
+                    ZStack {
+                        Color.clear
+                        Image(nsImage: loadedImage)
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .padding()
+                    }
+                }
             } else if showRendered && isMarkdown {
                 MarkdownRenderView(markdown: content)
             } else {
@@ -849,10 +862,21 @@ struct FilePreviewSheet: View {
 
     private func loadFile() async {
         isLoading = true
+        errorMessage = nil
+        content = ""
+        image = nil
         defer { isLoading = false }
 
         let url = URL(fileURLWithPath: filePath)
         do {
+            if isImageFile {
+                if let nsImage = NSImage(contentsOf: url) {
+                    image = nsImage
+                } else {
+                    errorMessage = L("error.file.notSupported")
+                }
+                return
+            }
             content = try String(contentsOf: url, encoding: .utf8)
             if isMarkdown { showRendered = true }
         } catch {
