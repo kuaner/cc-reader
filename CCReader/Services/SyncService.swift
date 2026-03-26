@@ -95,12 +95,19 @@ actor SyncService {
         guard let sessionId = JSONLParser.sessionId(from: fileURL) else { return }
         let session = getOrCreateSession(sessionId: sessionId, in: project, from: rawMessages.first)
 
-        // Collect existing UUIDs once to avoid N+1 fetches.
-        let existingUuids = Set(session.messages.map { $0.uuid })
+        // Collect existing messages once to avoid N+1 fetches.
+        var existingByUuid: [String: Message] = [:]
+        existingByUuid.reserveCapacity(session.messages.count)
+        for message in session.messages {
+            existingByUuid[message.uuid] = message
+        }
 
-        // Add new messages in a batch.
+        // Add new messages or update existing ones (same uuid, streaming updates).
         for raw in rawMessages {
-            if existingUuids.contains(raw.uuid) { continue }
+            if let existing = existingByUuid[raw.uuid] {
+                updateMessageIfNeeded(existing, from: raw)
+                continue
+            }
             addMessageWithoutCheck(raw: raw, to: session)
         }
 
@@ -248,6 +255,44 @@ actor SyncService {
             }
         } else if let lastUserAt = session.lastUserMessageAt, timestamp > lastUserAt {
             session.cachedUnacknowledgedCount += 1
+        }
+    }
+
+    /// Update an existing message row when a newer line reuses the same UUID.
+    /// This is common for streaming assistant output/tool status updates.
+    private func updateMessageIfNeeded(_ message: Message, from raw: RawMessageData) {
+        guard let messageType = resolveMessageType(from: raw) else { return }
+
+        let timestamp = parseTimestamp(raw.timestamp) ?? message.timestamp
+        let rawJson: Data
+        if let original = raw.originalLineData {
+            rawJson = original
+        } else if let encoded = try? Self.sharedEncoder.encode(raw) {
+            rawJson = encoded
+        } else {
+            return
+        }
+
+        var changed = false
+        if message.type != messageType {
+            message.type = messageType
+            changed = true
+        }
+        if message.timestamp != timestamp {
+            message.timestamp = timestamp
+            changed = true
+        }
+        if message.parentUuid != raw.parentUuid {
+            message.parentUuid = raw.parentUuid
+            changed = true
+        }
+        if message.rawJson != rawJson {
+            message.rawJson = rawJson
+            changed = true
+        }
+
+        if changed {
+            message.invalidateCache()
         }
     }
 

@@ -70,8 +70,6 @@
 "timeline.thinking.label" = "Thinking";
 "timeline.legend.user" = "ユーザー";
 "timeline.legend.assistant" = "返信";
-"timeline.legend.thinking" = "思考";
-"timeline.legend.tool" = "ツール";
 "timeline.legend.summary" = "要約";
 "timeline.loadOlder" = "さらに古いメッセージを読み込む";
 "timeline.thinking.seconds" = "%d秒";

@@ -9,6 +9,9 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
     let content: String?
     let thinking: String?
     let model: String?
+    let role: String?
+    let entryType: String?
+    let blockTypes: [String]
     let toolUses: [ToolUseInfo]
     let toolResults: [ToolResultData]?
     let rawJsonString: String
@@ -26,6 +29,9 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
         self.content = message.content
         self.thinking = message.thinking
         self.model = message.model
+        self.role = message.role
+        self.entryType = message.entryType
+        self.blockTypes = message.blockTypes
         self.toolUses = message.toolUses
         self.toolResults = message.toolResults
         // Avoid expensive JSON parsing/pretty-printing on the main thread during session switches.
@@ -41,6 +47,9 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
         lhs.content == rhs.content &&
         lhs.thinking == rhs.thinking &&
         lhs.model == rhs.model &&
+        lhs.role == rhs.role &&
+        lhs.entryType == rhs.entryType &&
+        lhs.blockTypes == rhs.blockTypes &&
         lhs.toolUses.map(\.id) == rhs.toolUses.map(\.id) &&
         lhs.toolResults?.map(\.tool_use_id) == rhs.toolResults?.map(\.tool_use_id) &&
         lhs.toolResults?.map(\.content) == rhs.toolResults?.map(\.content) &&

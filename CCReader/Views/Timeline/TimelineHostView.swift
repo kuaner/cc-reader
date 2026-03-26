@@ -546,8 +546,6 @@ struct TimelineWebLabels {
     let copied: String
     let legendUser: String
     let legendAssistant: String
-    let legendThinking: String
-    let legendTool: String
     let legendSummary: String
 
     static func localized() -> TimelineWebLabels {
@@ -563,8 +561,6 @@ struct TimelineWebLabels {
             copied: L("timeline.message.copied"),
             legendUser: L("timeline.legend.user"),
             legendAssistant: L("timeline.legend.assistant"),
-            legendThinking: L("timeline.legend.thinking"),
-            legendTool: L("timeline.legend.tool"),
             legendSummary: L("timeline.legend.summary")
         )
     }

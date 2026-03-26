@@ -70,8 +70,6 @@
 "timeline.thinking.label" = "Thinking";
 "timeline.legend.user" = "User";
 "timeline.legend.assistant" = "Reply";
-"timeline.legend.thinking" = "Thinking";
-"timeline.legend.tool" = "Tool";
 "timeline.legend.summary" = "Summary";
 "timeline.loadOlder" = "Load older messages";
 "timeline.thinking.seconds" = "%d s";

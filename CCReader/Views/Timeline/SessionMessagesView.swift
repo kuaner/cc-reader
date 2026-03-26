@@ -61,6 +61,9 @@ struct SessionMessagesView: View {
         .onChange(of: messages.count) { _, _ in
             rebuildDerivedData()
         }
+        .onChange(of: messageFingerprints) { _, _ in
+            rebuildDerivedData()
+        }
     }
 
     // MARK: - Derived Data
@@ -70,6 +73,10 @@ struct SessionMessagesView: View {
     @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
     @State private var toolUseOwnerMap: [String: String] = [:]
     @State private var displayDataCache: [String: TimelineMessageDisplayData] = [:]
+
+    private var messageFingerprints: [String] {
+        messages.map { "\($0.uuid):\($0.rawJson.hashValue)" }
+    }
 
     private func cachedDisplayData(for message: Message, cache: inout [String: TimelineMessageDisplayData]) -> TimelineMessageDisplayData {
         if let cached = cache[message.uuid], cached.rawFingerprint == message.rawJson.hashValue {

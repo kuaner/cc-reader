@@ -21,6 +21,9 @@ public class Message {
     @Transient private var _content: String?
     @Transient private var _thinking: String?
     @Transient private var _model: String?
+    @Transient private var _role: String?
+    @Transient private var _entryType: String?
+    @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
     @Transient private var _patchMap: [String: [StructuredPatchHunk]]?
@@ -28,6 +31,9 @@ public class Message {
     public var content: String? { ensureDecoded(); return _content }
     public var thinking: String? { ensureDecoded(); return _thinking }
     public var model: String? { ensureDecoded(); return _model }
+    public var role: String? { ensureDecoded(); return _role }
+    public var entryType: String? { ensureDecoded(); return _entryType }
+    public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
     public var toolUseResultsWithPatch: [String: [StructuredPatchHunk]]? { ensureDecoded(); return _patchMap }
@@ -41,21 +47,36 @@ public class Message {
               let message = raw.message else { return }
 
         _model = message.model
+        _role = message.role
+        _entryType = message.type
 
         if let str = message.contentString {
             let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
             _content = (trimmed.isEmpty || trimmed == "[]" || trimmed == "\"\"") ? nil : str
         } else if let blocks = message.content {
+            var seenBlockTypes = Set<String>()
+            var orderedBlockTypes: [String] = []
+            for block in blocks {
+                if seenBlockTypes.insert(block.type).inserted {
+                    orderedBlockTypes.append(block.type)
+                }
+            }
+            _blockTypes = orderedBlockTypes
+            let isAssistantRole = message.role.lowercased() == "assistant"
             let textSegments = blocks.compactMap { block -> String? in
+                // Non-user-facing blocks should never become assistant message body text.
+                // For user role, keep `tool_result` text so command outputs/files remain visible.
+                if block.type == "tool_use" { return nil }
+                if block.type == "thinking" { return nil }
+                if isAssistantRole && block.type == "tool_result" {
+                    return nil
+                }
                 // Standard text block.
                 if block.type == "text", let text = block.text, !text.isEmpty {
                     return text
                 }
                 // Fallback for future text-like block variants.
-                if block.type != "thinking",
-                   block.type != "tool_use",
-                   block.type != "tool_result",
-                   let text = block.text,
+                if let text = block.text,
                    !text.isEmpty {
                     return text
                 }
@@ -76,20 +97,26 @@ public class Message {
                 var command: String?
                 var oldString: String?
                 var newString: String?
+                var prompt: String?
                 var inputSummary: String?
                 if let input = block.input?.value as? [String: Any] {
                     filePath = input["file_path"] as? String
                     command = input["command"] as? String
                     oldString = input["old_string"] as? String
                     newString = input["new_string"] as? String
-                    if filePath == nil && command == nil {
+                    prompt = input["prompt"] as? String
+                    if name == "Agent" || name == "Task" || name == "Subagent" {
+                        inputSummary = (input["prompt"] as? String)
+                            ?? (input["description"] as? String)
+                    } else {
                         inputSummary = (input["description"] as? String)
                             ?? (input["prompt"] as? String)
-                            ?? (input["query"] as? String)
-                            ?? (input["content"] as? String)
-                            ?? (input["text"] as? String)
-                            ?? (input["pattern"] as? String)
                     }
+                    inputSummary = inputSummary
+                        ?? (input["query"] as? String)
+                        ?? (input["content"] as? String)
+                        ?? (input["text"] as? String)
+                        ?? (input["pattern"] as? String)
                 }
                 let rawInput: String? = {
                     guard let input = block.input?.value as? [String: Any] else { return nil }
@@ -97,7 +124,7 @@ public class Message {
                           let str = String(data: data, encoding: .utf8) else { return nil }
                     return str
                 }()
-                return ToolUseInfo(id: block.id ?? "", name: name, filePath: filePath, command: command, oldString: oldString, newString: newString, inputSummary: inputSummary, rawInput: rawInput)
+                return ToolUseInfo(id: block.id ?? "", name: name, filePath: filePath, command: command, oldString: oldString, newString: newString, prompt: prompt, inputSummary: inputSummary, rawInput: rawInput)
             }
 
             // toolResults from user messages.
@@ -140,7 +167,7 @@ public class Message {
 
     func invalidateCache() {
         _decoded = false
-        _content = nil; _thinking = nil; _model = nil
+        _content = nil; _thinking = nil; _model = nil; _role = nil; _entryType = nil; _blockTypes = []
         _toolUses = []; _toolResults = nil; _patchMap = nil
     }
 
@@ -222,6 +249,7 @@ public struct RawMessageData: Codable {
 }
 
 public struct RawMessageContent: Codable {
+    public var type: String?
     public var role: String
     public var content: [ContentBlock]?
     public var contentString: String?
@@ -229,6 +257,7 @@ public struct RawMessageContent: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
         role = try container.decode(String.self, forKey: .role)
         model = try container.decodeIfPresent(String.self, forKey: .model)
 
@@ -243,11 +272,12 @@ public struct RawMessageContent: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case role, content, model
+        case type, role, content, model
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(type, forKey: .type)
         try container.encode(role, forKey: .role)
         try container.encodeIfPresent(model, forKey: .model)
         if let stringContent = contentString {
@@ -299,6 +329,7 @@ public struct ToolUseInfo: Identifiable {
     public var command: String?
     public var oldString: String?
     public var newString: String?
+    public var prompt: String?
     public var inputSummary: String?
     public var rawInput: String?
 }

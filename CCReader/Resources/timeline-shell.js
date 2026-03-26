@@ -96,9 +96,15 @@ function ccreaderEncodeBase64Utf8(s) {
   return window.btoa(unescape(encodeURIComponent(String(s || ''))));
 }
 
-function ccreaderMessageBodyHTML(text) {
+function ccreaderMessageBodyHTML(text, options) {
+  options = options || {};
+  var preserveLineBreaks = options.preserveLineBreaks === true;
+  var renderMarkdown = options.renderMarkdown !== false;
   var source = String(text || '');
   if (!source) { return ''; }
+  if (preserveLineBreaks || !renderMarkdown) {
+    return '<div class="plain-text preserve-lines">' + ccreaderEscapeHTML(source) + '</div>';
+  }
   var fallback = ccreaderEscapeHTML(source).replace(/\n/g, '<br>');
   var encoded = ccreaderEncodeBase64Utf8(source);
   return '<div class="markdown" data-markdown-base64="' + encoded + '"><div class="plain-text">' + fallback + '</div></div>';
@@ -112,29 +118,72 @@ function ccreaderMessageRawDataButtonHTML(payload) {
   return '<button type="button" class="message-copy-button" data-message-copy-base64="' + encoded + '" data-copy-label="' + rawLabel + '">' + rawLabel + '</button>';
 }
 
+function ccreaderTypeTagsHTML(payload, fallbackLabel, kindClass) {
+  var tags = Array.isArray(payload.metaTags) ? payload.metaTags : [];
+  if (tags.length === 0) {
+    var fallback = ccreaderEscapeHTML(fallbackLabel || 'Assistant');
+    var klass = kindClass ? ' ' + kindClass : '';
+    return '<span class="type-tag' + klass + '">' + fallback + '</span>';
+  }
+  var resolvedClass = kindClass ? ' ' + kindClass : '';
+  return tags.map(function (tag) {
+    var token = String(tag || '').toLowerCase();
+    var semanticClass = '';
+    if (!payload.isUser && token === 'tool_use') {
+      semanticClass = ' tool-use-tag';
+    } else if (payload.isUser && token === 'tool_result') {
+      semanticClass = ' tool-result-tag';
+    }
+    return '<span class="type-tag' + resolvedClass + semanticClass + '">' + ccreaderEscapeHTML(tag) + '</span>';
+  }).join('');
+}
+
+function ccreaderLooksLikeMarkdown(text) {
+  var source = String(text || '');
+  if (!source) { return false; }
+  // Common markdown markers: fenced code, headings, list items, links/images, tables, blockquotes.
+  return /```|^\s{0,3}#{1,6}\s|^\s*[-*+]\s|^\s*\d+\.\s|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|^\s*>\s|^\s*\|.+\|/m.test(source);
+}
+
 function ccreaderRenderMessageFromPayload(payload) {
   var domId = ccreaderEscapeHTML(payload.domId || '');
   var timestamp = ccreaderEscapeHTML(payload.timeLabel || '');
   var copyButton = ccreaderMessageRawDataButtonHTML(payload);
 
   if (payload.isUser) {
+    var userTags = Array.isArray(payload.metaTags) ? payload.metaTags : [];
+    var hasToolResultTag = userTags.some(function (tag) {
+      return String(tag || '').toLowerCase() === 'tool_result';
+    });
+    var toolResultShouldRenderMarkdown = hasToolResultTag && ccreaderLooksLikeMarkdown(payload.content || '');
+    var userBody = hasToolResultTag
+      ? ccreaderMessageBodyHTML(payload.content || '', {
+          preserveLineBreaks: !toolResultShouldRenderMarkdown,
+          renderMarkdown: toolResultShouldRenderMarkdown
+        })
+      : ccreaderMessageBodyHTML(payload.content || '');
+
     if (payload.isSummary) {
       var summaryTag = '<span class="type-tag summary-tag">' + ccreaderEscapeHTML(payload.legendSummary || 'Summary') + '</span>';
       var summaryFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + summaryTag + '<span class="spacer"></span>' + copyButton + '</div>';
-      var summaryBubble = '<div class="bubble summary"><div class="summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Summary') + '</div>' + ccreaderMessageBodyHTML(payload.content || '') + summaryFooter + '</div>';
+      var summaryBubble = '<div class="bubble summary"><div class="summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Summary') + '</div>' + userBody + summaryFooter + '</div>';
       return '<div class="row user" id="' + domId + '"><div class="stack">' + summaryBubble + '</div></div>';
     }
 
-    var userTag = '<span class="type-tag user-tag">' + ccreaderEscapeHTML(payload.legendUser || 'User') + '</span>';
-    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTag + '<span class="spacer"></span>' + copyButton + '</div>';
-    var userBubble = '<div class="bubble user">' + ccreaderMessageBodyHTML(payload.content || '') + userFooter + '</div>';
+    var userTagsHTML = ccreaderTypeTagsHTML(payload, payload.legendUser || 'User', 'user-tag');
+    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + '<span class="spacer"></span>' + copyButton + '</div>';
+    var userBubble = '<div class="bubble user">' + userBody + userFooter + '</div>';
     return '<div class="row user" id="' + domId + '"><div class="stack">' + userBubble + '</div></div>';
   }
 
   var sections = [];
+  var isAgentDispatch = payload.bubbleKind === 'agent_dispatch';
+  var isToolOnly = payload.renderMode === 'tool_only';
+  var useFlatToolBody = isAgentDispatch || isToolOnly;
   var assistantTitle = ccreaderEscapeHTML(payload.assistantLabel || 'Assistant');
+  var specialTag = (!isAgentDispatch && payload.specialTag) ? '<span class="pill special">' + ccreaderEscapeHTML(payload.specialTag) + '</span>' : '';
   var model = payload.modelTitle ? '<span class="pill">' + ccreaderEscapeHTML(payload.modelTitle) + '</span>' : '';
-  sections.push('<div class="assistant-header"><span class="assistant-title">' + assistantTitle + '</span>' + model + '</div>');
+  sections.push('<div class="assistant-header"><span class="assistant-title">' + assistantTitle + '</span>' + specialTag + model + '</div>');
 
   if (payload.thinking) {
     sections.push('<div class="card-section thinking"><div class="section-title">' + ccreaderEscapeHTML(payload.thinkingTitle || 'Thinking') + '</div>' + ccreaderMessageBodyHTML(payload.thinking) + '</div>');
@@ -144,19 +193,36 @@ function ccreaderRenderMessageFromPayload(payload) {
   if (tools.length > 0) {
     var toolBody = tools.map(function (tool) {
       var title = ccreaderEscapeHTML(tool.title || '');
-      var body = tool.body ? '<pre class="plain-pre">' + ccreaderEscapeHTML(tool.body) + '</pre>' : '';
+      var body = '';
+      var renderStyle = String(tool.renderStyle || '');
+      if (tool.body) {
+        if (renderStyle === 'markdown') {
+          body = ccreaderMessageBodyHTML(tool.body);
+        } else {
+          body = '<pre class="plain-pre">' + ccreaderEscapeHTML(tool.body) + '</pre>';
+        }
+      }
       return '<div><div class="section-title">' + title + '</div>' + body + '</div>';
     }).join('');
-    sections.push('<div class="card-section tool"><div class="section-title">' + ccreaderEscapeHTML(payload.contextLabel || 'Context') + '</div>' + toolBody + '</div>');
+    if (useFlatToolBody) {
+      sections.push('<div class="card-section tool-flat-body">' + toolBody + '</div>');
+    } else {
+      sections.push('<div class="card-section tool"><div class="section-title">' + ccreaderEscapeHTML(payload.contextLabel || 'Context') + '</div>' + toolBody + '</div>');
+    }
   }
 
   if (payload.content) {
     sections.push('<div class="card-section">' + ccreaderMessageBodyHTML(payload.content) + '</div>');
   }
 
-  var assistantTag = '<span class="type-tag assistant-tag">' + ccreaderEscapeHTML(payload.legendAssistant || 'Assistant') + '</span>';
-  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTag + '<span class="spacer"></span>' + copyButton + '</div>');
-  return '<div class="row assistant" id="' + domId + '"><div class="stack"><div class="bubble assistant-card">' + sections.join('') + '</div></div></div>';
+  var assistantTagKindClass = isAgentDispatch ? 'dispatch-tag' : 'assistant-tag';
+  var assistantTags = ccreaderTypeTagsHTML(payload, payload.legendLabel || payload.legendAssistant || 'Assistant', assistantTagKindClass);
+  var bubbleKindClass = '';
+  if (payload.bubbleKind === 'agent_dispatch') {
+    bubbleKindClass = ' agent-dispatch';
+  }
+  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTags + '<span class="spacer"></span>' + copyButton + '</div>');
+  return '<div class="row assistant" id="' + domId + '"><div class="stack"><div class="bubble assistant-card' + bubbleKindClass + '">' + sections.join('') + '</div></div></div>';
 }
 
 function ccreaderEnhanceNode(node) {
