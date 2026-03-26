@@ -361,52 +361,18 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             let shouldRemoveOlderBar = newLower == 0
 
-            // Prepend and restore scroll position.
-            var js = """
+            // Prepend older messages while preserving scroll position.
+            let js = """
             (function() {
-                var timeline = document.querySelector('.timeline');
-                var scrollHeightBefore = document.documentElement.scrollHeight;
-                var scrollYBefore = window.scrollY;
-
-                var temp = document.createElement('div');
-                temp.innerHTML = '\(escaped)';
-                var frag = document.createDocumentFragment();
-                var inserted = [];
-                while (temp.firstElementChild) {
-                    var node = temp.firstElementChild;
-                    inserted.push(node);
-                    frag.appendChild(node);
+                if (window.ccreader && typeof window.ccreader.prependOlder === 'function') {
+                    window.ccreader.prependOlder('\(escaped)', { removeOlderBar: \(shouldRemoveOlderBar) });
                 }
-
-                var olderBar = document.getElementById('load-older-bar');
-                if (olderBar) {
-                    olderBar.after(frag);
-                } else {
-                    timeline.insertBefore(frag, timeline.firstChild);
-                }
-
-                // Only enhance newly inserted nodes to keep loadOlder cheap and consistent.
-                for (var i = 0; i < inserted.length; i++) {
-                    renderMarkdownIn(inserted[i]);
-                    highlightCodeBlocksIn(inserted[i]);
-                    enhanceCodeBlocks(inserted[i]);
-                    enhanceMessageCopyButtons(inserted[i]);
-                }
-
-                var scrollHeightAfter = document.documentElement.scrollHeight;
-                window.scrollTo(0, scrollYBefore + (scrollHeightAfter - scrollHeightBefore));
+            })();
             """
-
+            
             if shouldRemoveOlderBar {
-                js += """
-
-                var bar = document.getElementById('load-older-bar');
-                if (bar) { bar.remove(); }
-                """
                 hasOlderIndicator = false
             }
-
-            js += "\n})();"
 
             isFollowingBottom = false
 
