@@ -40,6 +40,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         private static let renderBatchSize = 200
         private static let followBottomThreshold: CGFloat = 96
+        private static let progressiveReplaceThreshold = 60
+        private static let progressiveInitialLatestCount = 36
+        private static let progressivePrependChunkSize = 32
 
         private weak var webView: WKWebView?
         private var currentSessionId = ""
@@ -60,6 +63,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         // Scroll state — reported by JavaScript
         private var isFollowingBottom = true
+
+        /// True after a suffix-only snapshot (`tailStartIndex > 0`); next full snapshot must replace DOM, not incremental-append.
+        private var hadTailOnlySnapshot = false
 
         func attach(to webView: WKWebView) {
             self.webView = webView
@@ -85,6 +91,11 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         func apply(sessionId: String, snapshot: TimelineRenderSnapshot) {
             let sessionChanged = currentSessionId != sessionId
+            // New SessionMessagesView starts with an empty bootstrap snapshot.
+            // If we switch DOM immediately, timeline flashes blank until query data arrives.
+            if sessionChanged && isBootstrapSnapshot(snapshot) {
+                return
+            }
             if sessionChanged {
                 resetState(for: sessionId)
             }
@@ -101,6 +112,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 break
             case .loaded:
                 if sessionChanged {
+                    replaceTimelineForSession()
+                    hadTailOnlySnapshot = snapshot.tailStartIndex > 0
+                } else if hadTailOnlySnapshot, snapshot.tailStartIndex == 0 {
+                    hadTailOnlySnapshot = false
                     replaceTimelineForSession()
                 } else {
                     incrementalUpdate()
@@ -241,7 +256,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let envelope: [String: Any] = [
                 "messages": messages.map { payloadBuilder.messagePayload(for: $0) },
                 "loadOlderBarHTML": loadOlderHTML,
-                "waitingHTML": waitingHTML
+                "waitingHTML": waitingHTML,
+                "initialLatestCount": Self.progressiveInitialLatestCount,
+                "prependChunkSize": Self.progressivePrependChunkSize
             ]
             guard let payloadJSON = toJSONString(envelope) else { return }
 
@@ -254,7 +271,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 isFollowingBottom = true
             }
 
-            evaluate(commands: [.replaceTimelineFromPayloads(json: payloadJSON)], errorPrefix: "[TimelineHostView] replaceTimelineFromPayloads JS error")
+            let replaceCommand: TimelineJSCommand = messages.count >= Self.progressiveReplaceThreshold
+                ? .replaceTimelineFromPayloadsProgressive(json: payloadJSON)
+                : .replaceTimelineFromPayloads(json: payloadJSON)
+            evaluate(commands: [replaceCommand], errorPrefix: "[TimelineHostView] replaceTimelineFromPayloads JS error")
         }
 
         // MARK: - Load older (prepend with scroll preservation)
@@ -359,19 +379,30 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             snapshot = TimelineRenderSnapshot()
             renderedMessageRange = 0..<0
             previousVisibleMessageCount = 0
-            // Keep the already-loaded shell when possible to avoid a visible blank.
-            // Only force a full reload when the page isn't ready yet.
-            shellState = (shellState == .loaded) ? .loaded : .notLoaded
+            // Preserve current shell lifecycle state:
+            // - loaded: keep incremental path (no blank reload)
+            // - loading: keep waiting for current navigation `didFinish`
+            // - notLoaded: still requires initial load
+            //
+            // Resetting `.loading` -> `.notLoaded` causes an extra empty-shell reload
+            // during fast session switches, which can present as a visible blank.
+            switch shellState {
+            case .loaded, .loading:
+                break
+            case .notLoaded:
+                shellState = .notLoaded
+            }
             isFollowingBottom = true
             renderedMessageUUIDs = []
             renderedMessageSet = []
             renderedFingerprints = [:]
             hasWaitingIndicator = false
             hasOlderIndicator = false
+            hadTailOnlySnapshot = false
         }
 
         private func updateRenderedRangeIfNeeded() {
-            let totalCount = snapshot.visibleMessages.count
+            let totalCount = snapshot.effectiveVisibleCount
             guard totalCount > 0 else {
                 renderedMessageRange = 0..<0
                 previousVisibleMessageCount = 0
@@ -406,10 +437,35 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         }
 
         private func currentRenderedMessages() -> [TimelineMessageDisplayData] {
-            let total = snapshot.visibleMessages
-            let lowerBound = min(max(renderedMessageRange.lowerBound, 0), total.count)
-            let upperBound = min(max(renderedMessageRange.upperBound, lowerBound), total.count)
-            return Array(total[lowerBound..<upperBound])
+            let rows = snapshot.visibleMessages
+            let totalCount = snapshot.effectiveVisibleCount
+            guard totalCount > 0, !rows.isEmpty else { return [] }
+
+            let gLow = min(max(renderedMessageRange.lowerBound, 0), totalCount)
+            let gHigh = min(max(renderedMessageRange.upperBound, gLow), totalCount)
+
+            if snapshot.tailStartIndex == 0 {
+                let l = min(max(gLow, 0), rows.count)
+                let u = min(max(gHigh, l), rows.count)
+                return Array(rows[l..<u])
+            }
+
+            let tailStart = snapshot.tailStartIndex
+            let overlapLow = max(gLow, tailStart)
+            let overlapHigh = min(gHigh, totalCount)
+            if overlapLow >= overlapHigh { return [] }
+
+            let localLow = overlapLow - tailStart
+            let localHigh = overlapHigh - tailStart
+            let l = min(max(localLow, 0), rows.count)
+            let u = min(max(localHigh, l), rows.count)
+            return Array(rows[l..<u])
+        }
+
+        private func isBootstrapSnapshot(_ snapshot: TimelineRenderSnapshot) -> Bool {
+            snapshot.generation == 0 &&
+            snapshot.visibleMessages.isEmpty &&
+            snapshot.prevTimestampMap.isEmpty
         }
 
         // MARK: - Shell HTML (loaded once per session)

@@ -4,6 +4,7 @@ enum TimelineJSCommand {
     case replaceMessagesFromPayload(json: String)
     case appendMessagesFromPayload(json: String)
     case replaceTimelineFromPayloads(json: String)
+    case replaceTimelineFromPayloadsProgressive(json: String)
     case prependOlderFromPayloads(json: String)
     case setWaitingIndicator(htmlOrEmpty: String)
     case setLoadOlderBar(htmlOrEmpty: String)
@@ -28,6 +29,15 @@ enum TimelineJSCommand {
             let escaped = escapeForJS(json)
             return """
             if (window.ccreader && typeof window.ccreader.replaceTimelineFromPayloads === 'function') {
+                window.ccreader.replaceTimelineFromPayloads(JSON.parse('\(escaped)'));
+            }
+            """
+        case .replaceTimelineFromPayloadsProgressive(let json):
+            let escaped = escapeForJS(json)
+            return """
+            if (window.ccreader && typeof window.ccreader.replaceTimelineFromPayloadsProgressive === 'function') {
+                window.ccreader.replaceTimelineFromPayloadsProgressive(JSON.parse('\(escaped)'));
+            } else if (window.ccreader && typeof window.ccreader.replaceTimelineFromPayloads === 'function') {
                 window.ccreader.replaceTimelineFromPayloads(JSON.parse('\(escaped)'));
             }
             """

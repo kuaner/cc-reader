@@ -307,6 +307,50 @@ ccreader.replaceTimelineFromPayloads = function (opts) {
   ccreader.replaceTimeline(html);
 };
 
+/**
+ * Progressive replace for session switch:
+ * 1) Render latest tail first (fast first paint)
+ * 2) Prepend remaining older rows chunk-by-chunk
+ */
+ccreader.replaceTimelineFromPayloadsProgressive = function (opts) {
+  opts = opts || {};
+  var payloads = Array.isArray(opts.messages) ? opts.messages : [];
+  if (payloads.length === 0) {
+    ccreader.replaceTimelineFromPayloads(opts);
+    return;
+  }
+
+  var initialLatestCount = Number(opts.initialLatestCount || 40);
+  var prependChunkSize = Number(opts.prependChunkSize || 40);
+  initialLatestCount = Math.max(1, initialLatestCount);
+  prependChunkSize = Math.max(1, prependChunkSize);
+
+  var tailStart = Math.max(0, payloads.length - initialLatestCount);
+  var latestTail = payloads.slice(tailStart);
+  ccreader.replaceTimelineFromPayloads({
+    messages: latestTail,
+    loadOlderBarHTML: opts.loadOlderBarHTML,
+    waitingHTML: opts.waitingHTML
+  });
+
+  var olderHead = payloads.slice(0, tailStart);
+  if (olderHead.length === 0) { return; }
+
+  var cursor = olderHead.length;
+  function prependStep() {
+    if (cursor <= 0) { return; }
+    var start = Math.max(0, cursor - prependChunkSize);
+    var chunk = olderHead.slice(start, cursor);
+    ccreader.prependOlderFromPayloads({ messages: chunk, removeOlderBar: false });
+    cursor = start;
+    if (cursor > 0) {
+      window.requestAnimationFrame(prependStep);
+    }
+  }
+
+  window.requestAnimationFrame(prependStep);
+};
+
 /** Prepend older message rows from payloads; same scroll + older-bar removal behavior as prependOlder. */
 ccreader.prependOlderFromPayloads = function (opts) {
   opts = opts || {};

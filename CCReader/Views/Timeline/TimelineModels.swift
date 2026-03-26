@@ -51,11 +51,20 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
 struct TimelineRenderSnapshot {
     var generation = 0
     var visibleMessages: [TimelineMessageDisplayData] = []
+    /// When non-zero, `visibleMessages` is only `visible[tailStartIndex..<totalVisibleCount)` (suffix-first paint).
+    var tailStartIndex = 0
+    /// Total logical message count for windowing; 0 means use `visibleMessages.count`.
+    var totalVisibleCount = 0
     var prevTimestampMap: [String: Date] = [:]
     var derivedPatchMap: [String: [StructuredPatchHunk]] = [:]
     var derivedContextMap: [String: ContextItem] = [:]
     var hasSummaryThinking = false
     var rowPatchesMap: [String: [String: [StructuredPatchHunk]]] = [:]
+
+    /// Logical row count for `TimelineHostView` windowing (full session length when suffix-only snapshot is used).
+    var effectiveVisibleCount: Int {
+        totalVisibleCount > 0 ? totalVisibleCount : visibleMessages.count
+    }
 }
 
 struct ContextPanelSnapshot: Equatable {

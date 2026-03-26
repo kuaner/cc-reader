@@ -93,21 +93,6 @@ struct SessionMessagesView: View {
 
         let visibleIds = Set(visible.map(\.uuid))
         var updatedDisplayCache = displayDataCache.filter { visibleIds.contains($0.key) }
-        var visibleRows: [TimelineMessageDisplayData] = []
-        visibleRows.reserveCapacity(visibleCount)
-
-        for (index, message) in visible.enumerated() {
-            if !needsFullRebuild,
-               index < startIndex,
-               let cached = updatedDisplayCache[message.uuid],
-               cached.rawFingerprint == message.rawJson.hashValue {
-                visibleRows.append(cached)
-                continue
-            }
-
-            visibleRows.append(cachedDisplayData(for: message, cache: &updatedDisplayCache))
-        }
-        displayDataCache = updatedDisplayCache
 
         var tsMap: [String: Date] = [:]
         tsMap.reserveCapacity(visibleCount)
@@ -121,20 +106,94 @@ struct SessionMessagesView: View {
             }
         }
 
-        // Phase 0: update the UI immediately with data that needs no extra decoding.
+        let firstPaintThreshold = 80
+        let firstPaintTailSize = 48
+
+        /// Build one row using the same cache rules as the legacy full loop.
+        func appendRow(at index: Int, into rows: inout [TimelineMessageDisplayData]) {
+            let message = visible[index]
+            if !needsFullRebuild,
+               index < startIndex,
+               let cached = updatedDisplayCache[message.uuid],
+               cached.rawFingerprint == message.rawJson.hashValue {
+                rows.append(cached)
+                return
+            }
+            rows.append(cachedDisplayData(for: message, cache: &updatedDisplayCache))
+        }
+
+        if visibleCount > firstPaintThreshold {
+            let tailStart = max(0, visibleCount - firstPaintTailSize)
+            var tailRows: [TimelineMessageDisplayData] = []
+            tailRows.reserveCapacity(visibleCount - tailStart)
+            for index in tailStart..<visibleCount {
+                appendRow(at: index, into: &tailRows)
+            }
+
+            var partial = timeline
+            partial.visibleMessages = tailRows
+            partial.prevTimestampMap = tsMap
+            partial.tailStartIndex = tailStart
+            partial.totalVisibleCount = visibleCount
+            partial.generation = gen
+            if needsFullRebuild {
+                partial.derivedPatchMap = [:]
+                partial.derivedContextMap = [:]
+                partial.rowPatchesMap = [:]
+                partial.hasSummaryThinking = false
+            }
+            timeline = partial
+            visibleMessageCount = visibleCount
+
+            Task { @MainActor in
+                guard gen == derivedDataGeneration else { return }
+
+                var headRows: [TimelineMessageDisplayData] = []
+                headRows.reserveCapacity(tailStart)
+                for index in 0..<tailStart {
+                    appendRow(at: index, into: &headRows)
+                }
+                let visibleRows = headRows + tailRows
+                displayDataCache = updatedDisplayCache
+
+                derivedDataGeneration += 1
+                let genFinal = derivedDataGeneration
+
+                await runPhase1Decode(
+                    gen: genFinal,
+                    visible: visible,
+                    visibleCount: visibleCount,
+                    startIndex: startIndex,
+                    needsFullRebuild: needsFullRebuild,
+                    tsMap: tsMap,
+                    visibleRows: visibleRows,
+                    updatedDisplayCache: &updatedDisplayCache
+                )
+            }
+            return
+        }
+
+        var visibleRows: [TimelineMessageDisplayData] = []
+        visibleRows.reserveCapacity(visibleCount)
+        for index in 0..<visibleCount {
+            appendRow(at: index, into: &visibleRows)
+        }
+        displayDataCache = updatedDisplayCache
+
         var immediateSnap = timeline
         immediateSnap.visibleMessages = visibleRows
         immediateSnap.prevTimestampMap = tsMap
+        immediateSnap.tailStartIndex = 0
+        immediateSnap.totalVisibleCount = 0
         immediateSnap.generation = gen
         timeline = immediateSnap
         visibleMessageCount = visibleCount
 
-        // Phase 1: decode only the delta asynchronously.
         guard startIndex <= visibleCount else { return }
         let deltaMessages = Array(visible[startIndex..<visibleCount])
 
         if deltaMessages.isEmpty {
-            publishContext(contextMap: timeline.derivedContextMap, latestThinking: contextPanel.latestThinking)
+            publishContextDeferred(contextMap: timeline.derivedContextMap, latestThinking: contextPanel.latestThinking)
             return
         }
 
@@ -147,84 +206,204 @@ struct SessionMessagesView: View {
         var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
 
         Task { @MainActor in
-            for (i, msg) in deltaMessages.enumerated() {
-                guard gen == derivedDataGeneration else { return }
-                msg.preload()
-
-                if msg.type == .assistant {
-                    let uses = msg.toolUses
-                    for toolUse in uses {
-                        toolUseMap[toolUse.id] = toolUse
-                        ownerMap[toolUse.id] = msg.uuid
-                        if let key = toolUse.filePath ?? toolUse.command {
-                            if contextMap[key] == nil {
-                                contextMap[key] = ContextItem(
-                                    id: key, toolName: toolUse.name,
-                                    filePath: toolUse.filePath, command: toolUse.command,
-                                    content: L("timeline.tool.running"), isError: false
-                                )
-                            }
-                        }
-                    }
-                    if !uses.isEmpty && !patchMap.isEmpty {
-                        var rowMap: [String: [StructuredPatchHunk]] = [:]
-                        for tu in uses {
-                            if let p = patchMap[tu.id] { rowMap[tu.id] = p }
-                        }
-                        if !rowMap.isEmpty { rowPatchesMap[msg.uuid] = rowMap }
-                    }
-                    if !hasSummaryThinking, let t = msg.thinking, !t.isEmpty {
-                        latestThinking = t
-                    }
-                } else {
-                    if let patches = msg.toolUseResultsWithPatch {
-                        for (id, hunks) in patches {
-                            patchMap[id] = hunks
-                            if let ownerUuid = ownerMap[id] {
-                                var existing = rowPatchesMap[ownerUuid] ?? [:]
-                                existing[id] = hunks
-                                rowPatchesMap[ownerUuid] = existing
-                            }
-                        }
-                    }
-                    if let c = msg.content, c.contains("This session is being continued") {
-                        latestThinking = c
-                        hasSummaryThinking = true
-                    }
-                    if let results = msg.toolResults {
-                        for result in results {
-                            guard let toolUseId = result.tool_use_id,
-                                  let toolUse = toolUseMap[toolUseId] else { continue }
-                            let content = result.content ?? ""
-                            let key = toolUse.filePath ?? toolUse.command ?? toolUseId
-                            contextMap[key] = ContextItem(
-                                id: key, toolName: toolUse.name,
-                                filePath: toolUse.filePath, command: toolUse.command,
-                                content: content.isEmpty ? L("timeline.tool.success") : content,
-                                isError: result.is_error ?? false
-                            )
-                        }
-                    }
-                }
-                if i.isMultiple(of: 15) { await Task.yield() }
-            }
+            await runPhase1DecodeLoop(
+                gen: gen,
+                deltaMessages: deltaMessages,
+                patchMap: &patchMap,
+                toolUseMap: &toolUseMap,
+                ownerMap: &ownerMap,
+                contextMap: &contextMap,
+                latestThinking: &latestThinking,
+                hasSummaryThinking: &hasSummaryThinking,
+                rowPatchesMap: &rowPatchesMap
+            )
 
             guard gen == derivedDataGeneration else { return }
+            derivedDataGeneration += 1
+            let genFinal = derivedDataGeneration
+
             lastProcessedMessageCount = visibleCount
             derivedToolUseMap = toolUseMap
             toolUseOwnerMap = ownerMap
             displayDataCache = updatedDisplayCache
 
             var snap = TimelineRenderSnapshot()
-            snap.generation = gen
+            snap.generation = genFinal
             snap.visibleMessages = visibleRows
             snap.prevTimestampMap = tsMap
+            snap.tailStartIndex = 0
+            snap.totalVisibleCount = 0
             snap.derivedPatchMap = patchMap
             snap.derivedContextMap = contextMap
             snap.hasSummaryThinking = hasSummaryThinking
             snap.rowPatchesMap = rowPatchesMap
             timeline = snap
             visibleMessageCount = visibleCount
+            publishContextDeferred(contextMap: contextMap, latestThinking: latestThinking)
+        }
+    }
+
+    /// Phase 1 for large sessions: full `visibleRows` + patch decode + single timeline write.
+    private func runPhase1Decode(
+        gen: Int,
+        visible: [Message],
+        visibleCount: Int,
+        startIndex: Int,
+        needsFullRebuild: Bool,
+        tsMap: [String: Date],
+        visibleRows: [TimelineMessageDisplayData],
+        updatedDisplayCache: inout [String: TimelineMessageDisplayData]
+    ) async {
+        guard startIndex <= visibleCount else { return }
+        let deltaMessages = Array(visible[startIndex..<visibleCount])
+
+        if deltaMessages.isEmpty {
+            var snap = TimelineRenderSnapshot()
+            snap.generation = gen
+            snap.visibleMessages = visibleRows
+            snap.prevTimestampMap = tsMap
+            snap.tailStartIndex = 0
+            snap.totalVisibleCount = 0
+            if needsFullRebuild {
+                snap.derivedPatchMap = [:]
+                snap.derivedContextMap = [:]
+                snap.hasSummaryThinking = false
+                snap.rowPatchesMap = [:]
+            } else {
+                snap.derivedPatchMap = timeline.derivedPatchMap
+                snap.derivedContextMap = timeline.derivedContextMap
+                snap.hasSummaryThinking = timeline.hasSummaryThinking
+                snap.rowPatchesMap = timeline.rowPatchesMap
+            }
+            timeline = snap
+            visibleMessageCount = visibleCount
+            lastProcessedMessageCount = visibleCount
+            displayDataCache = updatedDisplayCache
+            publishContextDeferred(
+                contextMap: snap.derivedContextMap,
+                latestThinking: needsFullRebuild ? nil : contextPanel.latestThinking
+            )
+            return
+        }
+
+        var patchMap = needsFullRebuild ? [String: [StructuredPatchHunk]]() : timeline.derivedPatchMap
+        var toolUseMap = needsFullRebuild ? [String: ToolUseInfo]() : derivedToolUseMap
+        var ownerMap = needsFullRebuild ? [String: String]() : toolUseOwnerMap
+        var contextMap = needsFullRebuild ? [String: ContextItem]() : timeline.derivedContextMap
+        var latestThinking: String? = needsFullRebuild ? nil : contextPanel.latestThinking
+        var hasSummaryThinking = needsFullRebuild ? false : timeline.hasSummaryThinking
+        var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
+
+        await runPhase1DecodeLoop(
+            gen: gen,
+            deltaMessages: deltaMessages,
+            patchMap: &patchMap,
+            toolUseMap: &toolUseMap,
+            ownerMap: &ownerMap,
+            contextMap: &contextMap,
+            latestThinking: &latestThinking,
+            hasSummaryThinking: &hasSummaryThinking,
+            rowPatchesMap: &rowPatchesMap
+        )
+
+        guard gen == derivedDataGeneration else { return }
+        lastProcessedMessageCount = visibleCount
+        derivedToolUseMap = toolUseMap
+        toolUseOwnerMap = ownerMap
+        displayDataCache = updatedDisplayCache
+
+        var snap = TimelineRenderSnapshot()
+        snap.generation = gen
+        snap.visibleMessages = visibleRows
+        snap.prevTimestampMap = tsMap
+        snap.tailStartIndex = 0
+        snap.totalVisibleCount = 0
+        snap.derivedPatchMap = patchMap
+        snap.derivedContextMap = contextMap
+        snap.hasSummaryThinking = hasSummaryThinking
+        snap.rowPatchesMap = rowPatchesMap
+        timeline = snap
+        visibleMessageCount = visibleCount
+        publishContextDeferred(contextMap: contextMap, latestThinking: latestThinking)
+    }
+
+    private func runPhase1DecodeLoop(
+        gen: Int,
+        deltaMessages: [Message],
+        patchMap: inout [String: [StructuredPatchHunk]],
+        toolUseMap: inout [String: ToolUseInfo],
+        ownerMap: inout [String: String],
+        contextMap: inout [String: ContextItem],
+        latestThinking: inout String?,
+        hasSummaryThinking: inout Bool,
+        rowPatchesMap: inout [String: [String: [StructuredPatchHunk]]]
+    ) async {
+        for (i, msg) in deltaMessages.enumerated() {
+            guard gen == derivedDataGeneration else { return }
+            msg.preload()
+
+            if msg.type == .assistant {
+                let uses = msg.toolUses
+                for toolUse in uses {
+                    toolUseMap[toolUse.id] = toolUse
+                    ownerMap[toolUse.id] = msg.uuid
+                    if let key = toolUse.filePath ?? toolUse.command {
+                        if contextMap[key] == nil {
+                            contextMap[key] = ContextItem(
+                                id: key, toolName: toolUse.name,
+                                filePath: toolUse.filePath, command: toolUse.command,
+                                content: L("timeline.tool.running"), isError: false
+                            )
+                        }
+                    }
+                }
+                if !uses.isEmpty && !patchMap.isEmpty {
+                    var rowMap: [String: [StructuredPatchHunk]] = [:]
+                    for tu in uses {
+                        if let p = patchMap[tu.id] { rowMap[tu.id] = p }
+                    }
+                    if !rowMap.isEmpty { rowPatchesMap[msg.uuid] = rowMap }
+                }
+                if !hasSummaryThinking, let t = msg.thinking, !t.isEmpty {
+                    latestThinking = t
+                }
+            } else {
+                if let patches = msg.toolUseResultsWithPatch {
+                    for (id, hunks) in patches {
+                        patchMap[id] = hunks
+                        if let ownerUuid = ownerMap[id] {
+                            var existing = rowPatchesMap[ownerUuid] ?? [:]
+                            existing[id] = hunks
+                            rowPatchesMap[ownerUuid] = existing
+                        }
+                    }
+                }
+                if let c = msg.content, c.contains("This session is being continued") {
+                    latestThinking = c
+                    hasSummaryThinking = true
+                }
+                if let results = msg.toolResults {
+                    for result in results {
+                        guard let toolUseId = result.tool_use_id,
+                              let toolUse = toolUseMap[toolUseId] else { continue }
+                        let content = result.content ?? ""
+                        let key = toolUse.filePath ?? toolUse.command ?? toolUseId
+                        contextMap[key] = ContextItem(
+                            id: key, toolName: toolUse.name,
+                            filePath: toolUse.filePath, command: toolUse.command,
+                            content: content.isEmpty ? L("timeline.tool.success") : content,
+                            isError: result.is_error ?? false
+                        )
+                    }
+                }
+            }
+            if i.isMultiple(of: 15) { await Task.yield() }
+        }
+    }
+
+    private func publishContextDeferred(contextMap: [String: ContextItem], latestThinking: String?) {
+        Task { @MainActor in
+            await Task.yield()
             publishContext(contextMap: contextMap, latestThinking: latestThinking)
         }
     }
