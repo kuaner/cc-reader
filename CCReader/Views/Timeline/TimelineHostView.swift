@@ -470,6 +470,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let highlightJS = HighlightJavaScriptLoader.script
             let codeBlockScript = WebRenderChrome.codeBlockEnhancementScript(copyLabel: labels.copy, copiedLabel: labels.copied)
             let messageCopyScript = WebRenderChrome.messageCopyEnhancementScript(copiedLabel: labels.copied)
+            let shellCSS = WebRenderResourceLoader.text(named: "timeline-shell", extension: "css")
+            let shellJS = WebRenderResourceLoader.text(named: "timeline-shell", extension: "js")
+                .replacingOccurrences(of: "__FOLLOW_BOTTOM_THRESHOLD__", with: "\(Int(Self.followBottomThreshold))")
 
             return """
             <!DOCTYPE html>
@@ -478,6 +481,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
               <meta charset="utf-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1" />
               <style>
+                \(shellCSS)
+                /* INLINE_LEGACY_CSS
                 :root {
                   color-scheme: light dark;
                   --text: #1d1d1f;
@@ -609,6 +614,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 .bubble.user .markdown :not(pre) > code, .bubble.user .markdown pre, .bubble.assistant-card .card-section .markdown pre { background: rgba(255,255,255,0.16); }
                 .bubble.user .summary-title, .bubble.user .markdown blockquote { color: rgba(255,255,255,0.82); }
                 .bubble.assistant-card .card-section .markdown :not(pre) > code { background: var(--code-bg); }
+                */
                 \(codeBlockStyles)
                 \(messageActionStyles)
                 \(highlightStyles)
@@ -622,6 +628,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 \(codeBlockScript)
                 \(messageCopyScript)
 
+                \(shellJS)
+
+                /* INLINE_LEGACY_SHELL_JS
                 function decodeMarkdownBase64(source) {
                     return decodeURIComponent(escape(window.atob(source)));
                 }
@@ -686,6 +695,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 enhanceCodeBlocks(document);
                 enhanceMessageCopyButtons(document);
                 window.scrollTo(0, document.body.scrollHeight);
+                */
               </script>
             </body>
             </html>

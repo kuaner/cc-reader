@@ -111,6 +111,12 @@ newNodes.forEach(function(node) {
 
 因此在 `escapeForJS()` 中显式转义 `U+2028/U+2029`，提升低频内容下的稳定性。
 
+### 5. makeShellHTML CSS/JS 提取到 Bundle 资源文件
+
+将 Timeline 的静态 Shell 样式与初始化脚本（`timeline-shell.css` / `timeline-shell.js`）从 `TimelineHostView.makeShellHTML` 的大段字符串中抽离到 Bundle 资源文件中，再由 Swift 运行时读取拼接。
+
+这样可显著降低 `TimelineHostView.swift` 的维护成本，并让后续对 Shell UI/行为的调整更安全。
+
 ## 更激进的优化方向（当前不需要）
 
 以下方案在当前 200 条 batch 的规模下完全不需要，仅供未来参考：

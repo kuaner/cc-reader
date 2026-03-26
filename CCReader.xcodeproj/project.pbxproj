@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		0966DBA654407F047A64F361 /* MarkdownRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E15C8F5E0E64CE2BB02F1F1A /* MarkdownRenderView.swift */; };
 		0B726677105029ED4E0034F5 /* marked.min.js in Resources */ = {isa = PBXBuildFile; fileRef = F10CFC3FEA49AE975CCF5ADC /* marked.min.js */; };
+		C3D4E5F60718293A4B5C6D7E /* timeline-shell.css in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* timeline-shell.css */; };
+		D4E5F60718293A4B5C6D7E8F /* timeline-shell.js in Resources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* timeline-shell.js */; };
 		0E78E0FDC521D999D7DD76B5 /* SessionMessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */; };
 		135532E7232F50B5DED750B6 /* TokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B4B5280E7F85051F7BB547 /* TokenEstimator.swift */; };
 		16E272CCDDCBC936DDA9105B /* FileWatcherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCDD199E047D6B9E4E621BA /* FileWatcherService.swift */; };
@@ -74,6 +76,8 @@
 		F10CFC3FEA49AE975CCF5ADC /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = marked.min.js; sourceTree = "<group>"; };
 		F5C6CD268D87770B6C7BEAF9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F9802583811E17FFB1C94BA4 /* highlight-dark.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "highlight-dark.css"; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* timeline-shell.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "timeline-shell.css"; sourceTree = "<group>"; };
+		B2C3D4E5F60718293A4B5C6D /* timeline-shell.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "timeline-shell.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -182,6 +186,8 @@
 				5CD1D89D9DE0A8C91741E2D9 /* highlight-light.css */,
 				92E3A2CC7D72BA6F7AAA7B32 /* highlight.min.js */,
 				F10CFC3FEA49AE975CCF5ADC /* marked.min.js */,
+				A1B2C3D4E5F60718293A4B5C /* timeline-shell.css */,
+				B2C3D4E5F60718293A4B5C6D /* timeline-shell.js */,
 				572CFF7069A89BBBB1115EC2 /* Localizable.strings */,
 			);
 			path = Resources;
@@ -255,6 +261,8 @@
 				292866129A9EFA58EE23D44C /* highlight-light.css in Resources */,
 				EF5AFA6F36B8B3A950806747 /* highlight.min.js in Resources */,
 				0B726677105029ED4E0034F5 /* marked.min.js in Resources */,
+				C3D4E5F60718293A4B5C6D7E /* timeline-shell.css in Resources */,
+				D4E5F60718293A4B5C6D7E8F /* timeline-shell.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
