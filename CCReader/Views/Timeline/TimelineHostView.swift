@@ -113,8 +113,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let labels = TimelineWebLabels.localized()
             let hasOlder = renderedMessageRange.lowerBound > 0
             let waiting = snapshot.visibleMessages.last?.type == .user
-
-            let messageHTML = messages.map { renderMessage($0, labels: labels) }.joined(separator: "\n")
+            let renderer = TimelineHTMLRenderer(prevTimestampMap: snapshot.prevTimestampMap, rowPatchesMap: snapshot.rowPatchesMap)
+            let messageHTML = messages.map { renderer.renderMessage($0, labels: labels) }.joined(separator: "\n")
             let loadOlderHTML = hasOlder ? "<div id=\"load-older-bar\" class=\"topbar\"><a class=\"pill\" onclick=\"window.webkit.messageHandlers.ccreader.postMessage({action:'loadOlder'})\">\(escapeHTML(labels.loadOlder))</a></div>" : ""
             let waitingHTML = waiting ? "<div id=\"waiting-indicator\" class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>" : ""
 
@@ -142,6 +142,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             guard let webView else { return }
             let labels = TimelineWebLabels.localized()
             let windowMessages = currentRenderedMessages()
+            let renderer = TimelineHTMLRenderer(prevTimestampMap: snapshot.prevTimestampMap, rowPatchesMap: snapshot.rowPatchesMap)
 
             // 1. Find new messages to append at the bottom.
             var newMessages: [TimelineMessageDisplayData] = []
@@ -176,9 +177,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             // Handle updated messages (replace in-place).
             for msg in updatedMessages {
-                let html = renderMessage(msg, labels: labels)
+                let html = renderer.renderMessage(msg, labels: labels)
                 let escaped = escapeForJS(html)
-                let domId = escapeForJS(messageDOMId(for: msg.uuid))
+                let domId = escapeForJS(TimelineHTMLRenderer.messageDOMId(for: msg.uuid))
                 js += """
                 (function() {
                     var existing = document.getElementById('\(domId)');
@@ -201,7 +202,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             // Handle new messages (append to timeline).
             if !newMessages.isEmpty {
-                let html = newMessages.map { renderMessage($0, labels: labels) }.joined(separator: "\n")
+                let html = newMessages.map { renderer.renderMessage($0, labels: labels) }.joined(separator: "\n")
                 let escaped = escapeForJS(html)
 
                 js += """
@@ -301,6 +302,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         private func loadOlderMessages() {
             guard renderedMessageRange.lowerBound > 0, let webView else { return }
             let labels = TimelineWebLabels.localized()
+            let renderer = TimelineHTMLRenderer(prevTimestampMap: snapshot.prevTimestampMap, rowPatchesMap: snapshot.rowPatchesMap)
 
             let oldLower = renderedMessageRange.lowerBound
             let newLower = max(0, oldLower - Self.renderBatchSize)
@@ -310,7 +312,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let olderMessages = Array(totalMessages[newLower..<oldLower])
             guard !olderMessages.isEmpty else { return }
 
-            let html = olderMessages.map { renderMessage($0, labels: labels) }.joined(separator: "\n")
+            let html = olderMessages.map { renderer.renderMessage($0, labels: labels) }.joined(separator: "\n")
             let escaped = escapeForJS(html)
 
             let shouldRemoveOlderBar = newLower == 0
@@ -880,7 +882,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
     }
 }
 
-private struct TimelineWebLabels {
+struct TimelineWebLabels {
     let summaryLabel: String
     let context: String
     let assistant: String

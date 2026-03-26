@@ -117,6 +117,12 @@ newNodes.forEach(function(node) {
 
 这样可显著降低 `TimelineHostView.swift` 的维护成本，并让后续对 Shell UI/行为的调整更安全。
 
+### 6. 拆分 TimelineHTMLRenderer（消息渲染逻辑独立）
+
+将消息 HTML 生成逻辑从 `TimelineHostView.Coordinator` 中抽离到 `TimelineHTMLRenderer`，让渲染规则与滚动/增量更新策略解耦。
+
+后续补充单元测试时，可以直接验证渲染输出与转义策略，降低回归风险。
+
 ## 更激进的优化方向（当前不需要）
 
 以下方案在当前 200 条 batch 的规模下完全不需要，仅供未来参考：
