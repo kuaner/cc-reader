@@ -25,6 +25,8 @@ let package = Package(
                 .process("Resources/highlight-light.css"),
                 .process("Resources/highlight.min.js"),
                 .process("Resources/marked.min.js"),
+                .process("Resources/timeline-shell.css"),
+                .process("Resources/timeline-shell.js"),
                 .process("Resources/Assets.xcassets"),
                 .process("Resources/en.lproj"),
                 .process("Resources/ja.lproj"),
