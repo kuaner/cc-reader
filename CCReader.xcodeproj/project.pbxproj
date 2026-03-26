@@ -27,6 +27,7 @@
 		673CAD5D15307B6EBB15B539 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF52D695A7233D2060A85CB /* Session.swift */; };
 		742824E2E219D04C567825AA /* WebRenderAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02309040AE8F13550DD331F5 /* WebRenderAssets.swift */; };
 		81D42952889C0944484E70A7 /* TimelineModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A35445FEDF37567C35285BA /* TimelineModels.swift */; };
+		83E818402A8BB8F46C79E52B /* TimelinePayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFFCD61419E71121C93B5AB /* TimelinePayloadBuilder.swift */; };
 		8C01BBA620ABEB08A8505D46 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5CF67A854F6F96C56FD350A /* Message.swift */; };
 		95889B561EB407527B3E0E16 /* WorkspaceLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49AE184C15F801F03452E748 /* WorkspaceLayout.swift */; };
 		A1999687B89F9EBDD05EE72A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5C6CD268D87770B6C7BEAF9 /* Assets.xcassets */; };
@@ -35,6 +36,7 @@
 		BA1A4D14FD20B5D7661A86A6 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AFEC18E2D24630701A08135 /* ProjectListView.swift */; };
 		C348956E8CB50BA2B12D0FDD /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 572CFF7069A89BBBB1115EC2 /* Localizable.strings */; };
 		D19FF04D36928346DFFD1310 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1BEC8F5E4D5F2E0B1F7794C /* Project.swift */; };
+		D1C19278A49EA3CDC936D00E /* TimelineJSCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5985F341E2F064585D3D61D /* TimelineJSCommand.swift */; };
 		E5986E7813690B31D581D3D2 /* TimelineHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA8A1AAA6346DA78009DD7B /* TimelineHostView.swift */; };
 		EF5AFA6F36B8B3A950806747 /* highlight.min.js in Resources */ = {isa = PBXBuildFile; fileRef = 92E3A2CC7D72BA6F7AAA7B32 /* highlight.min.js */; };
 		FBCC2E48A569BD7E53AF11E2 /* CCReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BE44074D7FEE630B2DDE2D0 /* CCReaderApp.swift */; };
@@ -64,6 +66,7 @@
 		95B4B5280E7F85051F7BB547 /* TokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenEstimator.swift; sourceTree = "<group>"; };
 		9AF52D695A7233D2060A85CB /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		A089AB1F16E6120BE5C2C502 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		A5985F341E2F064585D3D61D /* TimelineJSCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineJSCommand.swift; sourceTree = "<group>"; };
 		B5CF67A854F6F96C56FD350A /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		B8CB81705243D19FB001250A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BC01B30FA58E55B743817E8F /* JSONLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParser.swift; sourceTree = "<group>"; };
@@ -73,6 +76,7 @@
 		D1BEC8F5E4D5F2E0B1F7794C /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		D206CCDB2D51989E20345F47 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		DB6307442D0C034EA7EC4D0F /* IgnoredSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoredSessionManager.swift; sourceTree = "<group>"; };
+		DDFFCD61419E71121C93B5AB /* TimelinePayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelinePayloadBuilder.swift; sourceTree = "<group>"; };
 		E15C8F5E0E64CE2BB02F1F1A /* MarkdownRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderView.swift; sourceTree = "<group>"; };
 		EA444D0E6762DDEA7479FF25 /* timeline-shell.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "timeline-shell.css"; sourceTree = "<group>"; };
 		F10CFC3FEA49AE975CCF5ADC /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = marked.min.js; sourceTree = "<group>"; };
@@ -112,7 +116,9 @@
 				E15C8F5E0E64CE2BB02F1F1A /* MarkdownRenderView.swift */,
 				5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */,
 				2DA8A1AAA6346DA78009DD7B /* TimelineHostView.swift */,
+				A5985F341E2F064585D3D61D /* TimelineJSCommand.swift */,
 				1A35445FEDF37567C35285BA /* TimelineModels.swift */,
+				DDFFCD61419E71121C93B5AB /* TimelinePayloadBuilder.swift */,
 				02309040AE8F13550DD331F5 /* WebRenderAssets.swift */,
 			);
 			path = Timeline;
@@ -293,7 +299,9 @@
 				0E78E0FDC521D999D7DD76B5 /* SessionMessagesView.swift in Sources */,
 				B2A74C811ACDFEEDD7E784E3 /* SyncService.swift in Sources */,
 				E5986E7813690B31D581D3D2 /* TimelineHostView.swift in Sources */,
+				D1C19278A49EA3CDC936D00E /* TimelineJSCommand.swift in Sources */,
 				81D42952889C0944484E70A7 /* TimelineModels.swift in Sources */,
+				83E818402A8BB8F46C79E52B /* TimelinePayloadBuilder.swift in Sources */,
 				135532E7232F50B5DED750B6 /* TokenEstimator.swift in Sources */,
 				742824E2E219D04C567825AA /* WebRenderAssets.swift in Sources */,
 				95889B561EB407527B3E0E16 /* WorkspaceLayout.swift in Sources */,

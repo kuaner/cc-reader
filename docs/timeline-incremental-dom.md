@@ -1,146 +1,112 @@
 # Timeline 增量 DOM 渲染方案
 
-## 架构概述
+## 当前架构结论
 
-Shell HTML 一次加载 → `didFinish` 回调确认就绪 → 之后全部通过 `evaluateJavaScript()` 增量更新 DOM。
+Timeline 已统一为「Swift 组装 payload + JS 渲染 DOM」模型：
 
-这与聊天类 Web 应用（Slack、Discord 等）的核心思路一致。
+- Swift (`TimelineHostView.Coordinator`) 负责窗口状态、diff 检测、命令派发。
+- JS (`timeline-shell.js`) 负责消息渲染、DOM patch、滚动策略、事件上报。
+- 首屏、切换会话、增量更新、加载更早消息均走 payload 渲染入口。
 
-## 核心机制
+`TimelineHTMLRenderer` 已移除，不再在 Swift 侧拼接消息 HTML。
 
-### 1. 三态 ShellState
+## 生命周期与状态机
 
 ```swift
 enum ShellState { case notLoaded, loading, loaded }
 ```
 
-- `notLoaded` → 首次调用 `loadShellAndRenderInitial()` 时转为 `loading`
-- `loading` → `webView(_:didFinish:)` 回调中转为 `loaded`
-- `loaded` → 此后所有更新走 `evaluateJavaScript()`
+- `notLoaded`：调用 `loadShellAndRenderInitial()`，先加载空 `.timeline` shell。
+- `loading`：等待 `webView(_:didFinish:)`。
+- `loaded`：在 `didFinish` 中调用 `replaceTimelineFromPayloads` 填充首屏，再继续增量更新。
 
-解决了 `isShellLoaded` 布尔标记的时序竞态：`loadHTMLString` 是异步的，设置标记后立即调用 `evaluateJavaScript` 会在页面未就绪时执行。
+这样可避免 `loadHTMLString` 异步导致的时序问题。
 
-### 2. 增量更新策略
+## 统一渲染入口
 
-| 场景 | 方法 | 说明 |
-|------|------|------|
-| 新消息追加 | `insertAdjacentHTML('beforeend', ...)` | 在 `.timeline` 末尾插入新节点 |
-| 流式内容变更 | `outerHTML` 替换 | 通过 `rawFingerprint` 检测变化，原地替换整个消息 DOM |
-| 加载更早消息 | `insertAdjacentHTML('afterbegin', ...)` | 在 `.timeline` 开头插入，配合 `scrollHeight` 差值补偿 |
-| 等待指示器 | `insertAdjacentHTML` / `remove()` | 动态添加或移除 waiting indicator |
+### Swift 侧入口
 
-### 3. rawFingerprint 变更检测
+- `replaceTimelineForSession()` -> `replaceTimelineContentViaPayloads(updatingCoordinatorState: true)`
+- `loadOlderMessages()` -> `prependOlderFromPayloads(...)`
+- `incrementalUpdate()`：
+  - 更新消息：`replaceMessagesFromPayload(...)`
+  - 新增消息：`appendMessagesFromPayload(...)`
 
-```swift
-let rawFingerprint = message.rawJson.hashValue
-```
+### JS 侧入口
 
-`renderedFingerprints` 字典记录每个 UUID 对应的 fingerprint。当 fingerprint 变化时（流式输出导致 `rawJson` 更新），对该消息执行 `outerHTML` 替换而非重新加载整个页面。
+- `ccreader.replaceTimelineFromPayloads(opts)`
+- `ccreader.prependOlderFromPayloads(opts)`
+- `ccreader.replaceMessagesFromPayload(payloads)`
+- `ccreader.appendMessagesFromPayload(payloads)`
+- 底层共享：`ccreaderRenderMessageFromPayload(payload)`
 
-### 4. 滚动位置保持
+## payload 契约（核心字段）
 
-#### 新消息追加
-- `isFollowingBottom`：通过 JS→Swift 消息（`scrollState`）跟踪用户是否在底部
-- 追加后若 `isFollowingBottom == true`，执行 `scrollTo(0, document.body.scrollHeight)`
+每条消息 payload（由 `messagePayload(...)` 生成）：
 
-#### 加载更早消息
-```javascript
-var oldH = document.body.scrollHeight;
-timeline.insertAdjacentHTML('afterbegin', html);
-// ... 后处理 ...
-var newH = document.body.scrollHeight;
-window.scrollTo(0, newH - oldH + window.scrollY);
-```
-保持视觉位置不跳动。
-
-### 5. JS→Swift 通信
-
-使用 `WKScriptMessageHandler`（name: `"ccreader"`），比 URL scheme 更可靠：
-
-```javascript
-window.webkit.messageHandlers.ccreader.postMessage({
-    type: "scrollState",
-    isAtBottom: ...,
-    isNearTop: ...
-});
-```
-
-- `scrollState`：报告滚动位置，触发 `isFollowingBottom` 更新和近顶部自动加载
-- `loadOlder`：用户点击"加载更早消息"按钮
-
-## 已完成的优化
-
-### 1. loadOlderMessages UUID 列表操作简化
-
-去掉了先 `insert(at:0)` 再 `filter` 重排的冗余代码，改为一行拼接：
-
-```swift
-renderedMessageUUIDs = olderUUIDs + renderedMessageUUIDs
-```
-
-### 2. 新消息后处理范围缩小
-
-`renderMarkdownIn` / `highlightCodeBlocksIn` / `enhanceCodeBlocks` / `enhanceMessageCopyButtons` 只作用于新插入的节点，而非遍历整个 `.timeline` DOM：
-
-```javascript
-var newNodes = [];
-tmpDiv.childNodes.forEach(function(n) {
-    timeline.appendChild(n.cloneNode(true));
-});
-var allRows = timeline.querySelectorAll('.row');
-for (var i = allRows.length - count; i < allRows.length; i++) {
-    if (allRows[i]) newNodes.push(allRows[i]);
+```json
+{
+  "uuid": "message-uuid",
+  "domId": "msg-message-uuid",
+  "isUser": true,
+  "isSummary": false,
+  "timeLabel": "10:24",
+  "content": "...",
+  "thinking": "...",
+  "thinkingTitle": "...",
+  "modelTitle": "...",
+  "assistantLabel": "...",
+  "contextLabel": "...",
+  "summaryLabel": "...",
+  "legendUser": "...",
+  "legendAssistant": "...",
+  "legendSummary": "...",
+  "rawData": "...",
+  "rawDataLabel": "...",
+  "tools": [{ "title": "...", "body": "..." }]
 }
-newNodes.forEach(function(node) {
-    renderMarkdownIn(node);
-    highlightCodeBlocksIn(node);
-    enhanceCodeBlocks(node);
-    enhanceMessageCopyButtons(node);
-});
 ```
 
-已渲染的 markdown 节点虽有 `mdRendered` 守卫跳过，但 `querySelectorAll` 遍历全量 DOM 是不必要的开销。
+容器 envelope：
 
-### 3. loadOlderMessages 后处理范围缩小（匹配增量更新）
+- replace 全量：`{ messages, loadOlderBarHTML, waitingHTML }`
+- prepend older：`{ messages, removeOlderBar }`
 
-`loadOlderMessages()` 插入的是一批“历史消息节点”。因此后续的 `renderMarkdownIn` / `highlightCodeBlocksIn` / `enhanceCodeBlocks` / `enhanceMessageCopyButtons` **只对这些新插入节点执行**，避免每次回填都对整棵 `.timeline` 做全量遍历，从而提升性能并减少行为不一致的风险。
+## 增量更新策略
 
-### 4. JS 字符转义增强（escapeForJS 支持 U+2028/U+2029）
+- 新消息检测：`renderedMessageSet`。
+- 内容变化检测：`renderedFingerprints[uuid]` 对比 `rawFingerprint`。
+- 等待指示器：`hasWaitingIndicator` 与末条消息类型对齐。
+- 加载更早条：`hasOlderIndicator` 与窗口下界（`renderedMessageRange.lowerBound > 0`）对齐。
 
-`evaluateJavaScript()` 会把字符串字面量解析为 JS 代码。若要插入的 HTML 中包含行分隔符字符 `U+2028` / `U+2029`，可能导致拼接出来的 JS 语法错误并出现静默失败。
+## 滚动与交互
 
-因此在 `escapeForJS()` 中显式转义 `U+2028/U+2029`，提升低频内容下的稳定性。
+- Swift 通过 JS 消息 `scrollState` 维护 `isFollowingBottom`。
+- 追加消息时仅在接近底部才自动滚动。
+- prepend older 通过 `scrollHeight` 差值补偿保持视觉位置。
+- `loadOlder` 点击事件通过 `WKScriptMessageHandler("ccreader")` 回传给 Swift。
 
-### 5. makeShellHTML CSS/JS 提取到 Bundle 资源文件
+## Markdown 与安全策略
 
-将 Timeline 的静态 Shell 样式与初始化脚本（`timeline-shell.css` / `timeline-shell.js`）从 `TimelineHostView.makeShellHTML` 的大段字符串中抽离到 Bundle 资源文件中，再由 Swift 运行时读取拼接。
+`timeline-shell.js` 中 `marked` 采用统一配置：
 
-这样可显著降低 `TimelineHostView.swift` 的维护成本，并让后续对 Shell UI/行为的调整更安全。
-
-### 6. 拆分 TimelineHTMLRenderer（消息渲染逻辑独立）
-
-将消息 HTML 生成逻辑从 `TimelineHostView.Coordinator` 中抽离到 `TimelineHTMLRenderer`，让渲染规则与滚动/增量更新策略解耦。
-
-后续补充单元测试时，可以直接验证渲染输出与转义策略，降低回归风险。
-
-## 更激进的优化方向（当前不需要）
-
-以下方案在当前 200 条 batch 的规模下完全不需要，仅供未来参考：
-
-### 虚拟滚动
-只渲染视口内 ± 缓冲区的消息 DOM 节点。适合万条消息级别。
-
-### Web Worker 渲染 markdown
-将 `marked.parse()` 放到 Worker 避免阻塞主线程。除非消息内容非常大，否则感知不到差异。
-
-### DOM 回收池
-复用移出视口的 DOM 节点。同上，当前规模完全不需要。
+- 禁用 markdown 内嵌原始 HTML（按文本转义输出）。
+- markdown 图片渲染为链接（避免 WKWebView 图像解码问题与布局抖动）。
 
 ## 相关文件
 
 | 文件 | 作用 |
 |------|------|
-| `CCReader/Views/Timeline/TimelineHostView.swift` | WKWebView 宿主、Shell HTML、增量更新逻辑、消息渲染 |
-| `CCReader/Views/Timeline/TimelineModels.swift` | `TimelineMessageDisplayData`、`TimelineRenderSnapshot` |
-| `CCReader/Views/Timeline/WebRenderAssets.swift` | marked.js/highlight.js 加载、代码块增强脚本 |
-| `CCReader/Views/Timeline/SessionMessagesView.swift` | 快照构建、消息窗口管理 |
+| `CCReader/Views/Timeline/TimelineHostView.swift` | shell 生命周期、状态机、payload 派发 |
+| `CCReader/Views/Timeline/TimelineModels.swift` | timeline 视图数据模型与 `timelineDOMId` |
+| `CCReader/Views/Timeline/WebRenderAssets.swift` | marked/highlight 与增强脚本资源 |
+| `CCReader/Resources/timeline-shell.js` | 渲染函数、DOM patch、滚动与桥接事件 |
+| `CCReader/Resources/timeline-shell.css` | timeline 样式与 markdown 样式 |
+
+## 维护约束
+
+- 新增消息展示字段时，必须同时更新：
+  - Swift `messagePayload(...)`
+  - JS `ccreaderRenderMessageFromPayload(...)`
+  - 文档中的 payload 契约
+- 新增 DOM patch API 时，优先复用 payload 入口，避免新增 HTML 字符串直传路径。

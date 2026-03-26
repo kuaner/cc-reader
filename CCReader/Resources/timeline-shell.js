@@ -168,6 +168,25 @@ function ccreaderEnhanceNode(node) {
   if (typeof enhanceMessageCopyButtons === 'function') { enhanceMessageCopyButtons(node); }
 }
 
+function ccreaderRenderRowsFromPayloads(payloads) {
+  if (!Array.isArray(payloads) || payloads.length === 0) { return ''; }
+  return payloads.map(function (payload) {
+    return ccreaderRenderMessageFromPayload(payload);
+  }).join('\n');
+}
+
+function ccreaderParseNodesFromHTML(html) {
+  var temp = document.createElement('div');
+  temp.innerHTML = html || '';
+  var nodes = [];
+  while (temp.firstElementChild) {
+    var node = temp.firstElementChild;
+    nodes.push(node);
+    temp.removeChild(node);
+  }
+  return nodes;
+}
+
 ccreader.scrollBottomStable = function () {
   // Keep scrolling until the document height stabilizes (layout may change due to images).
   var attempts = 0;
@@ -206,20 +225,16 @@ ccreader.replaceTimeline = function (html) {
   var timeline = ccreaderGetTimeline();
   if (!timeline) { return; }
 
-  var temp = document.createElement('div');
-  temp.innerHTML = html || '';
-
   var frag = document.createDocumentFragment();
-  var inserted = [];
-  while (temp.firstElementChild) {
-    var node = temp.firstElementChild;
-    inserted.push(node);
+  var inserted = ccreaderParseNodesFromHTML(html);
+  for (var i = 0; i < inserted.length; i++) {
+    var node = inserted[i];
     frag.appendChild(node);
   }
 
   timeline.replaceChildren(frag);
-  for (var i = 0; i < inserted.length; i++) {
-    ccreaderEnhanceNode(inserted[i]);
+  for (var j = 0; j < inserted.length; j++) {
+    ccreaderEnhanceNode(inserted[j]);
   }
 
   ccreader.scrollBottomStable();
@@ -248,22 +263,18 @@ ccreader.appendMessages = function (html) {
   var waiting = document.getElementById('waiting-indicator');
   var wasAtBottom = isNearBottom();
 
-  var temp = document.createElement('div');
-  temp.innerHTML = html || '';
-
-  var inserted = [];
-  while (temp.firstElementChild) {
-    var node = temp.firstElementChild;
+  var inserted = ccreaderParseNodesFromHTML(html);
+  for (var i = 0; i < inserted.length; i++) {
+    var node = inserted[i];
     if (waiting) {
       timeline.insertBefore(node, waiting);
     } else {
       timeline.appendChild(node);
     }
-    inserted.push(node);
   }
 
-  for (var i = 0; i < inserted.length; i++) {
-    ccreaderEnhanceNode(inserted[i]);
+  for (var j = 0; j < inserted.length; j++) {
+    ccreaderEnhanceNode(inserted[j]);
   }
 
   if (wasAtBottom) {
@@ -282,10 +293,8 @@ ccreader.replaceMessagesFromPayload = function (payloads) {
 };
 
 ccreader.appendMessagesFromPayload = function (payloads) {
-  if (!Array.isArray(payloads) || payloads.length === 0) { return; }
-  var html = payloads.map(function (payload) {
-    return ccreaderRenderMessageFromPayload(payload);
-  }).join('\n');
+  var html = ccreaderRenderRowsFromPayloads(payloads);
+  if (!html) { return; }
   ccreader.appendMessages(html);
 };
 
@@ -293,10 +302,8 @@ ccreader.appendMessagesFromPayload = function (payloads) {
 ccreader.replaceTimelineFromPayloads = function (opts) {
   opts = opts || {};
   var payloads = Array.isArray(opts.messages) ? opts.messages : [];
-  var htmlParts = payloads.map(function (p) {
-    return ccreaderRenderMessageFromPayload(p);
-  });
-  var html = String(opts.loadOlderBarHTML || '') + htmlParts.join('\n') + String(opts.waitingHTML || '');
+  var rowHTML = ccreaderRenderRowsFromPayloads(payloads);
+  var html = String(opts.loadOlderBarHTML || '') + rowHTML + String(opts.waitingHTML || '');
   ccreader.replaceTimeline(html);
 };
 
@@ -304,9 +311,8 @@ ccreader.replaceTimelineFromPayloads = function (opts) {
 ccreader.prependOlderFromPayloads = function (opts) {
   opts = opts || {};
   var payloads = Array.isArray(opts.messages) ? opts.messages : [];
-  var html = payloads.map(function (p) {
-    return ccreaderRenderMessageFromPayload(p);
-  }).join('\n');
+  var html = ccreaderRenderRowsFromPayloads(payloads);
+  if (!html) { return; }
   var prependOpts = {};
   if (opts.removeOlderBar) {
     prependOpts.removeOlderBar = true;
@@ -323,14 +329,10 @@ ccreader.prependOlder = function (html, opts) {
   var scrollHeightBefore = document.documentElement.scrollHeight;
   var scrollYBefore = window.scrollY;
 
-  var temp = document.createElement('div');
-  temp.innerHTML = html || '';
-
   var frag = document.createDocumentFragment();
-  var inserted = [];
-  while (temp.firstElementChild) {
-    var node = temp.firstElementChild;
-    inserted.push(node);
+  var inserted = ccreaderParseNodesFromHTML(html);
+  for (var i = 0; i < inserted.length; i++) {
+    var node = inserted[i];
     frag.appendChild(node);
   }
 
@@ -342,8 +344,8 @@ ccreader.prependOlder = function (html, opts) {
     timeline.insertBefore(frag, timeline.firstChild);
   }
 
-  for (var i = 0; i < inserted.length; i++) {
-    ccreaderEnhanceNode(inserted[i]);
+  for (var j = 0; j < inserted.length; j++) {
+    ccreaderEnhanceNode(inserted[j]);
   }
 
   var scrollHeightAfter = document.documentElement.scrollHeight;
@@ -370,10 +372,9 @@ ccreader.setWaitingIndicator = function (htmlOrEmpty) {
   if (el) {
     el.outerHTML = htmlOrEmpty;
   } else {
-    var temp = document.createElement('div');
-    temp.innerHTML = htmlOrEmpty;
-    if (temp.firstElementChild) {
-      timeline.appendChild(temp.firstElementChild);
+    var nodes = ccreaderParseNodesFromHTML(htmlOrEmpty);
+    if (nodes.length > 0) {
+      timeline.appendChild(nodes[0]);
     }
   }
 
@@ -397,10 +398,9 @@ ccreader.setLoadOlderBar = function (htmlOrEmpty) {
   if (el) {
     el.outerHTML = htmlOrEmpty;
   } else {
-    var temp = document.createElement('div');
-    temp.innerHTML = htmlOrEmpty;
-    if (temp.firstElementChild) {
-      timeline.insertBefore(temp.firstElementChild, timeline.firstChild);
+    var nodes = ccreaderParseNodesFromHTML(htmlOrEmpty);
+    if (nodes.length > 0) {
+      timeline.insertBefore(nodes[0], timeline.firstChild);
     }
   }
 };

@@ -137,8 +137,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         // MARK: - Incremental update (no page reload!)
 
         private func incrementalUpdate() {
-            guard let webView else { return }
             let labels = TimelineWebLabels.localized()
+            let payloadBuilder = TimelinePayloadBuilder(snapshot: snapshot, labels: labels)
             let windowMessages = currentRenderedMessages()
 
             // 1. Find new messages to append at the bottom.
@@ -170,38 +170,23 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 return
             }
 
-            var js = ""
+            var commands: [TimelineJSCommand] = []
 
             // Handle updated messages (replace in-place).
             var updatedPayloads: [[String: Any]] = []
             for msg in updatedMessages {
-                updatedPayloads.append(messagePayload(message: msg, labels: labels))
+                updatedPayloads.append(payloadBuilder.messagePayload(for: msg))
                 renderedFingerprints[msg.uuid] = msg.rawFingerprint
             }
             if !updatedPayloads.isEmpty, let payloadJSON = toJSONString(updatedPayloads) {
-                let escapedJSON = escapeForJS(payloadJSON)
-                js += """
-                (function() {
-                    if (window.ccreader && typeof window.ccreader.replaceMessagesFromPayload === 'function') {
-                        window.ccreader.replaceMessagesFromPayload(JSON.parse('\(escapedJSON)'));
-                    }
-                })();
-                """
+                commands.append(.replaceMessagesFromPayload(json: payloadJSON))
             }
 
             // Handle new messages (append to timeline).
             if !newMessages.isEmpty {
-                let payloads = newMessages.map { messagePayload(message: $0, labels: labels) }
+                let payloads = newMessages.map { payloadBuilder.messagePayload(for: $0) }
                 if let payloadJSON = toJSONString(payloads) {
-                    let escapedJSON = escapeForJS(payloadJSON)
-
-                    js += """
-                    (function() {
-                        if (window.ccreader && typeof window.ccreader.appendMessagesFromPayload === 'function') {
-                            window.ccreader.appendMessagesFromPayload(JSON.parse('\(escapedJSON)'));
-                        }
-                    })();
-                    """
+                    commands.append(.appendMessagesFromPayload(json: payloadJSON))
                 }
 
                 for msg in newMessages {
@@ -214,22 +199,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             // Handle waiting indicator changes.
             if waitingChanged {
                 if shouldShowWaiting {
-                    let waitHTML = escapeForJS("<div id=\"waiting-indicator\" class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>")
-                    js += """
-                    (function() {
-                        if (window.ccreader && typeof window.ccreader.setWaitingIndicator === 'function') {
-                            window.ccreader.setWaitingIndicator('\(waitHTML)');
-                        }
-                    })();
-                    """
+                    commands.append(.setWaitingIndicator(htmlOrEmpty: waitingIndicatorHTML(labels: labels)))
                 } else {
-                    js += """
-                    (function() {
-                        if (window.ccreader && typeof window.ccreader.setWaitingIndicator === 'function') {
-                            window.ccreader.setWaitingIndicator('');
-                        }
-                    })();
-                    """
+                    commands.append(.setWaitingIndicator(htmlOrEmpty: ""))
                 }
                 hasWaitingIndicator = shouldShowWaiting
             }
@@ -237,31 +209,14 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             // Handle "load older" indicator changes.
             if olderChanged {
                 if shouldShowOlder && !hasOlderIndicator {
-                    let olderHTML = escapeForJS("<div id=\"load-older-bar\" class=\"topbar\"><a class=\"pill\" onclick=\"window.webkit.messageHandlers.ccreader.postMessage({action:'loadOlder'})\">\(escapeHTML(labels.loadOlder))</a></div>")
-                    js += """
-                    (function() {
-                        if (window.ccreader && typeof window.ccreader.setLoadOlderBar === 'function') {
-                            window.ccreader.setLoadOlderBar('\(olderHTML)');
-                        }
-                    })();
-                    """
+                    commands.append(.setLoadOlderBar(htmlOrEmpty: loadOlderBarHTML(labels: labels)))
                 } else if !shouldShowOlder && hasOlderIndicator {
-                    js += """
-                    (function() {
-                        if (window.ccreader && typeof window.ccreader.setLoadOlderBar === 'function') {
-                            window.ccreader.setLoadOlderBar('');
-                        }
-                    })();
-                    """
+                    commands.append(.setLoadOlderBar(htmlOrEmpty: ""))
                 }
                 hasOlderIndicator = shouldShowOlder
             }
 
-            if !js.isEmpty {
-                webView.evaluateJavaScript(js) { _, error in
-                    if let error { print("[TimelineHostView] JS error: \(error)") }
-                }
-            }
+            evaluate(commands: commands, errorPrefix: "[TimelineHostView] incremental JS error")
         }
 
         // MARK: - Session switch without full web reload
@@ -274,23 +229,21 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         /// Renders the current window from `messagePayload` + chrome HTML in JS. Used on first shell load (`didFinish`) and session switch.
         private func replaceTimelineContentViaPayloads(updatingCoordinatorState: Bool) {
-            guard let webView else { return }
-
             let labels = TimelineWebLabels.localized()
+            let payloadBuilder = TimelinePayloadBuilder(snapshot: snapshot, labels: labels)
             let messages = currentRenderedMessages()
             let hasOlder = renderedMessageRange.lowerBound > 0
             let waiting = snapshot.visibleMessages.last?.type == .user
 
-            let loadOlderHTML = hasOlder ? "<div id=\"load-older-bar\" class=\"topbar\"><a class=\"pill\" onclick=\"window.webkit.messageHandlers.ccreader.postMessage({action:'loadOlder'})\">\(escapeHTML(labels.loadOlder))</a></div>" : ""
-            let waitingHTML = waiting ? "<div id=\"waiting-indicator\" class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>" : ""
+            let loadOlderHTML = hasOlder ? loadOlderBarHTML(labels: labels) : ""
+            let waitingHTML = waiting ? waitingIndicatorHTML(labels: labels) : ""
 
             let envelope: [String: Any] = [
-                "messages": messages.map { messagePayload(message: $0, labels: labels) },
+                "messages": messages.map { payloadBuilder.messagePayload(for: $0) },
                 "loadOlderBarHTML": loadOlderHTML,
                 "waitingHTML": waitingHTML
             ]
             guard let payloadJSON = toJSONString(envelope) else { return }
-            let escapedJSON = escapeForJS(payloadJSON)
 
             if updatingCoordinatorState {
                 renderedMessageUUIDs = messages.map(\.uuid)
@@ -301,24 +254,15 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 isFollowingBottom = true
             }
 
-            let js = """
-            (function() {
-                if (window.ccreader && typeof window.ccreader.replaceTimelineFromPayloads === 'function') {
-                    window.ccreader.replaceTimelineFromPayloads(JSON.parse('\(escapedJSON)'));
-                }
-            })();
-            """
-
-            webView.evaluateJavaScript(js) { _, error in
-                if let error { print("[TimelineHostView] replaceTimelineFromPayloads JS error: \(error)") }
-            }
+            evaluate(commands: [.replaceTimelineFromPayloads(json: payloadJSON)], errorPrefix: "[TimelineHostView] replaceTimelineFromPayloads JS error")
         }
 
         // MARK: - Load older (prepend with scroll preservation)
 
         private func loadOlderMessages() {
-            guard renderedMessageRange.lowerBound > 0, let webView else { return }
+            guard renderedMessageRange.lowerBound > 0 else { return }
             let labels = TimelineWebLabels.localized()
+            let payloadBuilder = TimelinePayloadBuilder(snapshot: snapshot, labels: labels)
 
             let oldLower = renderedMessageRange.lowerBound
             let newLower = max(0, oldLower - Self.renderBatchSize)
@@ -331,20 +275,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let shouldRemoveOlderBar = newLower == 0
 
             let envelope: [String: Any] = [
-                "messages": olderMessages.map { messagePayload(message: $0, labels: labels) },
+                "messages": olderMessages.map { payloadBuilder.messagePayload(for: $0) },
                 "removeOlderBar": shouldRemoveOlderBar
             ]
             guard let payloadJSON = toJSONString(envelope) else { return }
-            let escapedJSON = escapeForJS(payloadJSON)
-
-            // Prepend older messages while preserving scroll position.
-            let js = """
-            (function() {
-                if (window.ccreader && typeof window.ccreader.prependOlderFromPayloads === 'function') {
-                    window.ccreader.prependOlderFromPayloads(JSON.parse('\(escapedJSON)'));
-                }
-            })();
-            """
             
             if shouldRemoveOlderBar {
                 hasOlderIndicator = false
@@ -361,9 +295,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             previousVisibleMessageCount = snapshot.visibleMessages.count
 
-            webView.evaluateJavaScript(js) { _, error in
-                if let error { print("[TimelineHostView] prepend JS error: \(error)") }
-            }
+            evaluate(commands: [.prependOlderFromPayloads(json: payloadJSON)], errorPrefix: "[TimelineHostView] prepend JS error")
         }
 
         private func toJSONString(_ value: Any) -> String? {
@@ -375,97 +307,23 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             return json
         }
 
-        private func messagePayload(message: TimelineMessageDisplayData, labels: TimelineWebLabels) -> [String: Any] {
-            var payload: [String: Any] = [
-                "uuid": message.uuid,
-                "domId": message.timelineDOMId,
-                "isUser": message.type == .user,
-                "isSummary": isSummaryMessage(message),
-                "timeLabel": Self.messageTimeFormatter.string(from: message.timestamp),
-                "content": message.content ?? "",
-                "thinking": message.thinking ?? "",
-                "thinkingTitle": thinkingTitle(for: message) ?? labels.thinking,
-                "modelTitle": modelTitle(message.model) ?? "",
-                "assistantLabel": labels.assistant,
-                "contextLabel": labels.context,
-                "summaryLabel": labels.summaryLabel,
-                "legendUser": labels.legendUser,
-                "legendAssistant": labels.legendAssistant,
-                "legendSummary": labels.legendSummary,
-                "rawData": message.rawJsonString,
-                "rawDataLabel": labels.rawData
-            ]
-
-            if !message.toolUses.isEmpty {
-                payload["tools"] = message.toolUses.map { tool in
-                    [
-                        "title": toolTitle(tool),
-                        "body": toolBody(tool: tool, messageId: message.uuid) ?? ""
-                    ]
-                }
-            } else {
-                payload["tools"] = []
-            }
-
-            return payload
+        private func loadOlderBarHTML(labels: TimelineWebLabels) -> String {
+            "<div id=\"load-older-bar\" class=\"topbar\"><a class=\"pill\" onclick=\"window.webkit.messageHandlers.ccreader.postMessage({action:'loadOlder'})\">\(escapeHTML(labels.loadOlder))</a></div>"
         }
 
-        private func isSummaryMessage(_ message: TimelineMessageDisplayData) -> Bool {
-            message.type == .user && (message.content?.contains("This session is being continued") == true)
+        private func waitingIndicatorHTML(labels: TimelineWebLabels) -> String {
+            "<div id=\"waiting-indicator\" class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>"
         }
 
-        private func modelTitle(_ model: String?) -> String? {
-            guard let model, !model.isEmpty else { return nil }
-            if model.contains("opus") { return "Opus" }
-            if model.contains("sonnet") { return "Sonnet" }
-            if model.contains("haiku") { return "Haiku" }
-            return model
-        }
-
-        private func thinkingTitle(for message: TimelineMessageDisplayData) -> String? {
-            guard message.thinking?.isEmpty == false else { return nil }
-            let duration: Int
-            if let previous = snapshot.prevTimestampMap[message.uuid] {
-                duration = max(1, Int(message.timestamp.timeIntervalSince(previous)))
-            } else {
-                duration = 1
+        private func evaluate(commands: [TimelineJSCommand], errorPrefix: String) {
+            guard !commands.isEmpty, let webView else { return }
+            let commandScript = commands
+                .map { $0.script(escapingWith: escapeForJS) }
+                .joined(separator: "\n")
+            let js = "(function(){\n\(commandScript)\n})();"
+            webView.evaluateJavaScript(js) { _, error in
+                if let error { print("\(errorPrefix): \(error)") }
             }
-            return String(format: L("timeline.thinking.seconds"), duration)
-        }
-
-        private func toolTitle(_ tool: ToolUseInfo) -> String {
-            if let path = tool.filePath, !path.isEmpty {
-                return (path as NSString).lastPathComponent
-            }
-            if let command = tool.command, !command.isEmpty {
-                let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-                let prefix = String(trimmed.prefix(20))
-                return trimmed.count > 20 ? prefix + "..." : prefix
-            }
-            if let summary = tool.inputSummary, !summary.isEmpty {
-                return tool.name + ": " + String(summary.prefix(32))
-            }
-            return tool.name
-        }
-
-        private func toolBody(tool: ToolUseInfo, messageId: String) -> String? {
-            if tool.name == "Edit",
-               let patch = snapshot.rowPatchesMap[messageId]?[tool.id],
-               !patch.isEmpty {
-                let header = tool.filePath ?? toolTitle(tool)
-                return ([header] + patch.flatMap(\.lines)).joined(separator: "\n")
-            }
-
-            if let command = tool.command, !command.isEmpty { return command }
-            if let oldString = tool.oldString, let newString = tool.newString {
-                return "<<<\n\(oldString)\n===\n\(newString)\n>>>"
-            }
-            if let oldString = tool.oldString, !oldString.isEmpty { return oldString }
-            if let newString = tool.newString, !newString.isEmpty { return newString }
-            if let summary = tool.inputSummary, !summary.isEmpty { return summary }
-            if let path = tool.filePath, !path.isEmpty { return path }
-            if let raw = tool.rawInput, !raw.isEmpty { return raw }
-            return nil
         }
 
         // MARK: - Navigation delegate
@@ -595,13 +453,6 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             </html>
             """
         }
-
-        private static let messageTimeFormatter: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            formatter.dateStyle = .none
-            return formatter
-        }()
 
         private func escapeHTML(_ text: String) -> String {
             text
