@@ -331,6 +331,16 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let js = """
             (function() {
                 var timeline = document.querySelector('.timeline');
+                var overlay = document.getElementById('timeline-loading');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'timeline-loading';
+                    overlay.innerHTML = '<div class="panel"><div class="spinner"></div><div class="label">Loading…</div></div>';
+                    document.body.appendChild(overlay);
+                }
+                overlay.classList.add('is-visible');
+                try {
+
                 var temp = document.createElement('div');
                 temp.innerHTML = '\(escaped)';
 
@@ -354,6 +364,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 }
 
                 window.scrollTo(0, document.body.scrollHeight);
+                } finally {
+                    overlay.classList.remove('is-visible');
+                }
             })();
             """
 
