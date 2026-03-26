@@ -9,7 +9,39 @@ function renderMarkdownIn(root) {
     var source = node.getAttribute('data-markdown-base64') || '';
     if (!source) { return; }
     try {
+      // Configure marked once: avoid rendering problematic WebP images in WKWebView
+      // (WebContent logs show WEBP decode failures). Render those as links instead.
+      if (!window.__ccreader_marked_configured) {
+        window.__ccreader_marked_configured = true;
+        try {
+          marked.use({
+            renderer: {
+              image: function(href, title, text) {
+                var url = (href || '').trim();
+                var label = (text || url || 'image').trim();
+                var isWebp = /\.webp(\?|#|$)/i.test(url);
+                if (isWebp) {
+                  var safeUrl = (url || '').replace(/"/g, '&quot;');
+                  return '<a href="' + safeUrl + '" target="_blank" rel="noreferrer noopener">[image: ' + label + ']</a>';
+                }
+                // default behavior: emit an <img>; attributes tuned post-parse below
+                return false;
+              }
+            }
+          });
+        } catch (e) {
+          // ignore configuration errors; fall back to default rendering
+        }
+      }
+
       node.innerHTML = marked.parse(decodeMarkdownBase64(source));
+
+      // Lazy-load images to reduce late layout shifts.
+      node.querySelectorAll('img').forEach(function(img) {
+        if (!img) { return; }
+        if (!img.getAttribute('loading')) { img.setAttribute('loading', 'lazy'); }
+        img.setAttribute('decoding', 'async');
+      });
       node.dataset.mdRendered = '1';
     } catch (e) {
       console.error('markdown render failed', e);

@@ -127,52 +127,8 @@ body {
 .markdown table { width: 100%; border-collapse: collapse; margin: 0.6em 0; table-layout: fixed; }
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
 .markdown a { color: inherit; text-decoration: underline; }
+.markdown img { max-width: 100%; height: auto; }
 .bubble.user .markdown :not(pre) > code, .bubble.user .markdown pre, .bubble.assistant-card .card-section .markdown pre { background: rgba(255,255,255,0.16); }
 .bubble.user .summary-title, .bubble.user .markdown blockquote { color: rgba(255,255,255,0.82); }
 .bubble.assistant-card .card-section .markdown :not(pre) > code { background: var(--code-bg); }
-
-#timeline-loading {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 99999;
-  pointer-events: none;
-  background: rgba(20, 20, 24, 0.02);
-  backdrop-filter: blur(6px);
-}
-
-#timeline-loading.is-visible { display: flex; }
-
-#timeline-loading .panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: rgba(20, 20, 24, 0.06);
-  border: 1px solid rgba(60,60,67,0.18);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.05);
-}
-
-#timeline-loading .spinner {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 3px solid rgba(151,71,255,0.22);
-  border-top-color: rgba(151,71,255,0.95);
-  animation: ccreader-spin 0.9s linear infinite;
-}
-
-#timeline-loading .label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-@keyframes ccreader-spin {
-  to { transform: rotate(360deg); }
-}
 
