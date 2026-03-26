@@ -130,5 +130,10 @@ body {
 .markdown img { max-width: 100%; height: auto; }
 .bubble.user .markdown :not(pre) > code, .bubble.user .markdown pre, .bubble.assistant-card .card-section .markdown pre { background: rgba(255,255,255,0.16); }
 .bubble.user .summary-title, .bubble.user .markdown blockquote { color: rgba(255,255,255,0.82); }
+.bubble.user .markdown pre,
+.bubble.user .markdown pre code,
+.bubble.user .markdown pre code.hljs {
+  color: rgba(255,255,255,0.92);
+}
 .bubble.assistant-card .card-section .markdown :not(pre) > code { background: var(--code-bg); }
 
