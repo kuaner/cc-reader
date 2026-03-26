@@ -330,65 +330,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             let js = """
             (function() {
-                var timeline = document.querySelector('.timeline');
-
-                var temp = document.createElement('div');
-                temp.innerHTML = '\(escaped)';
-
-                var frag = document.createDocumentFragment();
-                var inserted = [];
-                while (temp.firstElementChild) {
-                    var node = temp.firstElementChild;
-                    inserted.push(node);
-                    frag.appendChild(node);
+                if (window.ccreader && typeof window.ccreader.replaceTimeline === 'function') {
+                    window.ccreader.replaceTimeline('\(escaped)');
                 }
-
-                timeline.replaceChildren(frag);
-
-                for (var i = 0; i < inserted.length; i++) {
-                    renderMarkdownIn(inserted[i]);
-                    highlightCodeBlocksIn(inserted[i]);
-                    enhanceCodeBlocks(inserted[i]);
-                    enhanceMessageCopyButtons(inserted[i]);
-                }
-
-                // Images (e.g. <img> from markdown) can still be loading after we render.
-                // When they finish, the layout height changes, which shifts scroll position.
-                // So we re-scroll to bottom using a small "height stabilization" loop.
-                function scrollBottomStable() {
-                    // Keep scrolling until the document height stabilizes.
-                    var attempts = 0;
-                    var lastH = -1;
-                    function scrollStep() {
-                        attempts++;
-                        var h = document.documentElement.scrollHeight;
-
-                        var lastNode = timeline.lastElementChild;
-                        if (lastNode && typeof lastNode.scrollIntoView === 'function') {
-                            lastNode.scrollIntoView(false); // align to bottom
-                        } else {
-                            window.scrollTo(0, h);
-                        }
-
-                        if (attempts < 8 && h !== lastH) {
-                            lastH = h;
-                            window.requestAnimationFrame(scrollStep);
-                        } else {
-                            var finalLast = timeline.lastElementChild;
-                            if (finalLast && typeof finalLast.scrollIntoView === 'function') {
-                                finalLast.scrollIntoView(false);
-                            } else {
-                                window.scrollTo(0, document.documentElement.scrollHeight);
-                            }
-                        }
-                    }
-
-                    window.requestAnimationFrame(scrollStep);
-                }
-
-                // With lazy-loading images we don't expect further layout shifts.
-                // Still do a short stabilization pass.
-                scrollBottomStable();
             })();
             """
 
