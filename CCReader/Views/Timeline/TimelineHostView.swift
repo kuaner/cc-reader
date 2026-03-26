@@ -325,7 +325,12 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 var temp = document.createElement('div');
                 temp.innerHTML = '\(escaped)';
                 var frag = document.createDocumentFragment();
-                while (temp.firstElementChild) { frag.appendChild(temp.firstElementChild); }
+                var inserted = [];
+                while (temp.firstElementChild) {
+                    var node = temp.firstElementChild;
+                    inserted.push(node);
+                    frag.appendChild(node);
+                }
 
                 var olderBar = document.getElementById('load-older-bar');
                 if (olderBar) {
@@ -334,10 +339,13 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                     timeline.insertBefore(frag, timeline.firstChild);
                 }
 
-                renderMarkdownIn(timeline);
-                highlightCodeBlocksIn(timeline);
-                enhanceCodeBlocks(timeline);
-                enhanceMessageCopyButtons(timeline);
+                // Only enhance newly inserted nodes to keep loadOlder cheap and consistent.
+                for (var i = 0; i < inserted.length; i++) {
+                    renderMarkdownIn(inserted[i]);
+                    highlightCodeBlocksIn(inserted[i]);
+                    enhanceCodeBlocks(inserted[i]);
+                    enhanceMessageCopyButtons(inserted[i]);
+                }
 
                 var scrollHeightAfter = document.documentElement.scrollHeight;
                 window.scrollTo(0, scrollYBefore + (scrollHeightAfter - scrollHeightBefore));
