@@ -73,6 +73,7 @@
 "timeline.legend.thinking" = "思考";
 "timeline.legend.tool" = "工具";
 "timeline.legend.summary" = "摘要";
+"timeline.loadOlder" = "加载更早的消息";
 "timeline.thinking.seconds" = "%d 秒";
 "timeline.tokenUsage" = "Token 使用量";
 "timeline.tool.running" = "（执行中...）";

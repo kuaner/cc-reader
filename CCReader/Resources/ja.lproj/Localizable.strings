@@ -73,6 +73,7 @@
 "timeline.legend.thinking" = "思考";
 "timeline.legend.tool" = "ツール";
 "timeline.legend.summary" = "要約";
+"timeline.loadOlder" = "さらに古いメッセージを読み込む";
 "timeline.thinking.seconds" = "%d秒";
 "timeline.tokenUsage" = "トークン使用量";
 "timeline.tool.running" = "(実行中...)";

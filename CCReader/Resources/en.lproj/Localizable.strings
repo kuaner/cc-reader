@@ -73,6 +73,7 @@
 "timeline.legend.thinking" = "Thinking";
 "timeline.legend.tool" = "Tool";
 "timeline.legend.summary" = "Summary";
+"timeline.loadOlder" = "Load older messages";
 "timeline.thinking.seconds" = "%d s";
 "timeline.tokenUsage" = "Token Usage";
 "timeline.tool.running" = "(Running...)";

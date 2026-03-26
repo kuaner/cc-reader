@@ -15,6 +15,9 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
 
     var id: String { uuid }
 
+    /// DOM `id` for timeline rows (`#msg-<uuid>`), must match `timeline-shell.js` / incremental payload `domId`.
+    var timelineDOMId: String { "msg-\(uuid)" }
+
     init(message: Message) {
         self.uuid = message.uuid
         self.rawFingerprint = message.rawJson.hashValue

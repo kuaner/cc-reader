@@ -289,6 +289,31 @@ ccreader.appendMessagesFromPayload = function (payloads) {
   ccreader.appendMessages(html);
 };
 
+/** Full timeline replace: message rows from payloads + optional top load-older bar + optional waiting row (HTML from Swift for chrome). */
+ccreader.replaceTimelineFromPayloads = function (opts) {
+  opts = opts || {};
+  var payloads = Array.isArray(opts.messages) ? opts.messages : [];
+  var htmlParts = payloads.map(function (p) {
+    return ccreaderRenderMessageFromPayload(p);
+  });
+  var html = String(opts.loadOlderBarHTML || '') + htmlParts.join('\n') + String(opts.waitingHTML || '');
+  ccreader.replaceTimeline(html);
+};
+
+/** Prepend older message rows from payloads; same scroll + older-bar removal behavior as prependOlder. */
+ccreader.prependOlderFromPayloads = function (opts) {
+  opts = opts || {};
+  var payloads = Array.isArray(opts.messages) ? opts.messages : [];
+  var html = payloads.map(function (p) {
+    return ccreaderRenderMessageFromPayload(p);
+  }).join('\n');
+  var prependOpts = {};
+  if (opts.removeOlderBar) {
+    prependOpts.removeOlderBar = true;
+  }
+  ccreader.prependOlder(html, prependOpts);
+};
+
 ccreader.prependOlder = function (html, opts) {
   opts = opts || {};
 
