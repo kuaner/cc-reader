@@ -83,6 +83,82 @@ function ccreaderGetTimeline() {
   return document.querySelector('.timeline');
 }
 
+function ccreaderEscapeHTML(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function ccreaderEncodeBase64Utf8(s) {
+  return window.btoa(unescape(encodeURIComponent(String(s || ''))));
+}
+
+function ccreaderMessageBodyHTML(text) {
+  var source = String(text || '');
+  if (!source) { return ''; }
+  var fallback = ccreaderEscapeHTML(source).replace(/\n/g, '<br>');
+  var encoded = ccreaderEncodeBase64Utf8(source);
+  return '<div class="markdown" data-markdown-base64="' + encoded + '"><div class="plain-text">' + fallback + '</div></div>';
+}
+
+function ccreaderMessageRawDataButtonHTML(payload) {
+  var raw = String(payload.rawData || '');
+  if (!raw) { return ''; }
+  var encoded = ccreaderEncodeBase64Utf8(raw);
+  var rawLabel = ccreaderEscapeHTML(payload.rawDataLabel || 'Raw Data');
+  return '<button type="button" class="message-copy-button" data-message-copy-base64="' + encoded + '" data-copy-label="' + rawLabel + '">' + rawLabel + '</button>';
+}
+
+function ccreaderRenderMessageFromPayload(payload) {
+  var domId = ccreaderEscapeHTML(payload.domId || '');
+  var timestamp = ccreaderEscapeHTML(payload.timeLabel || '');
+  var copyButton = ccreaderMessageRawDataButtonHTML(payload);
+
+  if (payload.isUser) {
+    if (payload.isSummary) {
+      var summaryTag = '<span class="type-tag summary-tag">' + ccreaderEscapeHTML(payload.legendSummary || 'Summary') + '</span>';
+      var summaryFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + summaryTag + '<span class="spacer"></span>' + copyButton + '</div>';
+      var summaryBubble = '<div class="bubble summary"><div class="summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Summary') + '</div>' + ccreaderMessageBodyHTML(payload.content || '') + summaryFooter + '</div>';
+      return '<div class="row user" id="' + domId + '"><div class="stack">' + summaryBubble + '</div></div>';
+    }
+
+    var userTag = '<span class="type-tag user-tag">' + ccreaderEscapeHTML(payload.legendUser || 'User') + '</span>';
+    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTag + '<span class="spacer"></span>' + copyButton + '</div>';
+    var userBubble = '<div class="bubble user">' + ccreaderMessageBodyHTML(payload.content || '') + userFooter + '</div>';
+    return '<div class="row user" id="' + domId + '"><div class="stack">' + userBubble + '</div></div>';
+  }
+
+  var sections = [];
+  var assistantTitle = ccreaderEscapeHTML(payload.assistantLabel || 'Assistant');
+  var model = payload.modelTitle ? '<span class="pill">' + ccreaderEscapeHTML(payload.modelTitle) + '</span>' : '';
+  sections.push('<div class="assistant-header"><span class="assistant-title">' + assistantTitle + '</span>' + model + '</div>');
+
+  if (payload.thinking) {
+    sections.push('<div class="card-section thinking"><div class="section-title">' + ccreaderEscapeHTML(payload.thinkingTitle || 'Thinking') + '</div>' + ccreaderMessageBodyHTML(payload.thinking) + '</div>');
+  }
+
+  var tools = Array.isArray(payload.tools) ? payload.tools : [];
+  if (tools.length > 0) {
+    var toolBody = tools.map(function (tool) {
+      var title = ccreaderEscapeHTML(tool.title || '');
+      var body = tool.body ? '<pre class="plain-pre">' + ccreaderEscapeHTML(tool.body) + '</pre>' : '';
+      return '<div><div class="section-title">' + title + '</div>' + body + '</div>';
+    }).join('');
+    sections.push('<div class="card-section tool"><div class="section-title">' + ccreaderEscapeHTML(payload.contextLabel || 'Context') + '</div>' + toolBody + '</div>');
+  }
+
+  if (payload.content) {
+    sections.push('<div class="card-section">' + ccreaderMessageBodyHTML(payload.content) + '</div>');
+  }
+
+  var assistantTag = '<span class="type-tag assistant-tag">' + ccreaderEscapeHTML(payload.legendAssistant || 'Assistant') + '</span>';
+  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTag + '<span class="spacer"></span>' + copyButton + '</div>');
+  return '<div class="row assistant" id="' + domId + '"><div class="stack"><div class="bubble assistant-card">' + sections.join('') + '</div></div></div>';
+}
+
 function ccreaderEnhanceNode(node) {
   // Markdown render + highlight are idempotent via dataset flags.
   renderMarkdownIn(node);
@@ -193,6 +269,24 @@ ccreader.appendMessages = function (html) {
   if (wasAtBottom) {
     window.scrollTo(0, document.body.scrollHeight);
   }
+};
+
+ccreader.replaceMessagesFromPayload = function (payloads) {
+  if (!Array.isArray(payloads) || payloads.length === 0) { return; }
+  for (var i = 0; i < payloads.length; i++) {
+    var payload = payloads[i];
+    var domId = payload && payload.domId;
+    if (!domId) { continue; }
+    ccreader.replaceMessageById(domId, ccreaderRenderMessageFromPayload(payload));
+  }
+};
+
+ccreader.appendMessagesFromPayload = function (payloads) {
+  if (!Array.isArray(payloads) || payloads.length === 0) { return; }
+  var html = payloads.map(function (payload) {
+    return ccreaderRenderMessageFromPayload(payload);
+  }).join('\n');
+  ccreader.appendMessages(html);
 };
 
 ccreader.prependOlder = function (html, opts) {
