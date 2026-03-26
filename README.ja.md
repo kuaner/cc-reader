@@ -73,13 +73,13 @@ Makefile はデフォルトで universal macOS バイナリ（`arm64` + `x86_64`
 
 ```bash
 # project.yml の MARKETING_VERSION を更新
-make version VERSION=0.2.0 BUILD_NUMBER=2
+make version VERSION=1.0.0 BUILD_NUMBER=2
 
-# バージョン更新、リリースコミット作成、v0.2.0 タグ作成
-make release-tag VERSION=0.2.0 BUILD_NUMBER=2
+# バージョン更新、リリースコミット作成、v1.0.0 タグ作成
+make release-tag VERSION=1.0.0 BUILD_NUMBER=2
 
 # 上記に加えてブランチとタグを GitHub に push
-make publish VERSION=0.2.0 BUILD_NUMBER=2
+make publish VERSION=1.0.0 BUILD_NUMBER=2
 ```
 
 `make publish` で release tag を GitHub に push すると、GitHub Actions が universal Release アプリをビルドし、DMG を生成して GitHub Releases にアップロードします。

@@ -73,13 +73,13 @@ Makefile 默认会构建 universal macOS 二进制（`arm64` + `x86_64`）。
 
 ```bash
 # 更新 project.yml 中的 MARKETING_VERSION
-make version VERSION=0.2.0 BUILD_NUMBER=2
+make version VERSION=1.0.0 BUILD_NUMBER=2
 
-# 更新版本、创建发布提交并打 v0.2.0 tag
-make release-tag VERSION=0.2.0 BUILD_NUMBER=2
+# 更新版本、创建发布提交并打 v1.0.0 tag
+make release-tag VERSION=1.0.0 BUILD_NUMBER=2
 
 # 同时推送分支和 tag 到 GitHub
-make publish VERSION=0.2.0 BUILD_NUMBER=2
+make publish VERSION=1.0.0 BUILD_NUMBER=2
 ```
 
 执行 `make publish` 后，GitHub Actions 会在收到 release tag 时自动构建 universal Release app、生成 DMG，并上传到 GitHub Releases。

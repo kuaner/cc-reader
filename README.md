@@ -73,13 +73,13 @@ Version updates and tagging are handled locally through the Makefile.
 
 ```bash
 # Update project.yml marketing version
-make version VERSION=0.2.0 BUILD_NUMBER=2
+make version VERSION=1.0.0 BUILD_NUMBER=2
 
-# Update version metadata, create a release commit, and tag it as v0.2.0
-make release-tag VERSION=0.2.0 BUILD_NUMBER=2
+# Update version metadata, create a release commit, and tag it as v1.0.0
+make release-tag VERSION=1.0.0 BUILD_NUMBER=2
 
 # Do the same and push branch + tag to GitHub
-make publish VERSION=0.2.0 BUILD_NUMBER=2
+make publish VERSION=1.0.0 BUILD_NUMBER=2
 ```
 
 `make publish` pushes the release tag to GitHub, which triggers the release workflow. The workflow builds a universal Release app, packages it as a DMG, and uploads it to GitHub Releases.
