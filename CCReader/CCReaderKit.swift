@@ -4,7 +4,11 @@ import SwiftData
 /// Localized string helper that always looks up from the package bundle.
 @usableFromInline
 internal func L(_ key: String.LocalizationValue) -> String {
+#if SWIFT_PACKAGE
     String(localized: key, bundle: .module)
+#else
+    String(localized: key, bundle: .main)
+#endif
 }
 
 /// Public entry point for embedding CC Reader in another application.
