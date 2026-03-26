@@ -142,7 +142,7 @@ body {
 .bubble.user .markdown [style*="background: #fff"],
 .bubble.user .markdown [style*="background:rgba(255,255,255"],
 .bubble.user .markdown [style*="background: rgba(255,255,255"] {
-  color: #1d1d1f;
+  color: #1d1d1f !important;
 }
 .bubble.user .markdown [style*="background:#f7f4ef"] *,
 .bubble.user .markdown [style*="background: #f7f4ef"] *,
@@ -150,7 +150,7 @@ body {
 .bubble.user .markdown [style*="background: #fff"] *,
 .bubble.user .markdown [style*="background:rgba(255,255,255"] *,
 .bubble.user .markdown [style*="background: rgba(255,255,255"] * {
-  color: inherit;
+  color: inherit !important;
 }
 .bubble.assistant-card .card-section .markdown :not(pre) > code { background: var(--code-bg); }
 
