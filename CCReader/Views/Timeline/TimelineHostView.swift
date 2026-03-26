@@ -146,7 +146,6 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             guard let webView else { return }
             let labels = TimelineWebLabels.localized()
             let windowMessages = currentRenderedMessages()
-            let renderer = TimelineHTMLRenderer(prevTimestampMap: snapshot.prevTimestampMap, rowPatchesMap: snapshot.rowPatchesMap)
 
             // 1. Find new messages to append at the bottom.
             var newMessages: [TimelineMessageDisplayData] = []
@@ -180,32 +179,36 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             var js = ""
 
             // Handle updated messages (replace in-place).
+            var updatedPayloads: [[String: Any]] = []
             for msg in updatedMessages {
-                let html = renderer.renderMessage(msg, labels: labels)
-                let escaped = escapeForJS(html)
-                let domId = escapeForJS(TimelineHTMLRenderer.messageDOMId(for: msg.uuid))
+                updatedPayloads.append(messagePayload(message: msg, labels: labels))
+                renderedFingerprints[msg.uuid] = msg.rawFingerprint
+            }
+            if !updatedPayloads.isEmpty, let payloadJSON = toJSONString(updatedPayloads) {
+                let escapedJSON = escapeForJS(payloadJSON)
                 js += """
                 (function() {
-                    if (window.ccreader && typeof window.ccreader.replaceMessageById === 'function') {
-                        window.ccreader.replaceMessageById('\(domId)', '\(escaped)');
+                    if (window.ccreader && typeof window.ccreader.replaceMessagesFromPayload === 'function') {
+                        window.ccreader.replaceMessagesFromPayload(JSON.parse('\(escapedJSON)'));
                     }
                 })();
                 """
-                renderedFingerprints[msg.uuid] = msg.rawFingerprint
             }
 
             // Handle new messages (append to timeline).
             if !newMessages.isEmpty {
-                let html = newMessages.map { renderer.renderMessage($0, labels: labels) }.joined(separator: "\n")
-                let escaped = escapeForJS(html)
+                let payloads = newMessages.map { messagePayload(message: $0, labels: labels) }
+                if let payloadJSON = toJSONString(payloads) {
+                    let escapedJSON = escapeForJS(payloadJSON)
 
-                js += """
-                (function() {
-                    if (window.ccreader && typeof window.ccreader.appendMessages === 'function') {
-                        window.ccreader.appendMessages('\(escaped)');
-                    }
-                })();
-                """
+                    js += """
+                    (function() {
+                        if (window.ccreader && typeof window.ccreader.appendMessagesFromPayload === 'function') {
+                            window.ccreader.appendMessagesFromPayload(JSON.parse('\(escapedJSON)'));
+                        }
+                    })();
+                    """
+                }
 
                 for msg in newMessages {
                     renderedMessageUUIDs.append(msg.uuid)
@@ -356,6 +359,108 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
         }
 
+        private func toJSONString(_ value: Any) -> String? {
+            guard JSONSerialization.isValidJSONObject(value),
+                  let data = try? JSONSerialization.data(withJSONObject: value, options: []),
+                  let json = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            return json
+        }
+
+        private func messagePayload(message: TimelineMessageDisplayData, labels: TimelineWebLabels) -> [String: Any] {
+            var payload: [String: Any] = [
+                "uuid": message.uuid,
+                "domId": TimelineHTMLRenderer.messageDOMId(for: message.uuid),
+                "isUser": message.type == .user,
+                "isSummary": isSummaryMessage(message),
+                "timeLabel": Self.messageTimeFormatter.string(from: message.timestamp),
+                "content": message.content ?? "",
+                "thinking": message.thinking ?? "",
+                "thinkingTitle": thinkingTitle(for: message) ?? labels.thinking,
+                "modelTitle": modelTitle(message.model) ?? "",
+                "assistantLabel": labels.assistant,
+                "contextLabel": labels.context,
+                "summaryLabel": labels.summaryLabel,
+                "legendUser": labels.legendUser,
+                "legendAssistant": labels.legendAssistant,
+                "legendSummary": labels.legendSummary,
+                "rawData": message.rawJsonString,
+                "rawDataLabel": labels.rawData
+            ]
+
+            if !message.toolUses.isEmpty {
+                payload["tools"] = message.toolUses.map { tool in
+                    [
+                        "title": toolTitle(tool),
+                        "body": toolBody(tool: tool, messageId: message.uuid) ?? ""
+                    ]
+                }
+            } else {
+                payload["tools"] = []
+            }
+
+            return payload
+        }
+
+        private func isSummaryMessage(_ message: TimelineMessageDisplayData) -> Bool {
+            message.type == .user && (message.content?.contains("This session is being continued") == true)
+        }
+
+        private func modelTitle(_ model: String?) -> String? {
+            guard let model, !model.isEmpty else { return nil }
+            if model.contains("opus") { return "Opus" }
+            if model.contains("sonnet") { return "Sonnet" }
+            if model.contains("haiku") { return "Haiku" }
+            return model
+        }
+
+        private func thinkingTitle(for message: TimelineMessageDisplayData) -> String? {
+            guard message.thinking?.isEmpty == false else { return nil }
+            let duration: Int
+            if let previous = snapshot.prevTimestampMap[message.uuid] {
+                duration = max(1, Int(message.timestamp.timeIntervalSince(previous)))
+            } else {
+                duration = 1
+            }
+            return String(format: L("timeline.thinking.seconds"), duration)
+        }
+
+        private func toolTitle(_ tool: ToolUseInfo) -> String {
+            if let path = tool.filePath, !path.isEmpty {
+                return (path as NSString).lastPathComponent
+            }
+            if let command = tool.command, !command.isEmpty {
+                let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
+                let prefix = String(trimmed.prefix(20))
+                return trimmed.count > 20 ? prefix + "..." : prefix
+            }
+            if let summary = tool.inputSummary, !summary.isEmpty {
+                return tool.name + ": " + String(summary.prefix(32))
+            }
+            return tool.name
+        }
+
+        private func toolBody(tool: ToolUseInfo, messageId: String) -> String? {
+            if tool.name == "Edit",
+               let patch = snapshot.rowPatchesMap[messageId]?[tool.id],
+               !patch.isEmpty {
+                let header = tool.filePath ?? toolTitle(tool)
+                return ([header] + patch.flatMap(\.lines)).joined(separator: "\n")
+            }
+
+            if let command = tool.command, !command.isEmpty { return command }
+            if let oldString = tool.oldString, let newString = tool.newString {
+                return "<<<\n\(oldString)\n===\n\(newString)\n>>>"
+            }
+            if let oldString = tool.oldString, !oldString.isEmpty { return oldString }
+            if let newString = tool.newString, !newString.isEmpty { return newString }
+            if let summary = tool.inputSummary, !summary.isEmpty { return summary }
+            if let path = tool.filePath, !path.isEmpty { return path }
+            if let raw = tool.rawInput, !raw.isEmpty { return raw }
+            return nil
+        }
+
         // MARK: - Navigation delegate
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -481,6 +586,13 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             </html>
             """
         }
+
+        private static let messageTimeFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter
+        }()
 
         private func escapeHTML(_ text: String) -> String {
             text
