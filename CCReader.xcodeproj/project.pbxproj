@@ -9,13 +9,13 @@
 /* Begin PBXBuildFile section */
 		0966DBA654407F047A64F361 /* MarkdownRenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E15C8F5E0E64CE2BB02F1F1A /* MarkdownRenderView.swift */; };
 		0B726677105029ED4E0034F5 /* marked.min.js in Resources */ = {isa = PBXBuildFile; fileRef = F10CFC3FEA49AE975CCF5ADC /* marked.min.js */; };
-		C3D4E5F60718293A4B5C6D7E /* timeline-shell.css in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* timeline-shell.css */; };
-		D4E5F60718293A4B5C6D7E8F /* timeline-shell.js in Resources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* timeline-shell.js */; };
 		0E78E0FDC521D999D7DD76B5 /* SessionMessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */; };
+		10E11683343DB84FB504D83A /* timeline-shell.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D5C33B55102BD52802A8A96 /* timeline-shell.js */; };
 		135532E7232F50B5DED750B6 /* TokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B4B5280E7F85051F7BB547 /* TokenEstimator.swift */; };
 		16E272CCDDCBC936DDA9105B /* FileWatcherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCDD199E047D6B9E4E621BA /* FileWatcherService.swift */; };
 		171FF3A78085313AE77E2C76 /* highlight-dark.css in Resources */ = {isa = PBXBuildFile; fileRef = F9802583811E17FFB1C94BA4 /* highlight-dark.css */; };
 		292866129A9EFA58EE23D44C /* highlight-light.css in Resources */ = {isa = PBXBuildFile; fileRef = 5CD1D89D9DE0A8C91741E2D9 /* highlight-light.css */; };
+		36212E32E0EE6C0CBDC0423B /* timeline-shell.css in Resources */ = {isa = PBXBuildFile; fileRef = EA444D0E6762DDEA7479FF25 /* timeline-shell.css */; };
 		37116010913859DACF933795 /* ConfirmationDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477EFCE2D6B052BF578012CB /* ConfirmationDetector.swift */; };
 		3DEB64E600E58389580E7104 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8CB81705243D19FB001250A /* ContentView.swift */; };
 		423148C129A2CEBE2024A477 /* JSONLWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81801878D7D0F5941459DE8 /* JSONLWriter.swift */; };
@@ -32,6 +32,7 @@
 		A1999687B89F9EBDD05EE72A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5C6CD268D87770B6C7BEAF9 /* Assets.xcassets */; };
 		B0930439C8B96834E2223946 /* IgnoredSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB6307442D0C034EA7EC4D0F /* IgnoredSessionManager.swift */; };
 		B2A74C811ACDFEEDD7E784E3 /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A089AB1F16E6120BE5C2C502 /* SyncService.swift */; };
+		B50FBBCA37CEFDC3A2216E75 /* TimelineHTMLRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C225736462C3E2A4D718F083 /* TimelineHTMLRenderer.swift */; };
 		BA1A4D14FD20B5D7661A86A6 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AFEC18E2D24630701A08135 /* ProjectListView.swift */; };
 		C348956E8CB50BA2B12D0FDD /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 572CFF7069A89BBBB1115EC2 /* Localizable.strings */; };
 		D19FF04D36928346DFFD1310 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1BEC8F5E4D5F2E0B1F7794C /* Project.swift */; };
@@ -55,6 +56,7 @@
 		43DF818ED2E3C487E69B68FA /* CCReader.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CCReader.entitlements; sourceTree = "<group>"; };
 		477EFCE2D6B052BF578012CB /* ConfirmationDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmationDetector.swift; sourceTree = "<group>"; };
 		49AE184C15F801F03452E748 /* WorkspaceLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLayout.swift; sourceTree = "<group>"; };
+		4D5C33B55102BD52802A8A96 /* timeline-shell.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "timeline-shell.js"; sourceTree = "<group>"; };
 		5CD1D89D9DE0A8C91741E2D9 /* highlight-light.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "highlight-light.css"; sourceTree = "<group>"; };
 		5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionMessagesView.swift; sourceTree = "<group>"; };
 		63821F7A934EBCE8CF6F23C1 /* PaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneView.swift; sourceTree = "<group>"; };
@@ -67,17 +69,17 @@
 		B8CB81705243D19FB001250A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BC01B30FA58E55B743817E8F /* JSONLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParser.swift; sourceTree = "<group>"; };
 		BE036CD00B746A0350550D54 /* LayoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutView.swift; sourceTree = "<group>"; };
+		C225736462C3E2A4D718F083 /* TimelineHTMLRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineHTMLRenderer.swift; sourceTree = "<group>"; };
 		C81801878D7D0F5941459DE8 /* JSONLWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLWriter.swift; sourceTree = "<group>"; };
 		CA6122E0863FB726A9603BD2 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D1BEC8F5E4D5F2E0B1F7794C /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		D206CCDB2D51989E20345F47 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		DB6307442D0C034EA7EC4D0F /* IgnoredSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoredSessionManager.swift; sourceTree = "<group>"; };
 		E15C8F5E0E64CE2BB02F1F1A /* MarkdownRenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderView.swift; sourceTree = "<group>"; };
+		EA444D0E6762DDEA7479FF25 /* timeline-shell.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "timeline-shell.css"; sourceTree = "<group>"; };
 		F10CFC3FEA49AE975CCF5ADC /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = marked.min.js; sourceTree = "<group>"; };
 		F5C6CD268D87770B6C7BEAF9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F9802583811E17FFB1C94BA4 /* highlight-dark.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "highlight-dark.css"; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5C /* timeline-shell.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "timeline-shell.css"; sourceTree = "<group>"; };
-		B2C3D4E5F60718293A4B5C6D /* timeline-shell.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "timeline-shell.js"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -112,6 +114,7 @@
 				E15C8F5E0E64CE2BB02F1F1A /* MarkdownRenderView.swift */,
 				5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */,
 				2DA8A1AAA6346DA78009DD7B /* TimelineHostView.swift */,
+				C225736462C3E2A4D718F083 /* TimelineHTMLRenderer.swift */,
 				1A35445FEDF37567C35285BA /* TimelineModels.swift */,
 				02309040AE8F13550DD331F5 /* WebRenderAssets.swift */,
 			);
@@ -186,8 +189,8 @@
 				5CD1D89D9DE0A8C91741E2D9 /* highlight-light.css */,
 				92E3A2CC7D72BA6F7AAA7B32 /* highlight.min.js */,
 				F10CFC3FEA49AE975CCF5ADC /* marked.min.js */,
-				A1B2C3D4E5F60718293A4B5C /* timeline-shell.css */,
-				B2C3D4E5F60718293A4B5C6D /* timeline-shell.js */,
+				EA444D0E6762DDEA7479FF25 /* timeline-shell.css */,
+				4D5C33B55102BD52802A8A96 /* timeline-shell.js */,
 				572CFF7069A89BBBB1115EC2 /* Localizable.strings */,
 			);
 			path = Resources;
@@ -261,8 +264,8 @@
 				292866129A9EFA58EE23D44C /* highlight-light.css in Resources */,
 				EF5AFA6F36B8B3A950806747 /* highlight.min.js in Resources */,
 				0B726677105029ED4E0034F5 /* marked.min.js in Resources */,
-				C3D4E5F60718293A4B5C6D7E /* timeline-shell.css in Resources */,
-				D4E5F60718293A4B5C6D7E8F /* timeline-shell.js in Resources */,
+				36212E32E0EE6C0CBDC0423B /* timeline-shell.css in Resources */,
+				10E11683343DB84FB504D83A /* timeline-shell.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,6 +295,7 @@
 				673CAD5D15307B6EBB15B539 /* Session.swift in Sources */,
 				0E78E0FDC521D999D7DD76B5 /* SessionMessagesView.swift in Sources */,
 				B2A74C811ACDFEEDD7E784E3 /* SyncService.swift in Sources */,
+				B50FBBCA37CEFDC3A2216E75 /* TimelineHTMLRenderer.swift in Sources */,
 				E5986E7813690B31D581D3D2 /* TimelineHostView.swift in Sources */,
 				81D42952889C0944484E70A7 /* TimelineModels.swift in Sources */,
 				135532E7232F50B5DED750B6 /* TokenEstimator.swift in Sources */,
@@ -323,7 +327,7 @@
 				CODE_SIGN_ENTITLEMENTS = CCReader/CCReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -333,7 +337,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kuaner.ccreader;
 				PRODUCT_NAME = "CC Reader";
 				SDKROOT = macosx;
@@ -348,7 +352,7 @@
 				CODE_SIGN_ENTITLEMENTS = CCReader/CCReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -358,7 +362,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kuaner.ccreader;
 				PRODUCT_NAME = "CC Reader";
 				SDKROOT = macosx;
