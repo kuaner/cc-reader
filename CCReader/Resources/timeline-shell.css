@@ -146,12 +146,21 @@ body {
   font-size: 12px; line-height: 1.5; background: var(--code-bg); border-radius: 10px; padding: 12px;
 }
 .result-images { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
-.result-image-item { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: rgba(255,255,255,0.08); }
+.result-image-item {
+  width: min(360px, 100%);
+  height: 220px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .result-image {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 480px;
+  height: 100%;
   object-fit: contain;
 }
 /* ===== Markdown Typography ===== */
