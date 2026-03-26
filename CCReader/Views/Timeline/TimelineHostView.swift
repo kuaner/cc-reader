@@ -100,7 +100,11 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 // call incrementalUpdate() to pick up accumulated changes.
                 break
             case .loaded:
-                incrementalUpdate()
+                if sessionChanged {
+                    replaceTimelineForSession()
+                } else {
+                    incrementalUpdate()
+                }
             }
         }
 
@@ -297,6 +301,67 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
         }
 
+        // MARK: - Session switch without full web reload
+
+        /// Replace the `.timeline` DOM in-place when the shell has already been loaded.
+        /// This avoids a visible blank caused by reloading the whole WKWebView.
+        private func replaceTimelineForSession() {
+            guard let webView else { return }
+
+            let labels = TimelineWebLabels.localized()
+            let messages = currentRenderedMessages()
+            let hasOlder = renderedMessageRange.lowerBound > 0
+            let waiting = snapshot.visibleMessages.last?.type == .user
+
+            let renderer = TimelineHTMLRenderer(prevTimestampMap: snapshot.prevTimestampMap, rowPatchesMap: snapshot.rowPatchesMap)
+            let messageHTML = messages.map { renderer.renderMessage($0, labels: labels) }.joined(separator: "\n")
+            let loadOlderHTML = hasOlder ? "<div id=\"load-older-bar\" class=\"topbar\"><a class=\"pill\" onclick=\"window.webkit.messageHandlers.ccreader.postMessage({action:'loadOlder'})\">\(escapeHTML(labels.loadOlder))</a></div>" : ""
+            let waitingHTML = waiting ? "<div id=\"waiting-indicator\" class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>" : ""
+            let allHTML = loadOlderHTML + messageHTML + waitingHTML
+            let escaped = escapeForJS(allHTML)
+
+            // Track new DOM state to keep incremental updates consistent.
+            renderedMessageUUIDs = messages.map(\.uuid)
+            renderedMessageSet = Set(renderedMessageUUIDs)
+            renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawFingerprint) })
+            hasWaitingIndicator = waiting
+            hasOlderIndicator = hasOlder
+            isFollowingBottom = true
+
+            let js = """
+            (function() {
+                var timeline = document.querySelector('.timeline');
+                var temp = document.createElement('div');
+                temp.innerHTML = '\(escaped)';
+
+                var frag = document.createDocumentFragment();
+                var inserted = [];
+                while (temp.firstElementChild) {
+                    var node = temp.firstElementChild;
+                    inserted.push(node);
+                    frag.appendChild(node);
+                }
+
+                // Replace in one JS turn to reduce visible flicker.
+                timeline.innerHTML = '';
+                timeline.appendChild(frag);
+
+                for (var i = 0; i < inserted.length; i++) {
+                    renderMarkdownIn(inserted[i]);
+                    highlightCodeBlocksIn(inserted[i]);
+                    enhanceCodeBlocks(inserted[i]);
+                    enhanceMessageCopyButtons(inserted[i]);
+                }
+
+                window.scrollTo(0, document.body.scrollHeight);
+            })();
+            """
+
+            webView.evaluateJavaScript(js) { _, error in
+                if let error { print("[TimelineHostView] replaceTimelineForSession JS error: \(error)") }
+            }
+        }
+
         // MARK: - Load older (prepend with scroll preservation)
 
         private func loadOlderMessages() {
@@ -411,7 +476,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             snapshot = TimelineRenderSnapshot()
             renderedMessageRange = 0..<0
             previousVisibleMessageCount = 0
-            shellState = .notLoaded
+            // Keep the already-loaded shell when possible to avoid a visible blank.
+            // Only force a full reload when the page isn't ready yet.
+            shellState = (shellState == .loaded) ? .loaded : .notLoaded
             isFollowingBottom = true
             renderedMessageUUIDs = []
             renderedMessageSet = []
