@@ -139,6 +139,52 @@ ccreader.replaceTimeline = function(html) {
   ccreader.scrollBottomStable();
 };
 
+ccreader.replaceMessageById = function(domId, html) {
+  var id = String(domId || '');
+  if (!id) { return; }
+
+  var existing = document.getElementById(id);
+  if (!existing) { return; }
+
+  var temp = document.createElement('div');
+  temp.innerHTML = html || '';
+  var newNode = temp.firstElementChild;
+  if (!newNode) { return; }
+
+  existing.replaceWith(newNode);
+  ccreaderEnhanceNode(newNode);
+};
+
+ccreader.appendMessages = function(html) {
+  var timeline = ccreaderGetTimeline();
+  if (!timeline) { return; }
+
+  var waiting = document.getElementById('waiting-indicator');
+  var wasAtBottom = isNearBottom();
+
+  var temp = document.createElement('div');
+  temp.innerHTML = html || '';
+
+  var inserted = [];
+  while (temp.firstElementChild) {
+    var node = temp.firstElementChild;
+    if (waiting) {
+      timeline.insertBefore(node, waiting);
+    } else {
+      timeline.appendChild(node);
+    }
+    inserted.push(node);
+  }
+
+  for (var i = 0; i < inserted.length; i++) {
+    ccreaderEnhanceNode(inserted[i]);
+  }
+
+  if (wasAtBottom) {
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+};
+
 ccreader.prependOlder = function(html, opts) {
   opts = opts || {};
 
