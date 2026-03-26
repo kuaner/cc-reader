@@ -40,11 +40,11 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         /// Max logical messages in the WK slice: initially the **last N** of the session; each “load older” prepends up to **N** older rows.
         /// (Scroll distance to the top bar is unrelated — that bar appears when there are older rows not yet in the window.)
-        private static let renderBatchSize = 100
-        private static let followBottomThreshold: CGFloat = 96
-        private static let progressiveReplaceThreshold = 30
-        private static let progressiveInitialLatestCount = 18
-        private static let progressivePrependChunkSize = 16
+        private static let renderBatchSize = TimelineRenderTuning.renderBatchSize
+        private static let followBottomThreshold = TimelineRenderTuning.followBottomThreshold
+        private static let progressiveReplaceThreshold = TimelineRenderTuning.progressiveReplaceThreshold
+        private static let progressiveInitialLatestCount = TimelineRenderTuning.progressiveInitialLatestCount
+        private static let progressivePrependChunkSize = TimelineRenderTuning.progressivePrependChunkSize
 
         private weak var webView: WKWebView?
         private var currentSessionId = ""

@@ -107,11 +107,11 @@ struct SessionMessagesView: View {
         }
 
         /// More messages than this → async path (decode tail, then head, then Phase1).
-        let firstPaintThreshold = 40
+        let firstPaintThreshold = TimelineRenderTuning.firstPaintThreshold
         /// In the async path, indices `[visibleCount - tailSize ..< visibleCount)` are built first (newest segment).
-        let firstPaintTailSize = 24
+        let firstPaintTailSize = TimelineRenderTuning.firstPaintTailSize
         /// Yield during row building so WKNavigationDelegate `didFinish` can run before long JSON decodes block the main thread.
-        let yieldEveryRowsDuringDecode = 8
+        let yieldEveryRowsDuringDecode = TimelineRenderTuning.yieldEveryRowsDuringDecode
 
         /// Build one row using the same cache rules as the legacy full loop.
         func appendRow(at index: Int, into rows: inout [TimelineMessageDisplayData]) {
