@@ -4,7 +4,7 @@ function decodeMarkdownBase64(source) {
 
 function renderMarkdownIn(root) {
   if (typeof marked === 'undefined') { return; }
-  root.querySelectorAll('[data-markdown-base64]').forEach(function(node) {
+  root.querySelectorAll('[data-markdown-base64]').forEach(function (node) {
     if (node.dataset.mdRendered === '1') { return; }
     var source = node.getAttribute('data-markdown-base64') || '';
     if (!source) { return; }
@@ -23,14 +23,24 @@ function renderMarkdownIn(root) {
               .replace(/'/g, '&#39;');
           }
 
+          function markedValue(input, preferredKey) {
+            if (typeof input === 'string') { return input; }
+            if (!input || typeof input !== 'object') { return ''; }
+            if (preferredKey && typeof input[preferredKey] === 'string') { return input[preferredKey]; }
+            if (typeof input.raw === 'string') { return input.raw; }
+            if (typeof input.text === 'string') { return input.text; }
+            if (typeof input.href === 'string') { return input.href; }
+            return '';
+          }
+
           marked.use({
             renderer: {
               // Disable raw HTML in markdown: render HTML blocks as plain text.
-              html: function(html) {
-                return escapeHtmlText(html);
+              html: function (html) {
+                return escapeHtmlText(markedValue(html, 'text'));
               },
-              image: function(href, title, text) {
-                var url = (href || '').trim();
+              image: function (href, title, text) {
+                var url = markedValue(href, 'href').trim();
                 // Timeline rendering: treat markdown images as links to avoid WKWebView
                 // decoding issues (e.g. WebP) and reduce layout shifts.
                 var safeUrl = escapeHtmlText(url);
@@ -54,7 +64,7 @@ function renderMarkdownIn(root) {
 
 function highlightCodeBlocksIn(root) {
   if (typeof hljs === 'undefined') { return; }
-  root.querySelectorAll('pre code').forEach(function(block) {
+  root.querySelectorAll('pre code').forEach(function (block) {
     if (block.dataset.hlRendered === '1') { return; }
     try {
       hljs.highlightElement(block);
@@ -82,7 +92,7 @@ function ccreaderEnhanceNode(node) {
   if (typeof enhanceMessageCopyButtons === 'function') { enhanceMessageCopyButtons(node); }
 }
 
-ccreader.scrollBottomStable = function() {
+ccreader.scrollBottomStable = function () {
   // Keep scrolling until the document height stabilizes (layout may change due to images).
   var attempts = 0;
   var lastH = -1;
@@ -116,7 +126,7 @@ ccreader.scrollBottomStable = function() {
   window.requestAnimationFrame(scrollStep);
 };
 
-ccreader.replaceTimeline = function(html) {
+ccreader.replaceTimeline = function (html) {
   var timeline = ccreaderGetTimeline();
   if (!timeline) { return; }
 
@@ -139,7 +149,7 @@ ccreader.replaceTimeline = function(html) {
   ccreader.scrollBottomStable();
 };
 
-ccreader.replaceMessageById = function(domId, html) {
+ccreader.replaceMessageById = function (domId, html) {
   var id = String(domId || '');
   if (!id) { return; }
 
@@ -155,7 +165,7 @@ ccreader.replaceMessageById = function(domId, html) {
   ccreaderEnhanceNode(newNode);
 };
 
-ccreader.appendMessages = function(html) {
+ccreader.appendMessages = function (html) {
   var timeline = ccreaderGetTimeline();
   if (!timeline) { return; }
 
@@ -185,7 +195,7 @@ ccreader.appendMessages = function(html) {
   }
 };
 
-ccreader.prependOlder = function(html, opts) {
+ccreader.prependOlder = function (html, opts) {
   opts = opts || {};
 
   var timeline = ccreaderGetTimeline();
@@ -226,7 +236,7 @@ ccreader.prependOlder = function(html, opts) {
   }
 };
 
-ccreader.setWaitingIndicator = function(htmlOrEmpty) {
+ccreader.setWaitingIndicator = function (htmlOrEmpty) {
   var timeline = ccreaderGetTimeline();
   if (!timeline) { return; }
 
@@ -253,7 +263,7 @@ ccreader.setWaitingIndicator = function(htmlOrEmpty) {
   }
 };
 
-ccreader.setLoadOlderBar = function(htmlOrEmpty) {
+ccreader.setLoadOlderBar = function (htmlOrEmpty) {
   var timeline = ccreaderGetTimeline();
   if (!timeline) { return; }
 
@@ -293,10 +303,10 @@ function emitScrollState() {
   }
 }
 
-window.addEventListener('scroll', function() {
+window.addEventListener('scroll', function () {
   if (scrollState.ticking) { return; }
   scrollState.ticking = true;
-  window.requestAnimationFrame(function() {
+  window.requestAnimationFrame(function () {
     scrollState.ticking = false;
     emitScrollState();
   });
