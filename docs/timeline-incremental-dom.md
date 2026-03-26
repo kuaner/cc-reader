@@ -105,6 +105,12 @@ newNodes.forEach(function(node) {
 
 `loadOlderMessages()` 插入的是一批“历史消息节点”。因此后续的 `renderMarkdownIn` / `highlightCodeBlocksIn` / `enhanceCodeBlocks` / `enhanceMessageCopyButtons` **只对这些新插入节点执行**，避免每次回填都对整棵 `.timeline` 做全量遍历，从而提升性能并减少行为不一致的风险。
 
+### 4. JS 字符转义增强（escapeForJS 支持 U+2028/U+2029）
+
+`evaluateJavaScript()` 会把字符串字面量解析为 JS 代码。若要插入的 HTML 中包含行分隔符字符 `U+2028` / `U+2029`，可能导致拼接出来的 JS 语法错误并出现静默失败。
+
+因此在 `escapeForJS()` 中显式转义 `U+2028/U+2029`，提升低频内容下的稳定性。
+
 ## 更激进的优化方向（当前不需要）
 
 以下方案在当前 200 条 batch 的规模下完全不需要，仅供未来参考：
