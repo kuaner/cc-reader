@@ -284,11 +284,17 @@ ccreader.appendMessages = function (html) {
 
 ccreader.replaceMessagesFromPayload = function (payloads) {
   if (!Array.isArray(payloads) || payloads.length === 0) { return; }
+  // Stub → full content swaps grow document height without changing scrollY; user ends up
+  // mid-page unless we re-anchor (same idea as appendMessages + wasAtBottom).
+  var wasAtBottom = isNearBottom();
   for (var i = 0; i < payloads.length; i++) {
     var payload = payloads[i];
     var domId = payload && payload.domId;
     if (!domId) { continue; }
     ccreader.replaceMessageById(domId, ccreaderRenderMessageFromPayload(payload));
+  }
+  if (wasAtBottom) {
+    ccreader.scrollBottomStable();
   }
 };
 
@@ -320,8 +326,9 @@ ccreader.replaceTimelineFromPayloadsProgressive = function (opts) {
     return;
   }
 
-  var initialLatestCount = Number(opts.initialLatestCount || 40);
-  var prependChunkSize = Number(opts.prependChunkSize || 40);
+  // Defaults only if Swift omits keys (normally `TimelineHostView` passes these).
+  var initialLatestCount = Number(opts.initialLatestCount || 18);
+  var prependChunkSize = Number(opts.prependChunkSize || 16);
   initialLatestCount = Math.max(1, initialLatestCount);
   prependChunkSize = Math.max(1, prependChunkSize);
 

@@ -106,8 +106,12 @@ struct SessionMessagesView: View {
             }
         }
 
-        let firstPaintThreshold = 80
-        let firstPaintTailSize = 48
+        /// More messages than this → async path (decode tail, then head, then Phase1).
+        let firstPaintThreshold = 40
+        /// In the async path, indices `[visibleCount - tailSize ..< visibleCount)` are built first (newest segment).
+        let firstPaintTailSize = 24
+        /// Yield during row building so WKNavigationDelegate `didFinish` can run before long JSON decodes block the main thread.
+        let yieldEveryRowsDuringDecode = 8
 
         /// Build one row using the same cache rules as the legacy full loop.
         func appendRow(at index: Int, into rows: inout [TimelineMessageDisplayData]) {
@@ -124,34 +128,29 @@ struct SessionMessagesView: View {
 
         if visibleCount > firstPaintThreshold {
             let tailStart = max(0, visibleCount - firstPaintTailSize)
-            var tailRows: [TimelineMessageDisplayData] = []
-            tailRows.reserveCapacity(visibleCount - tailStart)
-            for index in tailStart..<visibleCount {
-                appendRow(at: index, into: &tailRows)
-            }
-
-            var partial = timeline
-            partial.visibleMessages = tailRows
-            partial.prevTimestampMap = tsMap
-            partial.tailStartIndex = tailStart
-            partial.totalVisibleCount = visibleCount
-            partial.generation = gen
-            if needsFullRebuild {
-                partial.derivedPatchMap = [:]
-                partial.derivedContextMap = [:]
-                partial.rowPatchesMap = [:]
-                partial.hasSummaryThinking = false
-            }
-            timeline = partial
             visibleMessageCount = visibleCount
 
             Task { @MainActor in
+                await Task.yield()
                 guard gen == derivedDataGeneration else { return }
+
+                var tailRows: [TimelineMessageDisplayData] = []
+                tailRows.reserveCapacity(visibleCount - tailStart)
+                for index in tailStart..<visibleCount {
+                    appendRow(at: index, into: &tailRows)
+                    let n = index - tailStart + 1
+                    if n % yieldEveryRowsDuringDecode == 0, index < visibleCount - 1 {
+                        await Task.yield()
+                    }
+                }
 
                 var headRows: [TimelineMessageDisplayData] = []
                 headRows.reserveCapacity(tailStart)
                 for index in 0..<tailStart {
                     appendRow(at: index, into: &headRows)
+                    if (index + 1) % yieldEveryRowsDuringDecode == 0, index < tailStart - 1 {
+                        await Task.yield()
+                    }
                 }
                 let visibleRows = headRows + tailRows
                 displayDataCache = updatedDisplayCache
@@ -173,29 +172,30 @@ struct SessionMessagesView: View {
             return
         }
 
-        var visibleRows: [TimelineMessageDisplayData] = []
-        visibleRows.reserveCapacity(visibleCount)
-        for index in 0..<visibleCount {
-            appendRow(at: index, into: &visibleRows)
-        }
-        displayDataCache = updatedDisplayCache
-
-        var immediateSnap = timeline
-        immediateSnap.visibleMessages = visibleRows
-        immediateSnap.prevTimestampMap = tsMap
-        immediateSnap.tailStartIndex = 0
-        immediateSnap.totalVisibleCount = 0
-        immediateSnap.generation = gen
-        timeline = immediateSnap
-        visibleMessageCount = visibleCount
-
         guard startIndex <= visibleCount else { return }
         let deltaMessages = Array(visible[startIndex..<visibleCount])
 
         if deltaMessages.isEmpty {
+            var visibleRows: [TimelineMessageDisplayData] = []
+            visibleRows.reserveCapacity(visibleCount)
+            for index in 0..<visibleCount {
+                appendRow(at: index, into: &visibleRows)
+            }
+            displayDataCache = updatedDisplayCache
+
+            var immediateSnap = timeline
+            immediateSnap.visibleMessages = visibleRows
+            immediateSnap.prevTimestampMap = tsMap
+            immediateSnap.tailStartIndex = 0
+            immediateSnap.totalVisibleCount = 0
+            immediateSnap.generation = gen
+            timeline = immediateSnap
+            visibleMessageCount = visibleCount
             publishContextDeferred(contextMap: timeline.derivedContextMap, latestThinking: contextPanel.latestThinking)
             return
         }
+
+        visibleMessageCount = visibleCount
 
         var patchMap = needsFullRebuild ? [String: [StructuredPatchHunk]]() : timeline.derivedPatchMap
         var toolUseMap = needsFullRebuild ? [String: ToolUseInfo]() : derivedToolUseMap
@@ -206,8 +206,37 @@ struct SessionMessagesView: View {
         var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
 
         Task { @MainActor in
+            await Task.yield()
+            guard gen == derivedDataGeneration else { return }
+
+            var visibleRows: [TimelineMessageDisplayData] = []
+            visibleRows.reserveCapacity(visibleCount)
+            for index in 0..<visibleCount {
+                appendRow(at: index, into: &visibleRows)
+                if (index + 1) % yieldEveryRowsDuringDecode == 0, index < visibleCount - 1 {
+                    await Task.yield()
+                }
+            }
+            displayDataCache = updatedDisplayCache
+
+            derivedDataGeneration += 1
+            let genRows = derivedDataGeneration
+
+            var rowSnap = TimelineRenderSnapshot()
+            rowSnap.generation = genRows
+            rowSnap.visibleMessages = visibleRows
+            rowSnap.prevTimestampMap = tsMap
+            rowSnap.tailStartIndex = 0
+            rowSnap.totalVisibleCount = 0
+            rowSnap.derivedPatchMap = patchMap
+            rowSnap.derivedContextMap = contextMap
+            rowSnap.hasSummaryThinking = hasSummaryThinking
+            rowSnap.rowPatchesMap = rowPatchesMap
+            timeline = rowSnap
+            visibleMessageCount = visibleCount
+
             await runPhase1DecodeLoop(
-                gen: gen,
+                gen: genRows,
                 deltaMessages: deltaMessages,
                 patchMap: &patchMap,
                 toolUseMap: &toolUseMap,
@@ -218,7 +247,7 @@ struct SessionMessagesView: View {
                 rowPatchesMap: &rowPatchesMap
             )
 
-            guard gen == derivedDataGeneration else { return }
+            guard genRows == derivedDataGeneration else { return }
             derivedDataGeneration += 1
             let genFinal = derivedDataGeneration
 
@@ -294,6 +323,19 @@ struct SessionMessagesView: View {
         var hasSummaryThinking = needsFullRebuild ? false : timeline.hasSummaryThinking
         var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
 
+        var rowSnap = TimelineRenderSnapshot()
+        rowSnap.generation = gen
+        rowSnap.visibleMessages = visibleRows
+        rowSnap.prevTimestampMap = tsMap
+        rowSnap.tailStartIndex = 0
+        rowSnap.totalVisibleCount = 0
+        rowSnap.derivedPatchMap = patchMap
+        rowSnap.derivedContextMap = contextMap
+        rowSnap.hasSummaryThinking = hasSummaryThinking
+        rowSnap.rowPatchesMap = rowPatchesMap
+        timeline = rowSnap
+        visibleMessageCount = visibleCount
+
         await runPhase1DecodeLoop(
             gen: gen,
             deltaMessages: deltaMessages,
@@ -312,8 +354,11 @@ struct SessionMessagesView: View {
         toolUseOwnerMap = ownerMap
         displayDataCache = updatedDisplayCache
 
+        derivedDataGeneration += 1
+        let genPatched = derivedDataGeneration
+
         var snap = TimelineRenderSnapshot()
-        snap.generation = gen
+        snap.generation = genPatched
         snap.visibleMessages = visibleRows
         snap.prevTimestampMap = tsMap
         snap.tailStartIndex = 0
