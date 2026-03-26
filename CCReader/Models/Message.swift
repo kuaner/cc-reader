@@ -26,6 +26,7 @@ public class Message {
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
+    @Transient private var _toolResultImages: [ToolResultImage] = []
     @Transient private var _patchMap: [String: [StructuredPatchHunk]]?
 
     public var content: String? { ensureDecoded(); return _content }
@@ -36,6 +37,7 @@ public class Message {
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
+    public var toolResultImages: [ToolResultImage] { ensureDecoded(); return _toolResultImages }
     public var toolUseResultsWithPatch: [String: [StructuredPatchHunk]]? { ensureDecoded(); return _patchMap }
 
     // Decode all fields once and populate every cache slot.
@@ -140,6 +142,22 @@ public class Message {
             }
             _toolResults = results.isEmpty ? nil : results
 
+            let images: [ToolResultImage] = blocks.compactMap { block in
+                guard block.type == "tool_result" else { return nil }
+                guard let arr = block.content?.value as? [[String: Any]] else { return nil }
+                for item in arr {
+                    guard (item["type"] as? String) == "image",
+                          let source = item["source"] as? [String: Any],
+                          (source["type"] as? String) == "base64",
+                          let data = source["data"] as? String,
+                          !data.isEmpty else { continue }
+                    let mediaType = (source["media_type"] as? String) ?? "image/png"
+                    return ToolResultImage(mediaType: mediaType, base64: data)
+                }
+                return nil
+            }
+            _toolResultImages = images
+
             // patchMap from structuredPatch values embedded in tool_result content.
             var pMap: [String: [StructuredPatchHunk]] = [:]
             for block in blocks where block.type == "tool_result" {
@@ -168,7 +186,7 @@ public class Message {
     func invalidateCache() {
         _decoded = false
         _content = nil; _thinking = nil; _model = nil; _role = nil; _entryType = nil; _blockTypes = []
-        _toolUses = []; _toolResults = nil; _patchMap = nil
+        _toolUses = []; _toolResults = nil; _toolResultImages = []; _patchMap = nil
     }
 
     private static let sharedDecoder = JSONDecoder()
@@ -305,6 +323,11 @@ public struct ToolResultData: Codable {
     public var tool_use_id: String?
     public var content: String?
     public var is_error: Bool?
+}
+
+public struct ToolResultImage: Codable, Equatable {
+    public var mediaType: String
+    public var base64: String
 }
 
 // MARK: - StructuredPatch (diff metadata from Edit results)

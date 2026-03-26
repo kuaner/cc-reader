@@ -145,6 +145,19 @@ function ccreaderLooksLikeMarkdown(text) {
   return /```|^\s{0,3}#{1,6}\s|^\s*[-*+]\s|^\s*\d+\.\s|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|^\s*>\s|^\s*\|.+\|/m.test(source);
 }
 
+function ccreaderToolResultImagesHTML(payload) {
+  var images = Array.isArray(payload.resultImages) ? payload.resultImages : [];
+  if (images.length === 0) { return ''; }
+  var body = images.map(function (item) {
+    var base64 = String((item && item.base64) || '');
+    if (!base64) { return ''; }
+    var mediaType = ccreaderEscapeHTML(String((item && item.mediaType) || 'image/png'));
+    return '<div class="result-image-item"><img class="result-image" src="data:' + mediaType + ';base64,' + base64 + '" loading="lazy" /></div>';
+  }).join('');
+  if (!body) { return ''; }
+  return '<div class="result-images">' + body + '</div>';
+}
+
 function ccreaderRenderMessageFromPayload(payload) {
   var domId = ccreaderEscapeHTML(payload.domId || '');
   var timestamp = ccreaderEscapeHTML(payload.timeLabel || '');
@@ -162,17 +175,19 @@ function ccreaderRenderMessageFromPayload(payload) {
           renderMarkdown: toolResultShouldRenderMarkdown
         })
       : ccreaderMessageBodyHTML(payload.content || '');
+    var userImages = ccreaderToolResultImagesHTML(payload);
+    var userBodyWithImages = userBody + userImages;
 
     if (payload.isSummary) {
       var summaryTag = '<span class="type-tag summary-tag">' + ccreaderEscapeHTML(payload.legendSummary || 'Summary') + '</span>';
       var summaryFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + summaryTag + '<span class="spacer"></span>' + copyButton + '</div>';
-      var summaryBubble = '<div class="bubble summary"><div class="summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Summary') + '</div>' + userBody + summaryFooter + '</div>';
+      var summaryBubble = '<div class="bubble summary"><div class="summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Summary') + '</div>' + userBodyWithImages + summaryFooter + '</div>';
       return '<div class="row user" id="' + domId + '"><div class="stack">' + summaryBubble + '</div></div>';
     }
 
     var userTagsHTML = ccreaderTypeTagsHTML(payload, payload.legendUser || 'User', 'user-tag');
     var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + '<span class="spacer"></span>' + copyButton + '</div>';
-    var userBubble = '<div class="bubble user">' + userBody + userFooter + '</div>';
+    var userBubble = '<div class="bubble user">' + userBodyWithImages + userFooter + '</div>';
     return '<div class="row user" id="' + domId + '"><div class="stack">' + userBubble + '</div></div>';
   }
 

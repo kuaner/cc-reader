@@ -34,7 +34,13 @@ struct TimelinePayloadBuilder {
             "rawData": message.rawJsonString,
             "rawDataLabel": labels.rawData,
             "metaTags": presentation.metaTags,
-            "renderMode": presentation.renderMode.rawValue
+            "renderMode": presentation.renderMode.rawValue,
+            "resultImages": message.toolResultImages.map { image in
+                [
+                    "mediaType": image.mediaType,
+                    "base64": image.base64
+                ]
+            }
         ]
 
         if !message.toolUses.isEmpty {

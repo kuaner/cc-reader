@@ -14,6 +14,7 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
     let blockTypes: [String]
     let toolUses: [ToolUseInfo]
     let toolResults: [ToolResultData]?
+    let toolResultImages: [ToolResultImage]
     let rawJsonString: String
 
     var id: String { uuid }
@@ -34,6 +35,7 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
         self.blockTypes = message.blockTypes
         self.toolUses = message.toolUses
         self.toolResults = message.toolResults
+        self.toolResultImages = message.toolResultImages
         // Avoid expensive JSON parsing/pretty-printing on the main thread during session switches.
         // rawJsonString is used for "Raw Data" copy/export; preserving the raw JSON bytes is sufficient.
         self.rawJsonString = String(data: message.rawJson, encoding: .utf8) ?? ""
@@ -53,7 +55,9 @@ struct TimelineMessageDisplayData: Identifiable, Equatable {
         lhs.toolUses.map(\.id) == rhs.toolUses.map(\.id) &&
         lhs.toolResults?.map(\.tool_use_id) == rhs.toolResults?.map(\.tool_use_id) &&
         lhs.toolResults?.map(\.content) == rhs.toolResults?.map(\.content) &&
-        lhs.toolResults?.map(\.is_error) == rhs.toolResults?.map(\.is_error)
+        lhs.toolResults?.map(\.is_error) == rhs.toolResults?.map(\.is_error) &&
+        lhs.toolResultImages.map { "\($0.mediaType):\($0.base64.count)" } ==
+        rhs.toolResultImages.map { "\($0.mediaType):\($0.base64.count)" }
     }
 }
 
