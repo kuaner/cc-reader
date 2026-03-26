@@ -251,20 +251,17 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                     let waitHTML = escapeForJS("<div id=\"waiting-indicator\" class=\"row assistant\"><div class=\"stack\"><div class=\"bubble assistant\">\(escapeHTML(labels.waiting))</div></div></div>")
                     js += """
                     (function() {
-                        if (!document.getElementById('waiting-indicator')) {
-                            var timeline = document.querySelector('.timeline');
-                            var temp = document.createElement('div');
-                            temp.innerHTML = '\(waitHTML)';
-                            timeline.appendChild(temp.firstElementChild);
-                            if (isNearBottom()) { window.scrollTo(0, document.body.scrollHeight); }
+                        if (window.ccreader && typeof window.ccreader.setWaitingIndicator === 'function') {
+                            window.ccreader.setWaitingIndicator('\(waitHTML)');
                         }
                     })();
                     """
                 } else {
                     js += """
                     (function() {
-                        var w = document.getElementById('waiting-indicator');
-                        if (w) { w.remove(); }
+                        if (window.ccreader && typeof window.ccreader.setWaitingIndicator === 'function') {
+                            window.ccreader.setWaitingIndicator('');
+                        }
                     })();
                     """
                 }
@@ -277,17 +274,17 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                     let olderHTML = escapeForJS("<div id=\"load-older-bar\" class=\"topbar\"><a class=\"pill\" onclick=\"window.webkit.messageHandlers.ccreader.postMessage({action:'loadOlder'})\">\(escapeHTML(labels.loadOlder))</a></div>")
                     js += """
                     (function() {
-                        var timeline = document.querySelector('.timeline');
-                        var temp = document.createElement('div');
-                        temp.innerHTML = '\(olderHTML)';
-                        timeline.insertBefore(temp.firstElementChild, timeline.firstChild);
+                        if (window.ccreader && typeof window.ccreader.setLoadOlderBar === 'function') {
+                            window.ccreader.setLoadOlderBar('\(olderHTML)');
+                        }
                     })();
                     """
                 } else if !shouldShowOlder && hasOlderIndicator {
                     js += """
                     (function() {
-                        var bar = document.getElementById('load-older-bar');
-                        if (bar) { bar.remove(); }
+                        if (window.ccreader && typeof window.ccreader.setLoadOlderBar === 'function') {
+                            window.ccreader.setLoadOlderBar('');
+                        }
                     })();
                     """
                 }
