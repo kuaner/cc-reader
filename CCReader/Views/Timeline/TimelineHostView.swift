@@ -186,18 +186,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 let domId = escapeForJS(TimelineHTMLRenderer.messageDOMId(for: msg.uuid))
                 js += """
                 (function() {
-                    var existing = document.getElementById('\(domId)');
-                    if (existing) {
-                        var temp = document.createElement('div');
-                        temp.innerHTML = '\(escaped)';
-                        var newNode = temp.firstElementChild;
-                        if (newNode) {
-                            existing.replaceWith(newNode);
-                            renderMarkdownIn(newNode);
-                            highlightCodeBlocksIn(newNode);
-                            enhanceCodeBlocks(newNode);
-                            enhanceMessageCopyButtons(newNode);
-                        }
+                    if (window.ccreader && typeof window.ccreader.replaceMessageById === 'function') {
+                        window.ccreader.replaceMessageById('\(domId)', '\(escaped)');
                     }
                 })();
                 """
@@ -211,29 +201,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
                 js += """
                 (function() {
-                    var timeline = document.querySelector('.timeline');
-                    var waiting = document.getElementById('waiting-indicator');
-                    var wasAtBottom = isNearBottom();
-                    var temp = document.createElement('div');
-                    temp.innerHTML = '\(escaped)';
-                    var inserted = [];
-                    while (temp.firstElementChild) {
-                        var node = temp.firstElementChild;
-                        if (waiting) {
-                            timeline.insertBefore(node, waiting);
-                        } else {
-                            timeline.appendChild(node);
-                        }
-                        inserted.push(node);
-                    }
-                    for (var i = 0; i < inserted.length; i++) {
-                        renderMarkdownIn(inserted[i]);
-                        highlightCodeBlocksIn(inserted[i]);
-                        enhanceCodeBlocks(inserted[i]);
-                        enhanceMessageCopyButtons(inserted[i]);
-                    }
-                    if (wasAtBottom) {
-                        window.scrollTo(0, document.body.scrollHeight);
+                    if (window.ccreader && typeof window.ccreader.appendMessages === 'function') {
+                        window.ccreader.appendMessages('\(escaped)');
                     }
                 })();
                 """
