@@ -13,12 +13,12 @@ Monitors JSONL files under `~/.claude/projects/` and displays conversation timel
 
 ## Features
 
-- **Session Reader** — WKWebView timeline with markdown rendering, syntax highlighting, code block tools, and per-message copy actions
-- **Real-time Sync** — FSEvents file monitoring with incremental JSONL parsing
-- **Session Management** — Rename or delete sessions from the sidebar
-- **Multi-pane Layout** — Up to 12 panes for simultaneous session monitoring
-- **Context Panel** — View Claude's understanding, loaded/edited files at a glance
-- **Long Timeline Optimization** — Windowed rendering + near-top auto-load for older messages
+- **Timeline Viewer** — Native timeline with markdown rendering, syntax highlighting, and per-message actions
+- **Real-time Sync** — FSEvents monitoring plus incremental JSONL parsing
+- **Workspace Layouts** — Split and arrange multiple session panes for side-by-side comparison
+- **Session Operations** — Rename sessions and clean up session/message data when needed
+- **Context Panel** — Inspect Claude's context, including loaded and edited files
+- **Long Timeline Optimization** — Windowed rendering with progressive loading for large histories
 
 ## Requirements
 
