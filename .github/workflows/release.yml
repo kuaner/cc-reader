@@ -70,7 +70,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.DUODUO_MANAGER_REPO_TOKEN }}
-          repository: kuaner/duoduo-manager
+          repository: openduo/duoduo-manager
           event-type: cc-reader-released
           client-payload: >-
             {"cc_reader_tag":"${{ github.ref_name }}","cc_reader_sha":"${{ github.sha }}"}
