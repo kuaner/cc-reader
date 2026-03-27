@@ -65,3 +65,12 @@ jobs:
           files: |
             build/cc-reader.dmg
             build/cc-reader.dmg.sha256
+
+      - name: Trigger duoduo-manager release workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DUODUO_MANAGER_REPO_TOKEN }}
+          repository: kuaner/duoduo-manager
+          event-type: cc-reader-released
+          client-payload: >-
+            {"cc_reader_tag":"${{ github.ref_name }}","cc_reader_sha":"${{ github.sha }}"}
