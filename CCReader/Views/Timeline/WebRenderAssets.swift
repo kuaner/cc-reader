@@ -316,6 +316,24 @@ enum WebRenderChrome {
         let resetFromDataAttribute = resetLabelFromDataAttribute ? "true" : "false"
 
         return """
+        function prettifyMessageCopyText(rawText) {
+            const text = String(rawText || '');
+            const trimmed = text.trim();
+            if (!trimmed) { return text; }
+
+            // Only attempt JSON pretty-print for object/array-like payloads.
+            if (!/^[\\[{]/.test(trimmed)) {
+                return text;
+            }
+
+            try {
+                const parsed = JSON.parse(trimmed);
+                return JSON.stringify(parsed, null, 2);
+            } catch (_) {
+                return text;
+            }
+        }
+
         function enhanceMessageCopyButtons(root) {
             if (!root || typeof root.querySelectorAll !== 'function') { return; }
             root.querySelectorAll('[data-message-copy-base64]').forEach(function(button) {
@@ -334,7 +352,8 @@ enum WebRenderChrome {
                         return;
                     }
 
-                    copyCodeText(text).then(function() {
+                    const textToCopy = prettifyMessageCopyText(text);
+                    copyCodeText(textToCopy).then(function() {
                         const resetLabel = \(resetFromDataAttribute) ? (button.getAttribute('data-copy-label') || '') : '';
                         button.textContent = '\(escapedCopiedLabel)';
                         button.classList.add('is-copied');
