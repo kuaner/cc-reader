@@ -53,7 +53,7 @@ class FileWatcherService: ObservableObject {
                     // Handle file changes only and ignore directory events.
                     if flags & UInt32(kFSEventStreamEventFlagItemIsFile) != 0 {
                         // Watch only session JSONL files.
-                        if path.hasSuffix(".jsonl") && !path.contains("agent-") {
+                        if path.hasSuffix(".jsonl") {
                             let url = URL(fileURLWithPath: path)
                             DispatchQueue.main.async {
                                 watcher.lastChange = FileChange(url: url, timestamp: Date())
@@ -119,7 +119,7 @@ class FileWatcherService: ObservableObject {
 
         var files: [URL] = []
         while let url = enumerator.nextObject() as? URL {
-            if url.pathExtension == "jsonl" && !url.lastPathComponent.hasPrefix("agent-") {
+            if url.pathExtension == "jsonl" {
                 files.append(url)
             }
         }

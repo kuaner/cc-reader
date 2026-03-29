@@ -27,8 +27,10 @@ public struct ContentView: View {
                         ToolbarItem(placement: .automatic) {
                             SessionCwdButton(cwd: session.cwd)
                         }
-                        ToolbarItem(placement: .automatic) {
-                            SessionResumeButton(sessionId: session.sessionId)
+                        if !session.sessionId.hasPrefix("agent-") {
+                            ToolbarItem(placement: .automatic) {
+                                SessionResumeButton(sessionId: session.sessionId)
+                            }
                         }
                         ToolbarItem(placement: .automatic) {
                             Button {

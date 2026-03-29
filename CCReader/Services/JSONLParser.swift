@@ -79,13 +79,17 @@ final class JSONLParser: @unchecked Sendable {
 
         // Split the Data directly to avoid String -> Data round-trips.
         for lineSlice in data.split(separator: newline, omittingEmptySubsequences: true) {
+            let lineData = Data(lineSlice)
             do {
-                let lineData = Data(lineSlice)
                 var message = try decoder.decode(RawMessageData.self, from: lineData)
                 message.originalLineData = lineData
                 messages.append(message)
             } catch {
-                // Skip malformed lines.
+                if ProcessInfo.processInfo.environment["CCREADER_DEBUG_JSONL_DECODE"] == "1",
+                   let lineStr = String(data: lineData, encoding: .utf8) {
+                    let preview = lineStr.prefix(200)
+                    print("[cc-reader][JSONLParser] Skipped line (decode failed): \(preview)…")
+                }
             }
         }
 
@@ -103,13 +107,10 @@ extension JSONLParser {
         return String(components.last ?? Substring(path))
     }
 
-    // Extract the sessionId from the file name.
+    // Extract the sessionId from the file name (including agent-*.jsonl subagent transcripts).
     static func sessionId(from url: URL) -> String? {
         let filename = url.deletingPathExtension().lastPathComponent
-        // Ignore agent-xxx.jsonl helper files.
-        if filename.hasPrefix("agent-") {
-            return nil
-        }
+        guard !filename.isEmpty else { return nil }
         return filename
     }
 }

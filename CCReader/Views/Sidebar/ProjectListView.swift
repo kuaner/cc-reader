@@ -64,6 +64,20 @@ struct SessionRow: View {
                     .foregroundStyle(.secondary)
                 }
 
+                if isSubagentSession {
+                    Text("•")
+                        .font(.caption2)
+                        .foregroundStyle(.quaternary)
+                    Text("sub")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.accentColor.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+
                 Spacer()
 
                 // Last message timestamp
@@ -94,6 +108,10 @@ struct SessionRow: View {
     // Cached user turn count.
     private var turnCount: Int {
         session.cachedTurnCount
+    }
+
+    private var isSubagentSession: Bool {
+        session.sessionId.hasPrefix("agent-")
     }
 
     private var sessionTitle: String {

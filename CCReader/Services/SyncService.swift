@@ -161,12 +161,15 @@ actor SyncService {
         }
 
         // If sessionId misses, try to merge by slug within the same project.
-        if let slug = firstMessage?.slug, !slug.isEmpty {
+        // Subagent files (agent-*.jsonl) always stay separate; slug merge only targets
+        // non-agent sessions so agent transcripts are not folded into the main thread.
+        if !sessionId.hasPrefix("agent-"), let slug = firstMessage?.slug, !slug.isEmpty {
             let projectPath = project.path
             let slugPredicate = #Predicate<Session> { $0.slug == slug && $0.project?.path == projectPath }
             let slugDescriptor = FetchDescriptor<Session>(predicate: slugPredicate)
 
-            if let existingBySlug = try? modelContext.fetch(slugDescriptor).first {
+            if let matches = try? modelContext.fetch(slugDescriptor),
+               let existingBySlug = matches.first(where: { !$0.sessionId.hasPrefix("agent-") }) {
                 // Merge sessions that share the same slug.
                 // Track secondary IDs without duplicating them.
                 if !existingBySlug.additionalSessionIds.contains(sessionId) {
