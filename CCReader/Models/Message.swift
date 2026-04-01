@@ -332,6 +332,7 @@ public struct RawMessageData: Codable {
     public var agentId: String?             // Agent ID for sidechain
     public var teamName: String?            // Team name if spawned agent
     public var logicalParentUuid: String?   // Preserved parent across session breaks
+    public var promptId: String?            // OTel prompt.id for traceability
 
     // --- UserMessage fields ---
     public var isMeta: Bool?                // Synthetic/meta message (e.g. compact summary)
@@ -400,7 +401,7 @@ public struct RawMessageData: Codable {
     enum CodingKeys: String, CodingKey {
         case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
         case version, userType, entrypoint
-        case isSidechain, agentId, teamName, logicalParentUuid
+        case isSidechain, agentId, teamName, logicalParentUuid, promptId
         case isMeta, isVisibleInTranscriptOnly, isVirtual, isCompactSummary
         case sourceToolAssistantUUID, permissionMode, imagePasteIds
         case summary, leafUuid, customTitle, aiTitle, lastPrompt
