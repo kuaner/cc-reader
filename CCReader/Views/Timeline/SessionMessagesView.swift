@@ -29,11 +29,18 @@ struct SessionMessagesView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            TimelineHostView(
-                sessionId: session.sessionId,
-                snapshot: timeline
-            )
-            .equatable()
+            VStack(spacing: 0) {
+                // Session summary banner for compacted sessions
+                if let summary = session.sessionSummary, !summary.isEmpty {
+                    CompactedSessionBanner(summary: summary)
+                }
+
+                TimelineHostView(
+                    sessionId: session.sessionId,
+                    snapshot: timeline
+                )
+                .equatable()
+            }
 
             if showContextPanel {
                 Divider()
@@ -490,7 +497,30 @@ struct SessionMessagesView: View {
     }
 
     private var sessionTitle: String {
-        session.slug ?? String(session.sessionId.prefix(8))
+        session.displayTitle
+    }
+}
+
+// MARK: - Compacted Session Banner
+
+struct CompactedSessionBanner: View {
+    let summary: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(summary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.3))
     }
 }
 
