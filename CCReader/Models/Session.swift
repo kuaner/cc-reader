@@ -73,11 +73,12 @@ public class Session {
 
     /// Title shown in the UI.
     /// Priority: custom title (user-set) > slug > cached title (first user message) > AI title > date.
+    /// Subagent sessions skip slug to avoid displaying the parent's slug.
     public var displayTitle: String {
         if let customTitle = customTitle, !customTitle.isEmpty {
             return customTitle
         }
-        if let slug = slug {
+        if let slug = slug, !sessionId.hasPrefix("agent-") {
             return slug.split(separator: "-")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst() }
                 .joined(separator: " ")

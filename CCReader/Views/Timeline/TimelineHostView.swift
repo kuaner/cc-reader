@@ -84,6 +84,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 isFollowingBottom = (body["following"] as? Bool) ?? true
             case "loadOlder":
                 loadOlderMessages()
+            case "navigateToSession":
+                if let sessionId = body["sessionId"] as? String {
+                    NotificationCenter.default.post(name: .navigateToSession, object: sessionId)
+                }
             default:
                 break
             }
@@ -565,4 +569,8 @@ struct TimelineWebLabels {
             legendSummary: L("timeline.legend.summary")
         )
     }
+}
+
+extension Notification.Name {
+    static let navigateToSession = Notification.Name("navigateToSession")
 }

@@ -200,7 +200,8 @@ function ccreaderRenderMessageFromPayload(payload) {
     }
 
     var userTagsHTML = ccreaderTypeTagsHTML(payload, payload.legendUser || 'User', 'user-tag');
-    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + '<span class="spacer"></span>' + copyButton + '</div>';
+    var agentIdHTML = payload.specialTag ? '<a class="pill agent-id" onclick="window.webkit.messageHandlers.ccreader.postMessage({action:\'navigateToSession\',sessionId:\'' + ccreaderEscapeHTML(payload.specialTag) + '\'})">' + ccreaderEscapeHTML(payload.specialTag) + '</a>' : '';
+    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + agentIdHTML + '<span class="spacer"></span>' + copyButton + '</div>';
     var userBubble = '<div class="bubble user">' + userBodyWithImages + userFooter + '</div>';
     return '<div class="row user" id="' + domId + '"><div class="stack">' + userBubble + '</div></div>';
   }

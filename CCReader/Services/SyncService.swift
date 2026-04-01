@@ -202,7 +202,8 @@ actor SyncService {
 
         if let existing = try? modelContext.fetch(descriptor).first {
             // Only update the slug when it was not manually assigned.
-            if let slug = firstMessage?.slug, existing.slug == nil, !existing.isSlugManual {
+            // Subagent sessions share the parent's slug — skip to avoid identical titles.
+            if let slug = firstMessage?.slug, existing.slug == nil, !existing.isSlugManual, !sessionId.hasPrefix("agent-") {
                 existing.slug = slug
             }
             // Rebuild caches when migrating older rows that do not have them yet.

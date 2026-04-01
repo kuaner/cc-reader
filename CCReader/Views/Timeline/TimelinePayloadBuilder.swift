@@ -61,7 +61,7 @@ struct TimelinePayloadBuilder {
             "contextLabel": labels.context,
             "legendLabel": isUser ? labels.legendUser : labels.legendAssistant,
             "bubbleKind": bubbleKind,
-            "specialTag": "",
+            "specialTag": resolvedAgentTag(message: message),
             "summaryLabel": labels.summaryLabel,
             "legendUser": labels.legendUser,
             "legendAssistant": labels.legendAssistant,
@@ -151,6 +151,14 @@ struct TimelinePayloadBuilder {
             "resultImages": [] as [[String: String]],
             "tools": [] as [[String: String]]
         ]
+    }
+
+    // MARK: - Agent ID resolution
+
+    /// user messages carrying tool_result for Agent/Task tools have agentId via toolUseResult.
+    private func resolvedAgentTag(message: Message) -> String {
+        guard let id = message.agentId else { return "" }
+        return "agent-\(id)"
     }
 
     // MARK: - Bubble / Render resolution

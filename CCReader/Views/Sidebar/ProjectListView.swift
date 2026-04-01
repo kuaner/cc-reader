@@ -7,20 +7,30 @@ struct ProjectListView: View {
     @Binding var selectedSession: Session?
 
     var body: some View {
-        List {
-            ForEach(sessions) { session in
-                SessionRow(
-                    session: session,
-                    isSelected: selectedSession?.sessionId == session.sessionId
-                )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedSession = session
+        ScrollViewReader { proxy in
+            List {
+                ForEach(sessions) { session in
+                    SessionRow(
+                        session: session,
+                        isSelected: selectedSession?.sessionId == session.sessionId
+                    )
+                        .id(session.sessionId)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedSession = session
+                        }
+                        .listRowBackground(Color.clear)
+                }
+            }
+            .listStyle(.sidebar)
+            .onChange(of: selectedSession?.sessionId) { _, newValue in
+                if let id = newValue {
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .center)
                     }
-                    .listRowBackground(Color.clear)
+                }
             }
         }
-        .listStyle(.sidebar)
     }
 }
 

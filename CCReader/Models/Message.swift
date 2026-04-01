@@ -112,6 +112,8 @@ public class Message {
     @Transient private var _level: String?
     @Transient private var _retryAttempt: Int?
     @Transient private var _maxRetries: Int?
+    @Transient private var _agentId: String?
+    @Transient private var _sourceToolAssistantUUID: String?
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
@@ -131,6 +133,8 @@ public class Message {
     public var level: String? { ensureDecoded(); return _level }
     public var retryAttempt: Int? { ensureDecoded(); return _retryAttempt }
     public var maxRetries: Int? { ensureDecoded(); return _maxRetries }
+    public var agentId: String? { ensureDecoded(); return _agentId }
+    public var sourceToolAssistantUUID: String? { ensureDecoded(); return _sourceToolAssistantUUID }
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
@@ -153,6 +157,13 @@ public class Message {
         _level = raw.level
         _retryAttempt = raw.retryAttempt
         _maxRetries = raw.maxRetries
+        // agentId from top-level (subagent files) or from toolUseResult (main session tool_result)
+        if let topId = raw.agentId {
+            _agentId = topId
+        } else if let tur = raw.toolUseResult?.value as? [String: Any] {
+            _agentId = tur["agentId"] as? String
+        }
+        _sourceToolAssistantUUID = raw.sourceToolAssistantUUID
         _model = message.model
         _role = message.role
         _entryType = message.type
@@ -347,6 +358,7 @@ public struct RawMessageData: Codable {
     public var slug: String?
     public var message: RawMessageContent?
     public var originalLineData: Data?
+    public var toolUseResult: AnyCodable?     // Agent/tool result metadata (contains agentId, status, etc.)
 
     // --- TranscriptMessage fields (from SerializedMessage & TranscriptMessage) ---
     public var version: String?              // Claude Code version
@@ -428,7 +440,7 @@ public struct RawMessageData: Codable {
     public var compactMetadata: AnyCodable?
 
     enum CodingKeys: String, CodingKey {
-        case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
+        case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message, toolUseResult
         case version, userType, entrypoint
         case isSidechain, agentId, teamName, logicalParentUuid, promptId
         case isMeta, isVisibleInTranscriptOnly, isVirtual, isCompactSummary
