@@ -56,6 +56,15 @@ public struct ContentView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
+            guard let targetSessionId = notification.object as? String else { return }
+            let descriptor = FetchDescriptor<Session>(predicate: #Predicate { $0.sessionId == targetSessionId })
+            guard let session = try? modelContext.fetch(descriptor).first else { return }
+            if session.project != selectedProject {
+                selectedProject = session.project
+            }
+            selectedSession = session
+        }
         .navigationTitle("CC Reader")
         .overlay {
             SyncOverlayView(coordinator: coordinator)

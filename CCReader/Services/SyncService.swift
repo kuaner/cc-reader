@@ -93,7 +93,9 @@ actor SyncService {
 
         // Fetch or create the session.
         guard let sessionId = JSONLParser.sessionId(from: fileURL) else { return }
-        let session = getOrCreateSession(sessionId: sessionId, in: project, from: rawMessages.first)
+        // For session resolution, use the first transcript message (not metadata).
+        let firstTranscript = rawMessages.first(where: { $0.entryType?.isTranscriptMessage == true })
+        let session = getOrCreateSession(sessionId: sessionId, in: project, from: firstTranscript)
 
         // Collect existing messages once to avoid N+1 fetches.
         var existingByUuid: [String: Message] = [:]
@@ -102,29 +104,79 @@ actor SyncService {
             existingByUuid[message.uuid] = message
         }
 
-        // Add new messages or update existing ones (same uuid, streaming updates).
+        var earliestTimestamp: Date?
+        var latestTimestamp: Date?
+
+        // Route each entry by its type — aligned with official Entry union dispatch.
         for raw in rawMessages {
-            if let existing = existingByUuid[raw.uuid] {
-                updateMessageIfNeeded(existing, from: raw)
+            guard let entryType = raw.entryType else {
+                // Unknown entry type — log and skip.
+                logFilteredEventIfNeeded(raw)
                 continue
             }
-            addMessageWithoutCheck(raw: raw, to: session)
+
+            // Track timestamps from all entries for session freshness.
+            if let ts = raw.timestamp.flatMap({ parseTimestamp($0) }) {
+                if earliestTimestamp == nil || ts < earliestTimestamp! {
+                    earliestTimestamp = ts
+                }
+                if latestTimestamp == nil || ts > latestTimestamp! {
+                    latestTimestamp = ts
+                }
+            }
+
+            // Route: session metadata → update session directly, no Message row.
+            if entryType.isSessionMetadata {
+                applyMetadataEntry(raw, entryType: entryType, to: session)
+                continue
+            }
+
+            // Route: summary entries → store on session for context collapse display.
+            if entryType == .summary || entryType == .taskSummary {
+                applySummaryEntry(raw, entryType: entryType, to: session)
+                continue
+            }
+
+            // Route: last-prompt → update session's last prompt display.
+            if entryType == .lastPrompt {
+                if let prompt = raw.lastPrompt, !prompt.isEmpty {
+                    session.lastPrompt = prompt
+                }
+                continue
+            }
+
+            // Route: compact_boundary → mark session as compacted.
+            if entryType == .system, raw.subtype == "compact_boundary" {
+                session.isCompacted = true
+            }
+
+            // Route: transcript messages (user/assistant/system/attachment) → Message rows.
+            if entryType.isTranscriptMessage {
+                guard let uuid = raw.uuid, !uuid.isEmpty else { continue }
+
+                if let existing = existingByUuid[uuid] {
+                    updateMessageIfNeeded(existing, from: raw)
+                    continue
+                }
+                addMessageWithoutCheck(raw: raw, to: session)
+                continue
+            }
+
+            // All other entry types (file-history-snapshot, attribution-snapshot,
+            // content-replacement, context-collapse, speculation-accept, queue-operation)
+            // are internal/technical — skip silently.
         }
 
-        // Refresh session timestamps from message timestamps.
-        if let firstTimestamp = rawMessages.first.flatMap({ parseTimestamp($0.timestamp) }) {
-            // Keep the earliest known start time.
-            if session.startedAt > firstTimestamp {
-                session.startedAt = firstTimestamp
-            }
+        // Refresh session timestamps.
+        if let earliest = earliestTimestamp, session.startedAt > earliest {
+            session.startedAt = earliest
         }
-        if let lastTimestamp = rawMessages.last.flatMap({ parseTimestamp($0.timestamp) }) {
-            // Keep the latest update time.
-            if session.updatedAt < lastTimestamp {
-                session.updatedAt = lastTimestamp
+        if let latest = latestTimestamp {
+            if session.updatedAt < latest {
+                session.updatedAt = latest
             }
-            if project.updatedAt < lastTimestamp {
-                project.updatedAt = lastTimestamp
+            if project.updatedAt < latest {
+                project.updatedAt = latest
             }
         }
     }
@@ -150,7 +202,8 @@ actor SyncService {
 
         if let existing = try? modelContext.fetch(descriptor).first {
             // Only update the slug when it was not manually assigned.
-            if let slug = firstMessage?.slug, existing.slug == nil, !existing.isSlugManual {
+            // Subagent sessions share the parent's slug — skip to avoid identical titles.
+            if let slug = firstMessage?.slug, existing.slug == nil, !existing.isSlugManual, !sessionId.hasPrefix("agent-") {
                 existing.slug = slug
             }
             // Rebuild caches when migrating older rows that do not have them yet.
@@ -185,7 +238,7 @@ actor SyncService {
         let slug = firstMessage?.slug
 
         // Seed timestamps from the first message when possible.
-        let messageTime = firstMessage.flatMap { parseTimestamp($0.timestamp) } ?? Date()
+        let messageTime = firstMessage.flatMap { $0.timestamp.flatMap(parseTimestamp) } ?? Date()
 
         let session = Session(sessionId: sessionId, cwd: cwd, gitBranch: gitBranch, slug: slug, startedAt: messageTime, updatedAt: messageTime)
         session.project = project
@@ -195,7 +248,7 @@ actor SyncService {
     }
 
     private func addMessage(raw: RawMessageData, to session: Session) {
-        let uuid = raw.uuid
+        guard let uuid = raw.uuid else { return }
         let predicate = #Predicate<Message> { $0.uuid == uuid }
         let descriptor = FetchDescriptor<Message>(predicate: predicate)
 
@@ -206,17 +259,16 @@ actor SyncService {
         addMessageWithoutCheck(raw: raw, to: session)
     }
 
-    /// Add a message without a separate duplicate lookup.
+    /// Add a transcript message without a separate duplicate lookup.
+    /// Only called after entry type routing confirms this is a transcript message.
     private func addMessageWithoutCheck(raw: RawMessageData, to session: Session) {
-        // Claude Code JSONL mixes in non-conversation events such as progress updates.
-        // Saving them as assistant messages creates blank timeline rows, so only
-        // user / assistant messages, or equivalents inferred from message.role, are imported.
         guard let messageType = resolveMessageType(from: raw) else {
             logFilteredEventIfNeeded(raw)
             return
         }
+        guard let uuid = raw.uuid, !uuid.isEmpty else { return }
 
-        let timestamp = parseTimestamp(raw.timestamp) ?? Date()
+        let timestamp = raw.timestamp.flatMap { parseTimestamp($0) } ?? Date()
         let rawJson: Data
         if let original = raw.originalLineData {
             rawJson = original
@@ -227,7 +279,7 @@ actor SyncService {
         }
 
         let message = Message(
-            uuid: raw.uuid,
+            uuid: uuid,
             type: messageType,
             timestamp: timestamp,
             rawJson: rawJson,
@@ -256,7 +308,7 @@ actor SyncService {
                     session.cachedTitle = extractTitle(from: content)
                 }
             }
-        } else if let lastUserAt = session.lastUserMessageAt, timestamp > lastUserAt {
+        } else if messageType == .assistant, let lastUserAt = session.lastUserMessageAt, timestamp > lastUserAt {
             session.cachedUnacknowledgedCount += 1
         }
     }
@@ -266,7 +318,7 @@ actor SyncService {
     private func updateMessageIfNeeded(_ message: Message, from raw: RawMessageData) {
         guard let messageType = resolveMessageType(from: raw) else { return }
 
-        let timestamp = parseTimestamp(raw.timestamp) ?? message.timestamp
+        let timestamp = raw.timestamp.flatMap { parseTimestamp($0) } ?? message.timestamp
         let rawJson: Data
         if let original = raw.originalLineData {
             rawJson = original
@@ -299,24 +351,85 @@ actor SyncService {
         }
     }
 
+    /// Resolve MessageType from the top-level `type` field only.
+    /// Aligned with official `isTranscriptMessage()` — no fallback to message.role.
     private func resolveMessageType(from raw: RawMessageData) -> MessageType? {
         switch raw.type.lowercased() {
         case "user":
             return .user
         case "assistant":
             return .assistant
+        case "system":
+            return .system
+        case "attachment":
+            return .attachment
+        default:
+            return nil
+        }
+    }
+
+    /// Apply a session-scoped metadata entry to the Session model.
+    /// Aligned with official loadTranscriptFile metadata dispatch (sessionStorage.ts:3585-3698).
+    private func applyMetadataEntry(_ raw: RawMessageData, entryType: JSONLEntryType, to session: Session) {
+        switch entryType {
+        case .customTitle:
+            if let title = raw.customTitle, !title.isEmpty {
+                session.customTitle = title
+            }
+        case .aiTitle:
+            if let title = raw.aiTitle, !title.isEmpty {
+                // AI titles only set when no user-set title exists.
+                if session.customTitle == nil {
+                    session.aiGeneratedTitle = title
+                }
+            }
+        case .tag:
+            if let tag = raw.tag, !tag.isEmpty {
+                session.sessionTag = tag
+            }
+        case .agentName:
+            if let name = raw.agentName, !name.isEmpty {
+                session.agentName = name
+            }
+        case .agentColor:
+            if let color = raw.agentColor, !color.isEmpty {
+                session.agentColor = color
+            }
+        case .agentSetting:
+            if let setting = raw.agentSetting, !setting.isEmpty {
+                session.agentSetting = setting
+            }
+        case .prLink:
+            session.prNumber = raw.prNumber
+            if let url = raw.prUrl, !url.isEmpty {
+                session.prUrl = url
+            }
+            if let repo = raw.prRepository, !repo.isEmpty {
+                session.prRepository = repo
+            }
+        case .mode:
+            if let mode = raw.mode, !mode.isEmpty {
+                session.sessionMode = mode
+            }
+        case .worktreeState:
+            // worktree-session state is available as raw JSON if needed.
+            // Currently we only need to know that a worktree session exists.
+            break
         default:
             break
         }
+    }
 
-        guard let role = raw.message?.role.lowercased() else { return nil }
-        switch role {
-        case "user":
-            return .user
-        case "assistant":
-            return .assistant
-        default:
-            return nil
+    /// Apply a summary entry to the Session model.
+    /// Summary entries carry conversation summaries for compacted sessions.
+    private func applySummaryEntry(_ raw: RawMessageData, entryType: JSONLEntryType, to session: Session) {
+        if entryType == .summary, let summaryText = raw.summary, !summaryText.isEmpty {
+            session.sessionSummary = summaryText
+            session.isCompacted = true
+        }
+        // task-summary entries are rolling status updates; they don't replace the canonical summary.
+        if entryType == .taskSummary, let text = raw.summary, !text.isEmpty {
+            session.taskSummary = text
         }
     }
 
@@ -331,7 +444,7 @@ actor SyncService {
         loggedFilteredEventTypes.insert(eventType)
 
         let role = raw.message?.role ?? "nil"
-        print("[cc-reader][SyncService] Filtered non-conversation event type=\(eventType), role=\(role), uuid=\(raw.uuid)")
+        print("[cc-reader][SyncService] Filtered non-conversation event type=\(eventType), role=\(role), uuid=\(raw.uuid ?? "nil")")
     }
 
     private var isFilteredEventLoggingEnabled: Bool {

@@ -7,20 +7,30 @@ struct ProjectListView: View {
     @Binding var selectedSession: Session?
 
     var body: some View {
-        List {
-            ForEach(sessions) { session in
-                SessionRow(
-                    session: session,
-                    isSelected: selectedSession?.sessionId == session.sessionId
-                )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedSession = session
+        ScrollViewReader { proxy in
+            List {
+                ForEach(sessions) { session in
+                    SessionRow(
+                        session: session,
+                        isSelected: selectedSession?.sessionId == session.sessionId
+                    )
+                        .id(session.sessionId)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedSession = session
+                        }
+                        .listRowBackground(Color.clear)
+                }
+            }
+            .listStyle(.sidebar)
+            .onChange(of: selectedSession?.sessionId) { _, newValue in
+                if let id = newValue {
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .center)
                     }
-                    .listRowBackground(Color.clear)
+                }
             }
         }
-        .listStyle(.sidebar)
     }
 }
 
@@ -32,16 +42,17 @@ struct SessionRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Title
-            Text(sessionTitle)
+            // Title — uses session.displayTitle which has the full priority chain.
+            Text(session.displayTitle)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(2)
                 .foregroundStyle(.primary)
+                .help(taskSummaryTooltip)
 
-            // Metadata
+            // Metadata badges
             HStack(spacing: 6) {
-                // User turn count
+                // Turn count
                 HStack(spacing: 3) {
                     Image(systemName: "message")
                         .font(.caption2)
@@ -52,7 +63,7 @@ struct SessionRow: View {
 
                 // Branch
                 if let branch = session.gitBranch {
-                    Text("•")
+                    Text("·")
                         .foregroundStyle(.quaternary)
                     HStack(spacing: 3) {
                         Image(systemName: "arrow.triangle.branch")
@@ -64,18 +75,84 @@ struct SessionRow: View {
                     .foregroundStyle(.secondary)
                 }
 
-                if isSubagentSession {
-                    Text("•")
-                        .font(.caption2)
+                // Tag badge
+                if let tag = session.sessionTag {
+                    Text("·")
                         .foregroundStyle(.quaternary)
-                    Text("sub")
+                    Text(tag)
                         .font(.caption2)
-                        .fontWeight(.semibold)
+                        .fontWeight(.medium)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .foregroundStyle(Color.accentColor)
-                        .background(Color.accentColor.opacity(0.2))
+                        .foregroundStyle(.green)
+                        .background(.green.opacity(0.15))
                         .clipShape(Capsule())
+                }
+
+                // PR link badge
+                if session.prNumber != nil {
+                    Text("·")
+                        .foregroundStyle(.quaternary)
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.up.forward")
+                            .font(.caption2)
+                        Text("PR")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .foregroundStyle(.indigo)
+                    .background(.indigo.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+
+                // Coordinator mode badge
+                if session.sessionMode == "coordinator" {
+                    Text("·")
+                        .foregroundStyle(.quaternary)
+                    HStack(spacing: 3) {
+                        Image(systemName: "person.2")
+                            .font(.caption2)
+                        Text("coordinator")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .foregroundStyle(.orange)
+                    .background(.orange.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+
+                // Compacted indicator
+                if session.isCompacted {
+                    Text("·")
+                        .foregroundStyle(.quaternary)
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption2)
+                        Text("compacted")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+
+                if isSubagentSession {
+                    Text("·")
+                        .foregroundStyle(.quaternary)
+                    HStack(spacing: 3) {
+                        Image(systemName: session.agentName != nil ? "person.fill" : "person")
+                            .font(.caption2)
+                        Text(agentLabel)
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .foregroundStyle(Color.accentColor)
+                    .background(Color.accentColor.opacity(0.2))
+                    .clipShape(Capsule())
                 }
 
                 Spacer()
@@ -105,7 +182,6 @@ struct SessionRow: View {
         Self.sessionDateFormatter.string(from: session.updatedAt)
     }
 
-    // Cached user turn count.
     private var turnCount: Int {
         session.cachedTurnCount
     }
@@ -114,21 +190,14 @@ struct SessionRow: View {
         session.sessionId.hasPrefix("agent-")
     }
 
-    private var sessionTitle: String {
-        if let slug = session.slug {
-            return formatSlug(slug)
-        }
-        if let cachedTitle = session.cachedTitle {
-            return cachedTitle
-        }
-        return session.displayTitle
+    /// Label for agent sessions: prefers agentName, falls back to "sub".
+    private var agentLabel: String {
+        session.agentName ?? "sub"
     }
 
-    private func formatSlug(_ slug: String) -> String {
-        // reactive-prancing-bird -> Reactive Prancing Bird
-        slug.split(separator: "-")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
+    /// Tooltip showing the rolling task summary when available.
+    private var taskSummaryTooltip: String {
+        session.taskSummary.map { "Task: " + $0 } ?? ""
     }
 }
 

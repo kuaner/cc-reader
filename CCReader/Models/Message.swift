@@ -1,9 +1,90 @@
 import Foundation
 import SwiftData
 
+// MARK: - JSONL Entry Type (aligned with Claude Code official Entry union)
+//
+// Reference: claude-code src/types/logs.ts — `export type Entry = ...`
+// The `type` field is the sole discriminator. No fallback to message.role needed.
+
+public enum JSONLEntryType: String, Codable, CaseIterable {
+    // Transcript messages (participate in parentUuid chain)
+    case user
+    case assistant
+    case system
+    case attachment
+
+    // Session metadata
+    case summary
+    case customTitle = "custom-title"
+    case aiTitle = "ai-title"
+    case lastPrompt = "last-prompt"
+    case taskSummary = "task-summary"
+    case tag
+
+    // Agent metadata
+    case agentName = "agent-name"
+    case agentColor = "agent-color"
+    case agentSetting = "agent-setting"
+
+    // Integration
+    case prLink = "pr-link"
+
+    // Session state
+    case mode
+    case worktreeState = "worktree-state"
+
+    // Attribution & history (internal, typically skipped for display)
+    case fileHistorySnapshot = "file-history-snapshot"
+    case attributionSnapshot = "attribution-snapshot"
+
+    // Content management (internal)
+    case contentReplacement = "content-replacement"
+
+    // Context collapse (internal, obfuscated names)
+    case contextCollapseCommit = "marble-origami-commit"
+    case contextCollapseSnapshot = "marble-origami-snapshot"
+
+    // Performance
+    case speculationAccept = "speculation-accept"
+
+    // Queue operations
+    case queueOperation = "queue-operation"
+
+    /// Whether this entry type is a transcript message (user/assistant/system/attachment).
+    /// Aligned with official `isTranscriptMessage()`.
+    var isTranscriptMessage: Bool {
+        switch self {
+        case .user, .assistant, .system, .attachment:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether this entry type is a conversation message (user/assistant).
+    /// These participate in the parentUuid chain and form the dialogue.
+    var isConversationMessage: Bool {
+        self == .user || self == .assistant
+    }
+
+    /// Whether this entry type carries session-scoped metadata.
+    var isSessionMetadata: Bool {
+        switch self {
+        case .customTitle, .aiTitle, .tag, .agentName, .agentColor,
+             .agentSetting, .prLink, .mode, .worktreeState:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+/// Message types persisted to SwiftData. Expanded from official transcript types.
 public enum MessageType: String, Codable {
     case user
     case assistant
+    case system
+    case attachment
 }
 
 @Model
@@ -23,6 +104,19 @@ public class Message {
     @Transient private var _model: String?
     @Transient private var _role: String?
     @Transient private var _entryType: String?
+    @Transient private var _isMeta: Bool = false
+    @Transient private var _isCompactSummary: Bool = false
+    @Transient private var _isSidechain: Bool = false
+    @Transient private var _originKind: String?
+    @Transient private var _subtype: String?
+    @Transient private var _level: String?
+    @Transient private var _retryAttempt: Int?
+    @Transient private var _maxRetries: Int?
+    @Transient private var _agentId: String?
+    @Transient private var _sourceToolAssistantUUID: String?
+    @Transient private var _inputTokens: Int?
+    @Transient private var _cacheReadTokens: Int?
+    @Transient private var _outputTokens: Int?
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
@@ -34,6 +128,19 @@ public class Message {
     public var model: String? { ensureDecoded(); return _model }
     public var role: String? { ensureDecoded(); return _role }
     public var entryType: String? { ensureDecoded(); return _entryType }
+    public var isMeta: Bool { ensureDecoded(); return _isMeta }
+    public var isCompactSummary: Bool { ensureDecoded(); return _isCompactSummary }
+    public var isSidechain: Bool { ensureDecoded(); return _isSidechain }
+    public var originKind: String? { ensureDecoded(); return _originKind }
+    public var subtype: String? { ensureDecoded(); return _subtype }
+    public var level: String? { ensureDecoded(); return _level }
+    public var retryAttempt: Int? { ensureDecoded(); return _retryAttempt }
+    public var maxRetries: Int? { ensureDecoded(); return _maxRetries }
+    public var agentId: String? { ensureDecoded(); return _agentId }
+    public var sourceToolAssistantUUID: String? { ensureDecoded(); return _sourceToolAssistantUUID }
+    public var inputTokens: Int? { ensureDecoded(); return _inputTokens }
+    public var cacheReadTokens: Int? { ensureDecoded(); return _cacheReadTokens }
+    public var outputTokens: Int? { ensureDecoded(); return _outputTokens }
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
@@ -45,12 +152,35 @@ public class Message {
         guard !_decoded else { return }
         _decoded = true
 
-        guard let raw = try? Self.sharedDecoder.decode(RawMessageData.self, from: rawJson),
-              let message = raw.message else { return }
+        guard let raw = try? Self.sharedDecoder.decode(RawMessageData.self, from: rawJson) else { return }
+
+        // Decode top-level fields unconditionally (system messages may not have a message object).
+        _isMeta = raw.isMeta == true
+        _isCompactSummary = raw.isCompactSummary == true
+        _isSidechain = raw.isSidechain == true
+        _originKind = raw.origin?.kind
+        _subtype = raw.subtype
+        _level = raw.level
+        _retryAttempt = raw.retryAttempt
+        _maxRetries = raw.maxRetries
+        // agentId from top-level (subagent files) or from toolUseResult (main session tool_result)
+        if let topId = raw.agentId {
+            _agentId = topId
+        } else if let tur = raw.toolUseResult?.value as? [String: Any] {
+            _agentId = tur["agentId"] as? String
+        }
+        _sourceToolAssistantUUID = raw.sourceToolAssistantUUID
+
+        guard let message = raw.message else { return }
 
         _model = message.model
         _role = message.role
         _entryType = message.type
+        if let usage = message.usage?.value as? [String: Any] {
+            _inputTokens = usage["input_tokens"] as? Int
+            _cacheReadTokens = usage["cache_read_input_tokens"] as? Int
+            _outputTokens = usage["output_tokens"] as? Int
+        }
 
         if let str = message.contentString {
             let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -185,6 +315,10 @@ public class Message {
 
     func invalidateCache() {
         _decoded = false
+        _isMeta = false; _isCompactSummary = false; _isSidechain = false
+        _originKind = nil; _subtype = nil; _level = nil
+        _retryAttempt = nil; _maxRetries = nil; _agentId = nil; _sourceToolAssistantUUID = nil
+        _inputTokens = nil; _cacheReadTokens = nil; _outputTokens = nil
         _content = nil; _thinking = nil; _model = nil; _role = nil; _entryType = nil; _blockTypes = []
         _toolUses = []; _toolResults = nil; _toolResultImages = []; _patchMap = nil
     }
@@ -225,32 +359,135 @@ public class Message {
 
 // MARK: - JSON Decoding Structures
 
+/// Nested origin object on UserMessage: { kind: string }
+public struct MessageOrigin: Codable {
+    public var kind: String?
+    public init(kind: String? = nil) { self.kind = kind }
+}
+
 public struct RawMessageData: Codable {
     public var type: String
-    public var uuid: String
+    public var uuid: String?
     public var parentUuid: String?
-    public var sessionId: String
-    public var timestamp: String
+    public var sessionId: String?
+    public var timestamp: String?
     public var cwd: String?
     public var gitBranch: String?
     public var slug: String?
     public var message: RawMessageContent?
     public var originalLineData: Data?
+    public var toolUseResult: AnyCodable?     // Agent/tool result metadata (contains agentId, status, etc.)
+
+    // --- TranscriptMessage fields (from SerializedMessage & TranscriptMessage) ---
+    public var version: String?              // Claude Code version
+    public var userType: String?            // Entry user type
+    public var entrypoint: String?          // CLAUDE_CODE_ENTRYPOINT
+    public var isSidechain: Bool?           // Whether this is a subagent sidechain message
+    public var agentId: String?             // Agent ID for sidechain
+    public var teamName: String?            // Team name if spawned agent
+    public var logicalParentUuid: String?   // Preserved parent across session breaks
+    public var promptId: String?            // OTel prompt.id for traceability
+
+    // --- UserMessage fields ---
+    public var isMeta: Bool?                // Synthetic/meta message (e.g. compact summary)
+    public var isVisibleInTranscriptOnly: Bool?
+    public var isVirtual: Bool?
+    public var isCompactSummary: Bool?      // Compact boundary summary
+    public var sourceToolAssistantUUID: String?  // UUID of assistant msg with matching tool_use
+    public var permissionMode: String?      // Permission mode when sent
+    public var imagePasteIds: [Int]?
+    public var origin: MessageOrigin?         // { kind: "human" | "queued_command" | "task-notification" | "coordinator" }
+
+    // --- Metadata entry fields (decoded as optional, absent on transcript messages) ---
+    /// summary / custom-title / ai-title
+    public var summary: String?
+    public var leafUuid: String?
+    public var customTitle: String?
+    public var aiTitle: String?
+    public var lastPrompt: String?
+    // task-summary reuses `summary` field — distinguished by type == "task-summary"
+
+    // --- tag / agent-name / agent-color / agent-setting ---
+    public var tag: String?
+    public var agentName: String?
+    public var agentColor: String?
+    public var agentSetting: String?
+
+    // --- pr-link ---
+    public var prNumber: Int?
+    public var prUrl: String?
+    public var prRepository: String?
+
+    // --- mode ---
+    public var mode: String?
+
+    // --- system message subtype ---
+    public var subtype: String?
+    public var level: String?
+    public var retryInMs: Double?
+    public var retryAttempt: Int?
+    public var maxRetries: Int?
+
+    // --- worktree-state ---
+    // Storing as raw JSON string; decoding on demand is not needed for display.
+    public var worktreeSession: AnyCodable?
+
+    // --- content-replacement ---
+    public var replacements: AnyCodable?
+
+    // --- context-collapse (marble-origami) ---
+    public var collapseId: String?
+    public var summaryUuid: String?
+    public var summaryContent: String?
+    // `summary` is declared above (line ~348) — shared by SummaryMessage and ContextCollapseCommitEntry.
+    public var firstArchivedUuid: String?
+    public var lastArchivedUuid: String?
+
+    // --- file-history-snapshot / attribution-snapshot ---
+    public var messageId: String?
+
+    // --- speculation-accept ---
+    public var timeSavedMs: Int?
+
+    // --- system init / informational ---
+    public var content: AnyCodable?
+    // Note: isMeta is shared between TranscriptMessage (UserMessage) and system messages.
+    public var preventContinuation: Bool?
+
+    // --- compact boundary ---
+    public var compactMetadata: AnyCodable?
 
     enum CodingKeys: String, CodingKey {
-        case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
+        case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message, toolUseResult
+        case version, userType, entrypoint
+        case isSidechain, agentId, teamName, logicalParentUuid, promptId
+        case isMeta, isVisibleInTranscriptOnly, isVirtual, isCompactSummary
+        case sourceToolAssistantUUID, permissionMode, imagePasteIds, origin
+        case summary, leafUuid, customTitle, aiTitle, lastPrompt
+        case tag, agentName, agentColor, agentSetting
+        case prNumber, prUrl, prRepository, mode
+        case subtype, level, retryInMs, retryAttempt, maxRetries
+        case worktreeSession, replacements
+        case collapseId, summaryUuid, summaryContent, firstArchivedUuid, lastArchivedUuid
+        case messageId, timeSavedMs
+        case content, preventContinuation, compactMetadata
+    }
+
+    /// Resolved entry type. Returns nil for unknown/unparseable types.
+    public var entryType: JSONLEntryType? {
+        JSONLEntryType(rawValue: type.lowercased())
     }
 
     public init(
         type: String,
-        uuid: String,
-        parentUuid: String?,
-        sessionId: String,
-        timestamp: String,
-        cwd: String?,
-        gitBranch: String?,
-        slug: String?,
-        message: RawMessageContent?,
+        uuid: String? = nil,
+        parentUuid: String? = nil,
+        sessionId: String? = nil,
+        timestamp: String? = nil,
+        cwd: String? = nil,
+        gitBranch: String? = nil,
+        slug: String? = nil,
+        message: RawMessageContent? = nil,
         originalLineData: Data? = nil
     ) {
         self.type = type
@@ -269,15 +506,23 @@ public struct RawMessageData: Codable {
 public struct RawMessageContent: Codable {
     public var type: String?
     public var role: String
+    public var id: String?           // API message ID (sibling group key for parallel tool_use)
+    public var model: String?
+    public var stop_reason: String?
+    public var stop_sequence: String?
     public var content: [ContentBlock]?
     public var contentString: String?
-    public var model: String?
+    public var usage: AnyCodable?    // Token usage (input_tokens, output_tokens, etc.)
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         type = try container.decodeIfPresent(String.self, forKey: .type)
         role = try container.decode(String.self, forKey: .role)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
         model = try container.decodeIfPresent(String.self, forKey: .model)
+        stop_reason = try container.decodeIfPresent(String.self, forKey: .stop_reason)
+        stop_sequence = try container.decodeIfPresent(String.self, forKey: .stop_sequence)
+        usage = try container.decodeIfPresent(AnyCodable.self, forKey: .usage)
 
         // content may be either a string or an array of blocks.
         if let stringContent = try? container.decode(String.self, forKey: .content) {
@@ -290,19 +535,23 @@ public struct RawMessageContent: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case type, role, content, model
+        case type, role, id, model, stop_reason, stop_sequence, content, usage
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(type, forKey: .type)
         try container.encode(role, forKey: .role)
+        try container.encodeIfPresent(id, forKey: .id)
         try container.encodeIfPresent(model, forKey: .model)
+        try container.encodeIfPresent(stop_reason, forKey: .stop_reason)
+        try container.encodeIfPresent(stop_sequence, forKey: .stop_sequence)
         if let stringContent = contentString {
             try container.encode(stringContent, forKey: .content)
         } else {
             try container.encodeIfPresent(content, forKey: .content)
         }
+        try container.encodeIfPresent(usage, forKey: .usage)
     }
 }
 

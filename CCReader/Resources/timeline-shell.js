@@ -163,6 +163,20 @@ function ccreaderRenderMessageFromPayload(payload) {
   var timestamp = ccreaderEscapeHTML(payload.timeLabel || '');
   var copyButton = ccreaderMessageRawDataButtonHTML(payload);
 
+  if (payload.isCompactSummary) {
+    var summaryContent = ccreaderMessageBodyHTML(payload.content || '');
+    var summaryTag = '<span class="type-tag summary-tag">' + ccreaderEscapeHTML(payload.legendSummary || 'Summary') + '</span>';
+    var footer = '<div class="bubble-footer"><span>' + timestamp + '</span>' + summaryTag + '<span class="spacer"></span>' + copyButton + '</div>';
+    return '<div class="row compact-summary-row" id="' + domId + '"><div class="stack"><div class="bubble compact-summary-bubble"><div class="compact-summary-icon">&#x21BB;</div><div class="compact-summary-content"><div class="compact-summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Conversation summarized') + '</div>' + summaryContent + '</div>' + footer + '</div></div></div>';
+  }
+
+  if (payload.isApiError) {
+    var errorTag = '<span class="type-tag error-tag">' + ccreaderEscapeHTML(payload.legendLabel) + '</span>';
+    var retryTag = payload.specialTag ? '<span class="type-tag error-tag">' + ccreaderEscapeHTML(payload.specialTag) + '</span>' : '';
+    var footer = '<div class="bubble-footer"><span>' + timestamp + '</span>' + errorTag + retryTag + '<span class="spacer"></span>' + copyButton + '</div>';
+    return '<div class="row api-error-row" id="' + domId + '"><div class="stack"><div class="bubble api-error-bubble">' + footer + '</div></div></div>';
+  }
+
   if (payload.isUser) {
     var userTags = Array.isArray(payload.metaTags) ? payload.metaTags : [];
     var hasToolResultTag = userTags.some(function (tag) {
@@ -186,7 +200,8 @@ function ccreaderRenderMessageFromPayload(payload) {
     }
 
     var userTagsHTML = ccreaderTypeTagsHTML(payload, payload.legendUser || 'User', 'user-tag');
-    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + '<span class="spacer"></span>' + copyButton + '</div>';
+    var agentIdHTML = payload.specialTag ? '<a class="pill agent-id" data-cc-session-id="' + ccreaderEscapeHTML(payload.specialTag) + '">' + ccreaderEscapeHTML(payload.specialTag) + '</a>' : '';
+    var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + agentIdHTML + '<span class="spacer"></span>' + copyButton + '</div>';
     var userBubble = '<div class="bubble user">' + userBodyWithImages + userFooter + '</div>';
     return '<div class="row user" id="' + domId + '"><div class="stack">' + userBubble + '</div></div>';
   }
@@ -236,7 +251,16 @@ function ccreaderRenderMessageFromPayload(payload) {
   if (payload.bubbleKind === 'agent_dispatch') {
     bubbleKindClass = ' agent-dispatch';
   }
-  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTags + '<span class="spacer"></span>' + copyButton + '</div>');
+  var usageHTML = '';
+  if (payload.inputTokens > 0 || payload.outputTokens > 0) {
+    function fmtTok(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; }
+    var inPart = fmtTok(payload.inputTokens) + ' in';
+    if (payload.cacheReadTokens > 0) {
+      inPart += ' (' + fmtTok(payload.cacheReadTokens) + ' cached)';
+    }
+    usageHTML = '<span class="usage">' + inPart + ' / ' + fmtTok(payload.outputTokens) + ' out</span>';
+  }
+  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTags + usageHTML + '<span class="spacer"></span>' + copyButton + '</div>');
   return '<div class="row assistant" id="' + domId + '"><div class="stack"><div class="bubble assistant-card' + bubbleKindClass + '">' + sections.join('') + '</div></div></div>';
 }
 
@@ -562,6 +586,16 @@ window.addEventListener('scroll', function () {
     emitScrollState();
   });
 }, { passive: true });
+
+document.addEventListener('click', function (e) {
+  var pill = e.target.closest('.agent-id[data-cc-session-id]');
+  if (pill) {
+    var sessionId = pill.getAttribute('data-cc-session-id');
+    if (sessionId) {
+      window.webkit.messageHandlers.ccreader.postMessage({action: 'navigateToSession', sessionId: sessionId});
+    }
+  }
+});
 
 // Initial render
 renderMarkdownIn(document);

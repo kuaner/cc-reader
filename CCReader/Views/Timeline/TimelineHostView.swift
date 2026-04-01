@@ -84,6 +84,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 isFollowingBottom = (body["following"] as? Bool) ?? true
             case "loadOlder":
                 loadOlderMessages()
+            case "navigateToSession":
+                if let sessionId = body["sessionId"] as? String {
+                    NotificationCenter.default.post(name: .navigateToSession, object: sessionId)
+                }
             default:
                 break
             }
@@ -136,7 +140,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             // Track initial state (DOM filled in `didFinish` via payload → JS, same path as session replace).
             renderedMessageUUIDs = messages.map(\.uuid)
             renderedMessageSet = Set(renderedMessageUUIDs)
-            renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawFingerprint) })
+            renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
             hasWaitingIndicator = snapshot.visibleMessages.last?.type == .user
             hasOlderIndicator = renderedMessageRange.lowerBound > 0
 
@@ -159,7 +163,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let windowMessages = currentRenderedMessages()
 
             // 1. Find new messages to append at the bottom.
-            var newMessages: [TimelineMessageDisplayData] = []
+            var newMessages: [Message] = []
             for msg in windowMessages {
                 if !renderedMessageSet.contains(msg.uuid) {
                     newMessages.append(msg)
@@ -167,9 +171,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
 
             // 2. Find messages whose content changed (e.g. streaming updates).
-            var updatedMessages: [TimelineMessageDisplayData] = []
+            var updatedMessages: [Message] = []
             for msg in windowMessages {
-                if let oldFP = renderedFingerprints[msg.uuid], oldFP != msg.rawFingerprint {
+                let fp = msg.rawJson.hashValue
+                if let oldFP = renderedFingerprints[msg.uuid], oldFP != fp {
                     updatedMessages.append(msg)
                 }
             }
@@ -193,7 +198,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             var updatedPayloads: [[String: Any]] = []
             for msg in updatedMessages {
                 updatedPayloads.append(payloadBuilder.messagePayload(for: msg))
-                renderedFingerprints[msg.uuid] = msg.rawFingerprint
+                renderedFingerprints[msg.uuid] = msg.rawJson.hashValue
             }
             if !updatedPayloads.isEmpty, let payloadJSON = toJSONString(updatedPayloads) {
                 commands.append(.replaceMessagesFromPayload(json: payloadJSON))
@@ -209,7 +214,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 for msg in newMessages {
                     renderedMessageUUIDs.append(msg.uuid)
                     renderedMessageSet.insert(msg.uuid)
-                    renderedFingerprints[msg.uuid] = msg.rawFingerprint
+                    renderedFingerprints[msg.uuid] = msg.rawJson.hashValue
                 }
             }
 
@@ -267,7 +272,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             if updatingCoordinatorState {
                 renderedMessageUUIDs = messages.map(\.uuid)
                 renderedMessageSet = Set(renderedMessageUUIDs)
-                renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawFingerprint) })
+                renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
                 hasWaitingIndicator = waiting
                 hasOlderIndicator = hasOlder
                 isFollowingBottom = true
@@ -312,7 +317,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             renderedMessageUUIDs = olderUUIDs + renderedMessageUUIDs
             renderedMessageSet.formUnion(olderUUIDs)
             for msg in olderMessages {
-                renderedFingerprints[msg.uuid] = msg.rawFingerprint
+                renderedFingerprints[msg.uuid] = msg.rawJson.hashValue
             }
 
             previousVisibleMessageCount = snapshot.visibleMessages.count
@@ -438,7 +443,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             previousVisibleMessageCount = totalCount
         }
 
-        private func currentRenderedMessages() -> [TimelineMessageDisplayData] {
+        private func currentRenderedMessages() -> [Message] {
             let rows = snapshot.visibleMessages
             let totalCount = snapshot.effectiveVisibleCount
             guard totalCount > 0, !rows.isEmpty else { return [] }
@@ -539,6 +544,7 @@ struct TimelineWebLabels {
     let context: String
     let assistant: String
     let thinking: String
+    let thinkingSeconds: String
     let waiting: String
     let loadOlder: String
     let copy: String
@@ -554,6 +560,7 @@ struct TimelineWebLabels {
             context: L("timeline.context.label"),
             assistant: L("timeline.claude.label"),
             thinking: L("timeline.thinking.label"),
+            thinkingSeconds: L("timeline.thinking.seconds"),
             waiting: L("timeline.thinking.label") + "...",
             loadOlder: L("timeline.loadOlder"),
             copy: L("timeline.message.copy"),
@@ -564,4 +571,8 @@ struct TimelineWebLabels {
             legendSummary: L("timeline.legend.summary")
         )
     }
+}
+
+extension Notification.Name {
+    static let navigateToSession = Notification.Name("navigateToSession")
 }

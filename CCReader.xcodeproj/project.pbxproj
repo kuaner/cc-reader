@@ -20,9 +20,7 @@
 		3DEB64E600E58389580E7104 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8CB81705243D19FB001250A /* ContentView.swift */; };
 		423148C129A2CEBE2024A477 /* JSONLWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81801878D7D0F5941459DE8 /* JSONLWriter.swift */; };
 		4ACE54197B2B3192700C9818 /* LayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A14AA57D43E0F035D268F3 /* LayoutManager.swift */; };
-		4CEF47C041D5776C7F5567EC /* TimelineMessagePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9DF6524192D2F8FD157FDA3 /* TimelineMessagePresentation.swift */; };
 		556F7DAE0F1D8479C6EACD85 /* JSONLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC01B30FA58E55B743817E8F /* JSONLParser.swift */; };
-		58125610FC885128793F0E85 /* TimelineToolPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A0EBB57567328A7E5930E6 /* TimelineToolPresentation.swift */; };
 		603A696DFA507FD48885E6C8 /* LayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE036CD00B746A0350550D54 /* LayoutView.swift */; };
 		603E97954358B9A36B72ABEB /* PaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63821F7A934EBCE8CF6F23C1 /* PaneView.swift */; };
 		66B0F0489CDF9CCC299B3E7D /* CCReaderKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3863D4C2B5F8EA23DB0D5394 /* CCReaderKit.swift */; };
@@ -66,7 +64,6 @@
 		5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionMessagesView.swift; sourceTree = "<group>"; };
 		63821F7A934EBCE8CF6F23C1 /* PaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneView.swift; sourceTree = "<group>"; };
 		7BF1CFF8DCFF28088334C676 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		82A0EBB57567328A7E5930E6 /* TimelineToolPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineToolPresentation.swift; sourceTree = "<group>"; };
 		92E3A2CC7D72BA6F7AAA7B32 /* highlight.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = highlight.min.js; sourceTree = "<group>"; };
 		95B4B5280E7F85051F7BB547 /* TokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenEstimator.swift; sourceTree = "<group>"; };
 		9AF52D695A7233D2060A85CB /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
@@ -87,7 +84,6 @@
 		F10CFC3FEA49AE975CCF5ADC /* marked.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = marked.min.js; sourceTree = "<group>"; };
 		F5C6CD268D87770B6C7BEAF9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F9802583811E17FFB1C94BA4 /* highlight-dark.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "highlight-dark.css"; sourceTree = "<group>"; };
-		F9DF6524192D2F8FD157FDA3 /* TimelineMessagePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineMessagePresentation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -123,11 +119,9 @@
 				5EB7E50A0D4C9181748DDC35 /* SessionMessagesView.swift */,
 				2DA8A1AAA6346DA78009DD7B /* TimelineHostView.swift */,
 				A5985F341E2F064585D3D61D /* TimelineJSCommand.swift */,
-				F9DF6524192D2F8FD157FDA3 /* TimelineMessagePresentation.swift */,
 				1A35445FEDF37567C35285BA /* TimelineModels.swift */,
 				DDFFCD61419E71121C93B5AB /* TimelinePayloadBuilder.swift */,
 				07CB117BFC7D419272E27B0E /* TimelineRenderTuning.swift */,
-				82A0EBB57567328A7E5930E6 /* TimelineToolPresentation.swift */,
 				02309040AE8F13550DD331F5 /* WebRenderAssets.swift */,
 			);
 			path = Timeline;
@@ -309,11 +303,9 @@
 				B2A74C811ACDFEEDD7E784E3 /* SyncService.swift in Sources */,
 				E5986E7813690B31D581D3D2 /* TimelineHostView.swift in Sources */,
 				D1C19278A49EA3CDC936D00E /* TimelineJSCommand.swift in Sources */,
-				4CEF47C041D5776C7F5567EC /* TimelineMessagePresentation.swift in Sources */,
 				81D42952889C0944484E70A7 /* TimelineModels.swift in Sources */,
 				83E818402A8BB8F46C79E52B /* TimelinePayloadBuilder.swift in Sources */,
 				B06BE3E19E38BD032B6CA878 /* TimelineRenderTuning.swift in Sources */,
-				58125610FC885128793F0E85 /* TimelineToolPresentation.swift in Sources */,
 				135532E7232F50B5DED750B6 /* TokenEstimator.swift in Sources */,
 				742824E2E219D04C567825AA /* WebRenderAssets.swift in Sources */,
 				95889B561EB407527B3E0E16 /* WorkspaceLayout.swift in Sources */,
@@ -343,7 +335,7 @@
 				CODE_SIGN_ENTITLEMENTS = CCReader/CCReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -353,7 +345,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kuaner.ccreader;
 				PRODUCT_NAME = "CC Reader";
 				SDKROOT = macosx;
@@ -368,7 +360,7 @@
 				CODE_SIGN_ENTITLEMENTS = CCReader/CCReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -378,7 +370,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kuaner.ccreader;
 				PRODUCT_NAME = "CC Reader";
 				SDKROOT = macosx;
