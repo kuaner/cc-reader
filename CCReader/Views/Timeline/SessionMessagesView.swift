@@ -79,21 +79,9 @@ struct SessionMessagesView: View {
     @State private var lastProcessedMessageCount = 0
     @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
     @State private var toolUseOwnerMap: [String: String] = [:]
-    @State private var displayDataCache: [String: TimelineMessageDisplayData] = [:]
 
     private var messageFingerprints: [String] {
         messages.map { "\($0.uuid):\($0.rawJson.hashValue)" }
-    }
-
-    private func cachedDisplayData(for message: Message, cache: inout [String: TimelineMessageDisplayData]) -> TimelineMessageDisplayData {
-        if let cached = cache[message.uuid], cached.rawFingerprint == message.rawJson.hashValue {
-            return cached
-        }
-
-        message.preload()
-        let displayData = TimelineMessageDisplayData(message: message)
-        cache[message.uuid] = displayData
-        return displayData
     }
 
     private func rebuildDerivedData() {
@@ -107,9 +95,6 @@ struct SessionMessagesView: View {
         let needsFullRebuild = visibleCount < lastProcessedMessageCount
         let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount
 
-        let visibleIds = Set(visible.map(\.uuid))
-        var updatedDisplayCache = displayDataCache.filter { visibleIds.contains($0.key) }
-
         var tsMap: [String: Date] = [:]
         tsMap.reserveCapacity(visibleCount)
         var lastUserTime: Date? = nil
@@ -122,54 +107,16 @@ struct SessionMessagesView: View {
             }
         }
 
-        /// More messages than this → async path (decode tail, then head, then Phase1).
         let firstPaintThreshold = TimelineRenderTuning.firstPaintThreshold
-        /// In the async path, indices `[visibleCount - tailSize ..< visibleCount)` are built first (newest segment).
-        let firstPaintTailSize = TimelineRenderTuning.firstPaintTailSize
-        /// Yield during row building so WKNavigationDelegate `didFinish` can run before long JSON decodes block the main thread.
-        let yieldEveryRowsDuringDecode = TimelineRenderTuning.yieldEveryRowsDuringDecode
-
-        /// Build one row using the same cache rules as the legacy full loop.
-        func appendRow(at index: Int, into rows: inout [TimelineMessageDisplayData]) {
-            let message = visible[index]
-            if !needsFullRebuild,
-               index < startIndex,
-               let cached = updatedDisplayCache[message.uuid],
-               cached.rawFingerprint == message.rawJson.hashValue {
-                rows.append(cached)
-                return
-            }
-            rows.append(cachedDisplayData(for: message, cache: &updatedDisplayCache))
-        }
 
         if visibleCount > firstPaintThreshold {
-            let tailStart = max(0, visibleCount - firstPaintTailSize)
             visibleMessageCount = visibleCount
 
             Task { @MainActor in
                 await Task.yield()
                 guard gen == derivedDataGeneration else { return }
 
-                var tailRows: [TimelineMessageDisplayData] = []
-                tailRows.reserveCapacity(visibleCount - tailStart)
-                for index in tailStart..<visibleCount {
-                    appendRow(at: index, into: &tailRows)
-                    let n = index - tailStart + 1
-                    if n % yieldEveryRowsDuringDecode == 0, index < visibleCount - 1 {
-                        await Task.yield()
-                    }
-                }
-
-                var headRows: [TimelineMessageDisplayData] = []
-                headRows.reserveCapacity(tailStart)
-                for index in 0..<tailStart {
-                    appendRow(at: index, into: &headRows)
-                    if (index + 1) % yieldEveryRowsDuringDecode == 0, index < tailStart - 1 {
-                        await Task.yield()
-                    }
-                }
-                let visibleRows = headRows + tailRows
-                displayDataCache = updatedDisplayCache
+                let visibleRows = Array(visible)
 
                 derivedDataGeneration += 1
                 let genFinal = derivedDataGeneration
@@ -181,8 +128,7 @@ struct SessionMessagesView: View {
                     startIndex: startIndex,
                     needsFullRebuild: needsFullRebuild,
                     tsMap: tsMap,
-                    visibleRows: visibleRows,
-                    updatedDisplayCache: &updatedDisplayCache
+                    visibleRows: visibleRows
                 )
             }
             return
@@ -192,12 +138,7 @@ struct SessionMessagesView: View {
         let deltaMessages = Array(visible[startIndex..<visibleCount])
 
         if deltaMessages.isEmpty {
-            var visibleRows: [TimelineMessageDisplayData] = []
-            visibleRows.reserveCapacity(visibleCount)
-            for index in 0..<visibleCount {
-                appendRow(at: index, into: &visibleRows)
-            }
-            displayDataCache = updatedDisplayCache
+            let visibleRows = Array(visible)
 
             var immediateSnap = timeline
             immediateSnap.visibleMessages = visibleRows
@@ -225,15 +166,7 @@ struct SessionMessagesView: View {
             await Task.yield()
             guard gen == derivedDataGeneration else { return }
 
-            var visibleRows: [TimelineMessageDisplayData] = []
-            visibleRows.reserveCapacity(visibleCount)
-            for index in 0..<visibleCount {
-                appendRow(at: index, into: &visibleRows)
-                if (index + 1) % yieldEveryRowsDuringDecode == 0, index < visibleCount - 1 {
-                    await Task.yield()
-                }
-            }
-            displayDataCache = updatedDisplayCache
+            let visibleRows = Array(visible)
 
             derivedDataGeneration += 1
             let genRows = derivedDataGeneration
@@ -270,7 +203,6 @@ struct SessionMessagesView: View {
             lastProcessedMessageCount = visibleCount
             derivedToolUseMap = toolUseMap
             toolUseOwnerMap = ownerMap
-            displayDataCache = updatedDisplayCache
 
             var snap = TimelineRenderSnapshot()
             snap.generation = genFinal
@@ -296,8 +228,7 @@ struct SessionMessagesView: View {
         startIndex: Int,
         needsFullRebuild: Bool,
         tsMap: [String: Date],
-        visibleRows: [TimelineMessageDisplayData],
-        updatedDisplayCache: inout [String: TimelineMessageDisplayData]
+        visibleRows: [Message]
     ) async {
         guard startIndex <= visibleCount else { return }
         let deltaMessages = Array(visible[startIndex..<visibleCount])
@@ -323,7 +254,6 @@ struct SessionMessagesView: View {
             timeline = snap
             visibleMessageCount = visibleCount
             lastProcessedMessageCount = visibleCount
-            displayDataCache = updatedDisplayCache
             publishContextDeferred(
                 contextMap: snap.derivedContextMap,
                 latestThinking: needsFullRebuild ? nil : contextPanel.latestThinking
@@ -368,7 +298,6 @@ struct SessionMessagesView: View {
         lastProcessedMessageCount = visibleCount
         derivedToolUseMap = toolUseMap
         toolUseOwnerMap = ownerMap
-        displayDataCache = updatedDisplayCache
 
         derivedDataGeneration += 1
         let genPatched = derivedDataGeneration
