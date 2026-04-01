@@ -1,9 +1,90 @@
 import Foundation
 import SwiftData
 
+// MARK: - JSONL Entry Type (aligned with Claude Code official Entry union)
+//
+// Reference: claude-code src/types/logs.ts — `export type Entry = ...`
+// The `type` field is the sole discriminator. No fallback to message.role needed.
+
+public enum JSONLEntryType: String, Codable, CaseIterable {
+    // Transcript messages (participate in parentUuid chain)
+    case user
+    case assistant
+    case system
+    case attachment
+
+    // Session metadata
+    case summary
+    case customTitle = "custom-title"
+    case aiTitle = "ai-title"
+    case lastPrompt = "last-prompt"
+    case taskSummary = "task-summary"
+    case tag
+
+    // Agent metadata
+    case agentName = "agent-name"
+    case agentColor = "agent-color"
+    case agentSetting = "agent-setting"
+
+    // Integration
+    case prLink = "pr-link"
+
+    // Session state
+    case mode
+    case worktreeState = "worktree-state"
+
+    // Attribution & history (internal, typically skipped for display)
+    case fileHistorySnapshot = "file-history-snapshot"
+    case attributionSnapshot = "attribution-snapshot"
+
+    // Content management (internal)
+    case contentReplacement = "content-replacement"
+
+    // Context collapse (internal, obfuscated names)
+    case contextCollapseCommit = "marble-origami-commit"
+    case contextCollapseSnapshot = "marble-origami-snapshot"
+
+    // Performance
+    case speculationAccept = "speculation-accept"
+
+    // Queue operations
+    case queueOperation = "queue-operation"
+
+    /// Whether this entry type is a transcript message (user/assistant/system/attachment).
+    /// Aligned with official `isTranscriptMessage()`.
+    var isTranscriptMessage: Bool {
+        switch self {
+        case .user, .assistant, .system, .attachment:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether this entry type is a conversation message (user/assistant).
+    /// These participate in the parentUuid chain and form the dialogue.
+    var isConversationMessage: Bool {
+        self == .user || self == .assistant
+    }
+
+    /// Whether this entry type carries session-scoped metadata.
+    var isSessionMetadata: Bool {
+        switch self {
+        case .customTitle, .aiTitle, .tag, .agentName, .agentColor,
+             .agentSetting, .prLink, .mode, .worktreeState:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+/// Message types persisted to SwiftData. Expanded from official transcript types.
 public enum MessageType: String, Codable {
     case user
     case assistant
+    case system
+    case attachment
 }
 
 @Model
@@ -227,30 +308,98 @@ public class Message {
 
 public struct RawMessageData: Codable {
     public var type: String
-    public var uuid: String
+    public var uuid: String?
     public var parentUuid: String?
-    public var sessionId: String
-    public var timestamp: String
+    public var sessionId: String?
+    public var timestamp: String?
     public var cwd: String?
     public var gitBranch: String?
     public var slug: String?
     public var message: RawMessageContent?
     public var originalLineData: Data?
 
+    // --- Metadata entry fields (decoded as optional, absent on transcript messages) ---
+    /// summary / custom-title / ai-title
+    public var summary: String?
+    public var leafUuid: String?
+    public var customTitle: String?
+    public var aiTitle: String?
+    public var lastPrompt: String?
+    // task-summary reuses `summary` field — distinguished by type == "task-summary"
+
+    // --- tag / agent-name / agent-color / agent-setting ---
+    public var tag: String?
+    public var agentName: String?
+    public var agentColor: String?
+    public var agentSetting: String?
+
+    // --- pr-link ---
+    public var prNumber: Int?
+    public var prUrl: String?
+    public var prRepository: String?
+
+    // --- mode ---
+    public var mode: String?
+
+    // --- system message subtype ---
+    public var subtype: String?
+    public var level: String?
+
+    // --- worktree-state ---
+    // Storing as raw JSON string; decoding on demand is not needed for display.
+    public var worktreeSession: AnyCodable?
+
+    // --- content-replacement ---
+    public var replacements: AnyCodable?
+
+    // --- context-collapse (marble-origami) ---
+    public var collapseId: String?
+    public var summaryUuid: String?
+    public var summaryContent: String?
+    public var firstArchivedUuid: String?
+    public var lastArchivedUuid: String?
+
+    // --- file-history-snapshot / attribution-snapshot ---
+    public var messageId: String?
+
+    // --- speculation-accept ---
+    public var timeSavedMs: Int?
+
+    // --- system init / informational ---
+    public var content: AnyCodable?
+    public var isMeta: Bool?
+    public var preventContinuation: Bool?
+
+    // --- compact boundary ---
+    public var compactMetadata: AnyCodable?
+
     enum CodingKeys: String, CodingKey {
         case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
+        case summary, leafUuid, customTitle, aiTitle, lastPrompt
+        case tag, agentName, agentColor, agentSetting
+        case prNumber, prUrl, prRepository, mode
+        case subtype, level
+        case worktreeSession, replacements
+        case collapseId, summaryUuid, summaryContent, firstArchivedUuid, lastArchivedUuid
+        case messageId, timeSavedMs
+        case content, isMeta, preventContinuation, compactMetadata
+    }
+
+    /// Resolved entry type. Returns nil for unknown/unparseable types.
+    public var entryType: JSONLEntryType? {
+        JSONLEntryType(rawValue: type.lowercased())
     }
 
     public init(
         type: String,
-        uuid: String,
-        parentUuid: String?,
-        sessionId: String,
-        timestamp: String,
-        cwd: String?,
-        gitBranch: String?,
-        slug: String?,
-        message: RawMessageContent?,
+        uuid: String? = nil,
+        parentUuid: String? = nil,
+        sessionId: String? = nil,
+        timestamp: String? = nil,
+        cwd: String? = nil,
+        gitBranch: String? = nil,
+        slug: String? = nil,
+        message: RawMessageContent? = nil,
         originalLineData: Data? = nil
     ) {
         self.type = type

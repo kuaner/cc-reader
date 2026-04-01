@@ -93,7 +93,9 @@ struct SessionMessagesView: View {
         derivedDataGeneration += 1
         let gen = derivedDataGeneration
 
-        let visible = messages.filter { $0.rawJson.count > 50 }
+        // Only show user and assistant messages in the timeline.
+        // System and attachment messages are persisted but not rendered in the main timeline.
+        let visible = messages.filter { $0.type == .user || $0.type == .assistant }
         let visibleCount = visible.count
         let needsFullRebuild = visibleCount < lastProcessedMessageCount
         let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount

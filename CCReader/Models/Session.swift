@@ -21,6 +21,30 @@ public class Session {
     public var needsAttention: Bool = false
     public var cachedUnacknowledgedCount: Int = 0
 
+    // --- Metadata decoded from JSONL entries ---
+    /// User-set session title (from custom-title entries). Takes priority over slug/AI title.
+    public var customTitle: String?
+    /// AI-generated session title (from ai-title entries). Only used when no custom title.
+    public var aiGeneratedTitle: String?
+    /// Last user prompt for resume display (from last-prompt entries).
+    public var lastPrompt: String?
+    /// Session tag (from tag entries). Last-wins.
+    public var sessionTag: String?
+    /// Agent custom name (from agent-name entries).
+    public var agentName: String?
+    /// Agent color (from agent-color entries).
+    public var agentColor: String?
+    /// Agent definition used (from agent-setting entries).
+    public var agentSetting: String?
+    /// Session mode: coordinator or normal (from mode entries).
+    public var sessionMode: String?
+    /// Linked PR info (from pr-link entries).
+    public var prNumber: Int?
+    public var prUrl: String?
+    public var prRepository: String?
+    /// Conversation summary text (from summary entries, for compacted sessions).
+    public var sessionSummary: String?
+
     public init(sessionId: String, cwd: String, gitBranch: String? = nil, slug: String? = nil, startedAt: Date = Date(), updatedAt: Date = Date()) {
         self.sessionId = sessionId
         self.cwd = cwd
@@ -46,7 +70,11 @@ public class Session {
     }()
 
     /// Title shown in the UI.
+    /// Priority: custom title (user-set) > slug > cached title (first user message) > AI title > date.
     public var displayTitle: String {
+        if let customTitle = customTitle, !customTitle.isEmpty {
+            return customTitle
+        }
         if let slug = slug {
             return slug.split(separator: "-")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst() }
@@ -54,6 +82,9 @@ public class Session {
         }
         if let cachedTitle = cachedTitle {
             return cachedTitle
+        }
+        if let aiTitle = aiGeneratedTitle, !aiTitle.isEmpty {
+            return aiTitle
         }
         return Self.shortDateFormatter.string(from: startedAt)
     }
