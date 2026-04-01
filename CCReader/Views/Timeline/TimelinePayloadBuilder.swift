@@ -158,6 +158,9 @@ struct TimelinePayloadBuilder {
 
         append(message.entryType)
         append(message.role)
+        if let origin = message.originKind, origin != "human" {
+            append(origin)
+        }
         for type in message.blockTypes {
             append(type)
         }

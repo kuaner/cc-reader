@@ -107,6 +107,7 @@ public class Message {
     @Transient private var _isMeta: Bool = false
     @Transient private var _isCompactSummary: Bool = false
     @Transient private var _isSidechain: Bool = false
+    @Transient private var _originKind: String?
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
@@ -121,6 +122,7 @@ public class Message {
     public var isMeta: Bool { ensureDecoded(); return _isMeta }
     public var isCompactSummary: Bool { ensureDecoded(); return _isCompactSummary }
     public var isSidechain: Bool { ensureDecoded(); return _isSidechain }
+    public var originKind: String? { ensureDecoded(); return _originKind }
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
@@ -138,6 +140,7 @@ public class Message {
         _isMeta = raw.isMeta == true
         _isCompactSummary = raw.isCompactSummary == true
         _isSidechain = raw.isSidechain == true
+        _originKind = raw.origin?.kind
         _model = message.model
         _role = message.role
         _entryType = message.type
@@ -315,6 +318,12 @@ public class Message {
 
 // MARK: - JSON Decoding Structures
 
+/// Nested origin object on UserMessage: { kind: string }
+public struct MessageOrigin: Codable {
+    public var kind: String?
+    public init(kind: String? = nil) { self.kind = kind }
+}
+
 public struct RawMessageData: Codable {
     public var type: String
     public var uuid: String?
@@ -345,6 +354,7 @@ public struct RawMessageData: Codable {
     public var sourceToolAssistantUUID: String?  // UUID of assistant msg with matching tool_use
     public var permissionMode: String?      // Permission mode when sent
     public var imagePasteIds: [Int]?
+    public var origin: MessageOrigin?         // { kind: "human" | "queued_command" | "task-notification" | "coordinator" }
 
     // --- Metadata entry fields (decoded as optional, absent on transcript messages) ---
     /// summary / custom-title / ai-title
@@ -407,7 +417,7 @@ public struct RawMessageData: Codable {
         case version, userType, entrypoint
         case isSidechain, agentId, teamName, logicalParentUuid, promptId
         case isMeta, isVisibleInTranscriptOnly, isVirtual, isCompactSummary
-        case sourceToolAssistantUUID, permissionMode, imagePasteIds
+        case sourceToolAssistantUUID, permissionMode, imagePasteIds, origin
         case summary, leafUuid, customTitle, aiTitle, lastPrompt
         case tag, agentName, agentColor, agentSetting
         case prNumber, prUrl, prRepository, mode
