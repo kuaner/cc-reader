@@ -251,7 +251,16 @@ function ccreaderRenderMessageFromPayload(payload) {
   if (payload.bubbleKind === 'agent_dispatch') {
     bubbleKindClass = ' agent-dispatch';
   }
-  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTags + '<span class="spacer"></span>' + copyButton + '</div>');
+  var usageHTML = '';
+  if (payload.inputTokens > 0 || payload.outputTokens > 0) {
+    function fmtTok(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; }
+    var inPart = fmtTok(payload.inputTokens) + ' in';
+    if (payload.cacheReadTokens > 0) {
+      inPart += ' (' + fmtTok(payload.cacheReadTokens) + ' cached)';
+    }
+    usageHTML = '<span class="usage">' + inPart + ' / ' + fmtTok(payload.outputTokens) + ' out</span>';
+  }
+  sections.push('<div class="bubble-footer"><span>' + timestamp + '</span>' + assistantTags + usageHTML + '<span class="spacer"></span>' + copyButton + '</div>');
   return '<div class="row assistant" id="' + domId + '"><div class="stack"><div class="bubble assistant-card' + bubbleKindClass + '">' + sections.join('') + '</div></div></div>';
 }
 

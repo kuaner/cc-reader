@@ -114,6 +114,9 @@ public class Message {
     @Transient private var _maxRetries: Int?
     @Transient private var _agentId: String?
     @Transient private var _sourceToolAssistantUUID: String?
+    @Transient private var _inputTokens: Int?
+    @Transient private var _cacheReadTokens: Int?
+    @Transient private var _outputTokens: Int?
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
@@ -135,6 +138,9 @@ public class Message {
     public var maxRetries: Int? { ensureDecoded(); return _maxRetries }
     public var agentId: String? { ensureDecoded(); return _agentId }
     public var sourceToolAssistantUUID: String? { ensureDecoded(); return _sourceToolAssistantUUID }
+    public var inputTokens: Int? { ensureDecoded(); return _inputTokens }
+    public var cacheReadTokens: Int? { ensureDecoded(); return _cacheReadTokens }
+    public var outputTokens: Int? { ensureDecoded(); return _outputTokens }
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
@@ -170,6 +176,11 @@ public class Message {
         _model = message.model
         _role = message.role
         _entryType = message.type
+        if let usage = message.usage?.value as? [String: Any] {
+            _inputTokens = usage["input_tokens"] as? Int
+            _cacheReadTokens = usage["cache_read_input_tokens"] as? Int
+            _outputTokens = usage["output_tokens"] as? Int
+        }
 
         if let str = message.contentString {
             let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -307,6 +318,7 @@ public class Message {
         _isMeta = false; _isCompactSummary = false; _isSidechain = false
         _originKind = nil; _subtype = nil; _level = nil
         _retryAttempt = nil; _maxRetries = nil; _agentId = nil; _sourceToolAssistantUUID = nil
+        _inputTokens = nil; _cacheReadTokens = nil; _outputTokens = nil
         _content = nil; _thinking = nil; _model = nil; _role = nil; _entryType = nil; _blockTypes = []
         _toolUses = []; _toolResults = nil; _toolResultImages = []; _patchMap = nil
     }
