@@ -88,12 +88,12 @@ struct SessionMessagesView: View {
         derivedDataGeneration += 1
         let gen = derivedDataGeneration
 
-        // Only show user and assistant messages in the timeline.
-        // System and attachment messages are persisted but not rendered in the main timeline.
-        // isMeta messages (interrupts, etc.) are synthetic — skip them unless they are compact summaries.
-        // Note: isSidechain is NOT filtered here — subagent sessions have all messages marked
-        // as isSidechain=true, and cc-reader displays each session independently.
+        // Show user and assistant messages. Also show system api_error messages (retry indicators).
+        // Other system subtypes (turn_duration, microcompact_boundary, etc.) are isMeta and filtered.
         let visible = messages.filter {
+            if $0.type == .system {
+                return $0.subtype == "api_error" && $0.level == "error"
+            }
             guard $0.type == .user || $0.type == .assistant else { return false }
             if $0.isMeta && !$0.isCompactSummary { return false }
             return true

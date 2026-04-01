@@ -23,6 +23,11 @@ struct TimelinePayloadBuilder {
             return compactSummaryPayload(for: message)
         }
 
+        // System api_error messages render as a warning row.
+        if message.type == .system, message.subtype == "api_error" {
+            return apiErrorPayload(for: message)
+        }
+
         let isUser = message.type == .user
         let content = message.content ?? ""
         let thinking = message.thinking ?? ""
@@ -103,6 +108,46 @@ struct TimelinePayloadBuilder {
             "rawDataLabel": labels.rawData,
             "metaTags": [] as [String],
             "renderMode": "compact_summary",
+            "resultImages": [] as [[String: String]],
+            "tools": [] as [[String: String]]
+        ]
+    }
+
+    // MARK: - API error payload
+
+    private func apiErrorPayload(for message: Message) -> [String: Any] {
+        let rawJsonString = String(data: message.rawJson, encoding: .utf8) ?? ""
+        let retryInfo: String
+        if let attempt = message.retryAttempt, let max = message.maxRetries {
+            retryInfo = "Retry \(attempt)/\(max)"
+        } else {
+            retryInfo = ""
+        }
+        return [
+            "uuid": message.uuid,
+            "domId": "msg-\(message.uuid)",
+            "isUser": false,
+            "isCompactSummary": false,
+            "isApiError": true,
+            "isSummary": false,
+            "timeLabel": Self.messageTimeFormatter.string(from: message.timestamp),
+            "content": message.content ?? "",
+            "thinking": "",
+            "thinkingTitle": "",
+            "modelTitle": "",
+            "assistantLabel": labels.assistant,
+            "contextLabel": labels.context,
+            "legendLabel": "API Error",
+            "bubbleKind": "api_error",
+            "specialTag": retryInfo,
+            "summaryLabel": labels.summaryLabel,
+            "legendUser": labels.legendUser,
+            "legendAssistant": labels.legendAssistant,
+            "legendSummary": labels.legendSummary,
+            "rawData": rawJsonString,
+            "rawDataLabel": labels.rawData,
+            "metaTags": [] as [String],
+            "renderMode": "api_error",
             "resultImages": [] as [[String: String]],
             "tools": [] as [[String: String]]
         ]

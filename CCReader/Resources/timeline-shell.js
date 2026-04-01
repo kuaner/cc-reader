@@ -170,6 +170,13 @@ function ccreaderRenderMessageFromPayload(payload) {
     return '<div class="row compact-summary-row" id="' + domId + '"><div class="stack"><div class="bubble compact-summary-bubble"><div class="compact-summary-icon">&#x21BB;</div><div class="compact-summary-content"><div class="compact-summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Conversation summarized') + '</div>' + summaryContent + '</div>' + footer + '</div></div></div>';
   }
 
+  if (payload.isApiError) {
+    var errorTag = '<span class="type-tag error-tag">API Error</span>';
+    var retryTag = payload.specialTag ? '<span class="type-tag error-tag">' + ccreaderEscapeHTML(payload.specialTag) + '</span>' : '';
+    var footer = '<div class="bubble-footer"><span>' + timestamp + '</span>' + errorTag + retryTag + '<span class="spacer"></span>' + copyButton + '</div>';
+    return '<div class="row api-error-row" id="' + domId + '"><div class="stack"><div class="bubble api-error-bubble">' + footer + '</div></div></div>';
+  }
+
   if (payload.isUser) {
     var userTags = Array.isArray(payload.metaTags) ? payload.metaTags : [];
     var hasToolResultTag = userTags.some(function (tag) {

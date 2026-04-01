@@ -108,6 +108,10 @@ public class Message {
     @Transient private var _isCompactSummary: Bool = false
     @Transient private var _isSidechain: Bool = false
     @Transient private var _originKind: String?
+    @Transient private var _subtype: String?
+    @Transient private var _level: String?
+    @Transient private var _retryAttempt: Int?
+    @Transient private var _maxRetries: Int?
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
@@ -123,6 +127,10 @@ public class Message {
     public var isCompactSummary: Bool { ensureDecoded(); return _isCompactSummary }
     public var isSidechain: Bool { ensureDecoded(); return _isSidechain }
     public var originKind: String? { ensureDecoded(); return _originKind }
+    public var subtype: String? { ensureDecoded(); return _subtype }
+    public var level: String? { ensureDecoded(); return _level }
+    public var retryAttempt: Int? { ensureDecoded(); return _retryAttempt }
+    public var maxRetries: Int? { ensureDecoded(); return _maxRetries }
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
@@ -141,6 +149,10 @@ public class Message {
         _isCompactSummary = raw.isCompactSummary == true
         _isSidechain = raw.isSidechain == true
         _originKind = raw.origin?.kind
+        _subtype = raw.subtype
+        _level = raw.level
+        _retryAttempt = raw.retryAttempt
+        _maxRetries = raw.maxRetries
         _model = message.model
         _role = message.role
         _entryType = message.type
@@ -382,6 +394,9 @@ public struct RawMessageData: Codable {
     // --- system message subtype ---
     public var subtype: String?
     public var level: String?
+    public var retryInMs: Double?
+    public var retryAttempt: Int?
+    public var maxRetries: Int?
 
     // --- worktree-state ---
     // Storing as raw JSON string; decoding on demand is not needed for display.
@@ -421,7 +436,7 @@ public struct RawMessageData: Codable {
         case summary, leafUuid, customTitle, aiTitle, lastPrompt
         case tag, agentName, agentColor, agentSetting
         case prNumber, prUrl, prRepository, mode
-        case subtype, level
+        case subtype, level, retryInMs, retryAttempt, maxRetries
         case worktreeSession, replacements
         case collapseId, summaryUuid, summaryContent, firstArchivedUuid, lastArchivedUuid
         case messageId, timeSavedMs

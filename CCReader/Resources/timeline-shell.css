@@ -96,6 +96,8 @@ body {
 .compact-summary-icon { font-size: 16px; opacity: 0.6; flex-shrink: 0; margin-top: 2px; }
 .compact-summary-content { flex: 1; min-width: 0; }
 .compact-summary-title { font-size: 12px; font-weight: 600; color: #ff9500; margin-bottom: 4px; }
+.bubble.api-error-bubble { background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.2); }
+.type-tag.error-tag { background: rgba(255,59,48,0.2); color: #ff3b30; }
 .bubble-footer {
   display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted);
   margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
