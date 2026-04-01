@@ -90,7 +90,12 @@ struct SessionMessagesView: View {
 
         // Only show user and assistant messages in the timeline.
         // System and attachment messages are persisted but not rendered in the main timeline.
-        let visible = messages.filter { $0.type == .user || $0.type == .assistant }
+        // isMeta messages (interrupts, etc.) are synthetic — skip them unless they are compact summaries.
+        let visible = messages.filter {
+            guard $0.type == .user || $0.type == .assistant else { return false }
+            if $0.isMeta && !$0.isCompactSummary { return false }
+            return true
+        }
         let visibleCount = visible.count
         let needsFullRebuild = visibleCount < lastProcessedMessageCount
         let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount

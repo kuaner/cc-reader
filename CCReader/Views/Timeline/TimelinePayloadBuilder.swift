@@ -18,6 +18,11 @@ struct TimelinePayloadBuilder {
     func messagePayload(for message: Message) -> [String: Any] {
         message.preload()
 
+        // Compact summary messages render as a special banner, not a user bubble.
+        if message.isCompactSummary {
+            return compactSummaryPayload(for: message)
+        }
+
         let isUser = message.type == .user
         let content = message.content ?? ""
         let thinking = message.thinking ?? ""
@@ -67,6 +72,40 @@ struct TimelinePayloadBuilder {
         ]
 
         return payload
+    }
+
+    // MARK: - Compact summary payload
+
+    /// Official `CompactSummary` component renders as a labeled divider, not a user bubble.
+    private func compactSummaryPayload(for message: Message) -> [String: Any] {
+        let rawJsonString = String(data: message.rawJson, encoding: .utf8) ?? ""
+        return [
+            "uuid": message.uuid,
+            "domId": "msg-\(message.uuid)",
+            "isUser": false,
+            "isCompactSummary": true,
+            "isSummary": false,
+            "timeLabel": Self.messageTimeFormatter.string(from: message.timestamp),
+            "content": message.content ?? "",
+            "thinking": "",
+            "thinkingTitle": "",
+            "modelTitle": "",
+            "assistantLabel": labels.assistant,
+            "contextLabel": labels.context,
+            "legendLabel": labels.legendSummary,
+            "bubbleKind": "compact_summary",
+            "specialTag": "",
+            "summaryLabel": labels.summaryLabel,
+            "legendUser": labels.legendUser,
+            "legendAssistant": labels.legendAssistant,
+            "legendSummary": labels.legendSummary,
+            "rawData": rawJsonString,
+            "rawDataLabel": labels.rawData,
+            "metaTags": [] as [String],
+            "renderMode": "compact_summary",
+            "resultImages": [] as [[String: String]],
+            "tools": [] as [[String: String]]
+        ]
     }
 
     // MARK: - Bubble / Render resolution

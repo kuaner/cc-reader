@@ -163,6 +163,13 @@ function ccreaderRenderMessageFromPayload(payload) {
   var timestamp = ccreaderEscapeHTML(payload.timeLabel || '');
   var copyButton = ccreaderMessageRawDataButtonHTML(payload);
 
+  if (payload.isCompactSummary) {
+    var summaryContent = ccreaderMessageBodyHTML(payload.content || '');
+    var summaryTag = '<span class="type-tag summary-tag">' + ccreaderEscapeHTML(payload.legendSummary || 'Summary') + '</span>';
+    var footer = '<div class="bubble-footer"><span>' + timestamp + '</span>' + summaryTag + '<span class="spacer"></span>' + copyButton + '</div>';
+    return '<div class="row compact-summary-row" id="' + domId + '"><div class="stack"><div class="bubble compact-summary-bubble"><div class="compact-summary-icon">&#x21BB;</div><div class="compact-summary-content"><div class="compact-summary-title">' + ccreaderEscapeHTML(payload.summaryLabel || 'Conversation summarized') + '</div>' + summaryContent + '</div>' + footer + '</div></div></div>';
+  }
+
   if (payload.isUser) {
     var userTags = Array.isArray(payload.metaTags) ? payload.metaTags : [];
     var hasToolResultTag = userTags.some(function (tag) {

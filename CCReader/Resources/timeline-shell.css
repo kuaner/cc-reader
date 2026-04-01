@@ -86,6 +86,16 @@ body {
 .card-section.tool { background: var(--surface-tool); }
 .card-section.tool-flat-body { background: transparent; padding: 0; }
 .bubble.summary { background: var(--surface-summary); border: 1px solid rgba(255,149,0,0.28); }
+.bubble.compact-summary-bubble {
+  background: var(--surface-summary);
+  border: 1px solid rgba(255,149,0,0.28);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.compact-summary-icon { font-size: 16px; opacity: 0.6; flex-shrink: 0; margin-top: 2px; }
+.compact-summary-content { flex: 1; min-width: 0; }
+.compact-summary-title { font-size: 12px; font-weight: 600; color: #ff9500; margin-bottom: 4px; }
 .bubble-footer {
   display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted);
   margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
