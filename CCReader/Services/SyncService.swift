@@ -427,7 +427,9 @@ actor SyncService {
             session.isCompacted = true
         }
         // task-summary entries are rolling status updates; they don't replace the canonical summary.
-        // They could be shown as a status indicator in the UI in the future.
+        if entryType == .taskSummary, let text = raw.summary, !text.isEmpty {
+            session.taskSummary = text
+        }
     }
 
     /// Log filtered non-conversation events only when debugging is enabled.

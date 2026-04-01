@@ -38,6 +38,7 @@ struct SessionRow: View {
                 .fontWeight(.medium)
                 .lineLimit(2)
                 .foregroundStyle(.primary)
+                .help(taskSummaryTooltip)
 
             // Metadata badges
             HStack(spacing: 6) {
@@ -182,6 +183,11 @@ struct SessionRow: View {
     /// Label for agent sessions: prefers agentName, falls back to "sub".
     private var agentLabel: String {
         session.agentName ?? "sub"
+    }
+
+    /// Tooltip showing the rolling task summary when available.
+    private var taskSummaryTooltip: String {
+        session.taskSummary.map { "Task: " + $0 } ?? ""
     }
 }
 

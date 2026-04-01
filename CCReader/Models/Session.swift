@@ -44,6 +44,8 @@ public class Session {
     public var prRepository: String?
     /// Conversation summary text (from summary entries, for compacted sessions).
     public var sessionSummary: String?
+    /// Rolling task summary (from task-summary entries). Last-wins.
+    public var taskSummary: String?
 
     public init(sessionId: String, cwd: String, gitBranch: String? = nil, slug: String? = nil, startedAt: Date = Date(), updatedAt: Date = Date()) {
         self.sessionId = sessionId
