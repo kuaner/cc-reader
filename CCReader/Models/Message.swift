@@ -381,6 +381,7 @@ public struct RawMessageData: Codable {
     public var collapseId: String?
     public var summaryUuid: String?
     public var summaryContent: String?
+    // `summary` is declared above (line ~348) — shared by SummaryMessage and ContextCollapseCommitEntry.
     public var firstArchivedUuid: String?
     public var lastArchivedUuid: String?
 
