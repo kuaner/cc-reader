@@ -318,6 +318,24 @@ public struct RawMessageData: Codable {
     public var message: RawMessageContent?
     public var originalLineData: Data?
 
+    // --- TranscriptMessage fields (from SerializedMessage & TranscriptMessage) ---
+    public var version: String?              // Claude Code version
+    public var userType: String?            // Entry user type
+    public var entrypoint: String?          // CLAUDE_CODE_ENTRYPOINT
+    public var isSidechain: Bool?           // Whether this is a subagent sidechain message
+    public var agentId: String?             // Agent ID for sidechain
+    public var teamName: String?            // Team name if spawned agent
+    public var logicalParentUuid: String?   // Preserved parent across session breaks
+
+    // --- UserMessage fields ---
+    public var isMeta: Bool?                // Synthetic/meta message (e.g. compact summary)
+    public var isVisibleInTranscriptOnly: Bool?
+    public var isVirtual: Bool?
+    public var isCompactSummary: Bool?      // Compact boundary summary
+    public var sourceToolAssistantUUID: String?  // UUID of assistant msg with matching tool_use
+    public var permissionMode: String?      // Permission mode when sent
+    public var imagePasteIds: [Int]?
+
     // --- Metadata entry fields (decoded as optional, absent on transcript messages) ---
     /// summary / custom-title / ai-title
     public var summary: String?
@@ -367,7 +385,7 @@ public struct RawMessageData: Codable {
 
     // --- system init / informational ---
     public var content: AnyCodable?
-    public var isMeta: Bool?
+    // Note: isMeta is shared between TranscriptMessage (UserMessage) and system messages.
     public var preventContinuation: Bool?
 
     // --- compact boundary ---
@@ -375,6 +393,10 @@ public struct RawMessageData: Codable {
 
     enum CodingKeys: String, CodingKey {
         case type, uuid, parentUuid, sessionId, timestamp, cwd, gitBranch, slug, message
+        case version, userType, entrypoint
+        case isSidechain, agentId, teamName, logicalParentUuid
+        case isMeta, isVisibleInTranscriptOnly, isVirtual, isCompactSummary
+        case sourceToolAssistantUUID, permissionMode, imagePasteIds
         case summary, leafUuid, customTitle, aiTitle, lastPrompt
         case tag, agentName, agentColor, agentSetting
         case prNumber, prUrl, prRepository, mode
@@ -382,7 +404,7 @@ public struct RawMessageData: Codable {
         case worktreeSession, replacements
         case collapseId, summaryUuid, summaryContent, firstArchivedUuid, lastArchivedUuid
         case messageId, timeSavedMs
-        case content, isMeta, preventContinuation, compactMetadata
+        case content, preventContinuation, compactMetadata
     }
 
     /// Resolved entry type. Returns nil for unknown/unparseable types.
@@ -418,15 +440,23 @@ public struct RawMessageData: Codable {
 public struct RawMessageContent: Codable {
     public var type: String?
     public var role: String
+    public var id: String?           // API message ID (sibling group key for parallel tool_use)
+    public var model: String?
+    public var stop_reason: String?
+    public var stop_sequence: String?
     public var content: [ContentBlock]?
     public var contentString: String?
-    public var model: String?
+    public var usage: AnyCodable?    // Token usage (input_tokens, output_tokens, etc.)
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         type = try container.decodeIfPresent(String.self, forKey: .type)
         role = try container.decode(String.self, forKey: .role)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
         model = try container.decodeIfPresent(String.self, forKey: .model)
+        stop_reason = try container.decodeIfPresent(String.self, forKey: .stop_reason)
+        stop_sequence = try container.decodeIfPresent(String.self, forKey: .stop_sequence)
+        usage = try container.decodeIfPresent(AnyCodable.self, forKey: .usage)
 
         // content may be either a string or an array of blocks.
         if let stringContent = try? container.decode(String.self, forKey: .content) {
@@ -439,19 +469,23 @@ public struct RawMessageContent: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case type, role, content, model
+        case type, role, id, model, stop_reason, stop_sequence, content, usage
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(type, forKey: .type)
         try container.encode(role, forKey: .role)
+        try container.encodeIfPresent(id, forKey: .id)
         try container.encodeIfPresent(model, forKey: .model)
+        try container.encodeIfPresent(stop_reason, forKey: .stop_reason)
+        try container.encodeIfPresent(stop_sequence, forKey: .stop_sequence)
         if let stringContent = contentString {
             try container.encode(stringContent, forKey: .content)
         } else {
             try container.encodeIfPresent(content, forKey: .content)
         }
+        try container.encodeIfPresent(usage, forKey: .usage)
     }
 }
 
