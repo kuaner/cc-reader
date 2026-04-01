@@ -183,15 +183,14 @@ struct TimelinePayloadBuilder {
     // MARK: - Thinking title
 
     private func thinkingTitle(for message: Message, prevTimestampMap: [String: Date]) -> String {
-        let template = labels.thinking
-        guard !(message.thinking ?? "").isEmpty else { return template }
+        guard !(message.thinking ?? "").isEmpty else { return labels.thinking }
         let duration: Int
         if let previous = prevTimestampMap[message.uuid] {
             duration = max(1, Int(message.timestamp.timeIntervalSince(previous)))
         } else {
             duration = 1
         }
-        return String(format: template, duration)
+        return String(format: labels.thinkingSeconds, duration)
     }
 
     // MARK: - Meta tags

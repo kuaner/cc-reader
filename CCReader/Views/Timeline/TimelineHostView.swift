@@ -544,6 +544,7 @@ struct TimelineWebLabels {
     let context: String
     let assistant: String
     let thinking: String
+    let thinkingSeconds: String
     let waiting: String
     let loadOlder: String
     let copy: String
@@ -559,6 +560,7 @@ struct TimelineWebLabels {
             context: L("timeline.context.label"),
             assistant: L("timeline.claude.label"),
             thinking: L("timeline.thinking.label"),
+            thinkingSeconds: L("timeline.thinking.seconds"),
             waiting: L("timeline.thinking.label") + "...",
             loadOlder: L("timeline.loadOlder"),
             copy: L("timeline.message.copy"),

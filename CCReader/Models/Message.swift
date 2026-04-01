@@ -146,9 +146,9 @@ public class Message {
         guard !_decoded else { return }
         _decoded = true
 
-        guard let raw = try? Self.sharedDecoder.decode(RawMessageData.self, from: rawJson),
-              let message = raw.message else { return }
+        guard let raw = try? Self.sharedDecoder.decode(RawMessageData.self, from: rawJson) else { return }
 
+        // Decode top-level fields unconditionally (system messages may not have a message object).
         _isMeta = raw.isMeta == true
         _isCompactSummary = raw.isCompactSummary == true
         _isSidechain = raw.isSidechain == true
@@ -164,6 +164,9 @@ public class Message {
             _agentId = tur["agentId"] as? String
         }
         _sourceToolAssistantUUID = raw.sourceToolAssistantUUID
+
+        guard let message = raw.message else { return }
+
         _model = message.model
         _role = message.role
         _entryType = message.type
@@ -301,6 +304,9 @@ public class Message {
 
     func invalidateCache() {
         _decoded = false
+        _isMeta = false; _isCompactSummary = false; _isSidechain = false
+        _originKind = nil; _subtype = nil; _level = nil
+        _retryAttempt = nil; _maxRetries = nil; _agentId = nil; _sourceToolAssistantUUID = nil
         _content = nil; _thinking = nil; _model = nil; _role = nil; _entryType = nil; _blockTypes = []
         _toolUses = []; _toolResults = nil; _toolResultImages = []; _patchMap = nil
     }

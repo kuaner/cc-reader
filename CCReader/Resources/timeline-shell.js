@@ -171,7 +171,7 @@ function ccreaderRenderMessageFromPayload(payload) {
   }
 
   if (payload.isApiError) {
-    var errorTag = '<span class="type-tag error-tag">API Error</span>';
+    var errorTag = '<span class="type-tag error-tag">' + ccreaderEscapeHTML(payload.legendLabel) + '</span>';
     var retryTag = payload.specialTag ? '<span class="type-tag error-tag">' + ccreaderEscapeHTML(payload.specialTag) + '</span>' : '';
     var footer = '<div class="bubble-footer"><span>' + timestamp + '</span>' + errorTag + retryTag + '<span class="spacer"></span>' + copyButton + '</div>';
     return '<div class="row api-error-row" id="' + domId + '"><div class="stack"><div class="bubble api-error-bubble">' + footer + '</div></div></div>';
@@ -200,7 +200,7 @@ function ccreaderRenderMessageFromPayload(payload) {
     }
 
     var userTagsHTML = ccreaderTypeTagsHTML(payload, payload.legendUser || 'User', 'user-tag');
-    var agentIdHTML = payload.specialTag ? '<a class="pill agent-id" onclick="window.webkit.messageHandlers.ccreader.postMessage({action:\'navigateToSession\',sessionId:\'' + ccreaderEscapeHTML(payload.specialTag) + '\'})">' + ccreaderEscapeHTML(payload.specialTag) + '</a>' : '';
+    var agentIdHTML = payload.specialTag ? '<a class="pill agent-id" data-cc-session-id="' + ccreaderEscapeHTML(payload.specialTag) + '">' + ccreaderEscapeHTML(payload.specialTag) + '</a>' : '';
     var userFooter = '<div class="bubble-footer"><span>' + timestamp + '</span>' + userTagsHTML + agentIdHTML + '<span class="spacer"></span>' + copyButton + '</div>';
     var userBubble = '<div class="bubble user">' + userBodyWithImages + userFooter + '</div>';
     return '<div class="row user" id="' + domId + '"><div class="stack">' + userBubble + '</div></div>';
@@ -577,6 +577,16 @@ window.addEventListener('scroll', function () {
     emitScrollState();
   });
 }, { passive: true });
+
+document.addEventListener('click', function (e) {
+  var pill = e.target.closest('.agent-id[data-cc-session-id]');
+  if (pill) {
+    var sessionId = pill.getAttribute('data-cc-session-id');
+    if (sessionId) {
+      window.webkit.messageHandlers.ccreader.postMessage({action: 'navigateToSession', sessionId: sessionId});
+    }
+  }
+});
 
 // Initial render
 renderMarkdownIn(document);
