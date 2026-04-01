@@ -91,9 +91,11 @@ struct SessionMessagesView: View {
         // Only show user and assistant messages in the timeline.
         // System and attachment messages are persisted but not rendered in the main timeline.
         // isMeta messages (interrupts, etc.) are synthetic — skip them unless they are compact summaries.
+        // isSidechain messages belong to subagent sessions — skip them in the parent timeline.
         let visible = messages.filter {
             guard $0.type == .user || $0.type == .assistant else { return false }
             if $0.isMeta && !$0.isCompactSummary { return false }
+            if $0.isSidechain { return false }
             return true
         }
         let visibleCount = visible.count

@@ -106,6 +106,7 @@ public class Message {
     @Transient private var _entryType: String?
     @Transient private var _isMeta: Bool = false
     @Transient private var _isCompactSummary: Bool = false
+    @Transient private var _isSidechain: Bool = false
     @Transient private var _blockTypes: [String] = []
     @Transient private var _toolUses: [ToolUseInfo] = []
     @Transient private var _toolResults: [ToolResultData]?
@@ -119,6 +120,7 @@ public class Message {
     public var entryType: String? { ensureDecoded(); return _entryType }
     public var isMeta: Bool { ensureDecoded(); return _isMeta }
     public var isCompactSummary: Bool { ensureDecoded(); return _isCompactSummary }
+    public var isSidechain: Bool { ensureDecoded(); return _isSidechain }
     public var blockTypes: [String] { ensureDecoded(); return _blockTypes }
     public var toolUses: [ToolUseInfo] { ensureDecoded(); return _toolUses }
     public var toolResults: [ToolResultData]? { ensureDecoded(); return _toolResults }
@@ -135,6 +137,7 @@ public class Message {
 
         _isMeta = raw.isMeta == true
         _isCompactSummary = raw.isCompactSummary == true
+        _isSidechain = raw.isSidechain == true
         _model = message.model
         _role = message.role
         _entryType = message.type
