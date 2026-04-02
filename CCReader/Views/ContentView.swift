@@ -1,6 +1,6 @@
-import SwiftUI
-import SwiftData
 import AppKit
+import SwiftData
+import SwiftUI
 
 public struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -36,41 +36,31 @@ public struct ContentView: View {
         .environmentObject(coordinator)
         .background(WindowConfigurator(layoutManager: layoutManager))
         .toolbar(removing: .sidebarToggle)
-        .overlay(alignment: .top) {
-            Button {
-                layoutManager.requestSwitchSession()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 10))
-                    Text(L("picker.switch.help"))
-                        .font(.system(size: 11))
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Button {
+                    layoutManager.requestSwitchSession()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                        Text(L("picker.switch.help"))
+                    }
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 220)
                 }
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 180)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(.quaternary.opacity(0.5))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(.quaternary, lineWidth: 0.5)
-                )
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+                .help(L("picker.switch.help"))
             }
-            .buttonStyle(.plain)
-            .controlSize(.small)
-            .frame(maxWidth: .infinity)
-            .frame(height: 28)
-            .padding(.top, 6)
-            .ignoresSafeArea(.all, edges: .top)
         }
         .navigationTitle(windowTitle)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
             guard layoutManager.window?.isKeyWindow == true else { return }
             guard let targetSessionId = notification.object as? String else { return }
-            guard let session = sessions.first(where: { $0.sessionId == targetSessionId }) else { return }
+            guard let session = sessions.first(where: { $0.sessionId == targetSessionId }) else {
+                return
+            }
 
             layoutManager.focusOrAssignSession(targetSessionId)
             selectedSession = session
@@ -124,9 +114,10 @@ public struct ContentView: View {
 
     private var windowTitle: String {
         guard let focusedId = layoutManager.focusedPaneId,
-              let pane = layoutManager.allPanes().first(where: { $0.id == focusedId }),
-              let sessionId = pane.sessionId,
-              let session = sessions.first(where: { $0.sessionId == sessionId }) else {
+            let pane = layoutManager.allPanes().first(where: { $0.id == focusedId }),
+            let sessionId = pane.sessionId,
+            let session = sessions.first(where: { $0.sessionId == sessionId })
+        else {
             return "CC Reader"
         }
         return session.displayTitle
@@ -152,6 +143,11 @@ class WindowConfigView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if let previousWindow = layoutManager?.window,
+            previousWindow !== window
+        {
+            layoutManager?.unregisterWindow()
+        }
         guard let window else {
             layoutManager?.unregisterWindow()
             return
@@ -210,7 +206,8 @@ private struct SyncOverlayView: View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: Project.self, Session.self, Message.self, configurations: config)
+    let container = try! ModelContainer(
+        for: Project.self, Session.self, Message.self, configurations: config)
     return ContentView(modelContainer: container)
         .modelContainer(container)
 }

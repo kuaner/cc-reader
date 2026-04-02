@@ -94,7 +94,7 @@ window.addEventListener('resize', function () {
   resizeTimer = setTimeout(function () {
     // 动画结束，停止循环
     cancelAnimationFrame(rafId);
-    if (wasFollowing) scrollTo(bottom, instant);
+    if (wasFollowing) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
     emitScrollState();
   }, 300);
 });
@@ -102,7 +102,7 @@ window.addEventListener('resize', function () {
 
 **关键设计点**：
 - **300ms debounce** > 250ms sidebar 动画时长，确保在动画完全结束后才停止
-- **`behavior: 'instant'`** 避免 smooth scroll 的可见过渡
+- **`behavior: 'auto'`** 使用标准化的立即跳转行为，避免非标准参数带来的 WebKit 兼容性风险
 - **rAF 循环**期间 `scrollTo` 开销很低，因为 `layerContentsRedrawPolicy = .onSetNeedsDisplay` 已减少了 WebView 重绘
 - 如果用户不在底部（`wasFollowing = false`），resize 不做任何滚动干预
 

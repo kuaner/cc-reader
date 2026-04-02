@@ -22,10 +22,11 @@ The layout is a recursive binary tree:
 
 ```
 LayoutNode
-├── .pane(Pane)           — leaf: displays a single session
-└── .split(direction, first, second, ratio)
-    ├── first: LayoutNode  — left/top child
-    └── second: LayoutNode — right/bottom child
+├── .pane(Pane)                    — leaf: displays a single session
+└── .split(id, direction, first, second, ratio)
+   ├── id: UUID                   — stable identifier for this split divider
+   ├── first: LayoutNode          — left/top child
+   └── second: LayoutNode         — right/bottom child
 ```
 
 `WorkspaceLayout` is a `Codable` value type wrapping the root `LayoutNode`.
@@ -72,7 +73,7 @@ Per-tab root view. Bridges layout state with the view hierarchy:
 
 ### LayoutView (`Views/Layout/LayoutView.swift`)
 
-Renders the `LayoutNode` tree recursively using `AnyView` (necessary for the enum-based recursive type). Delegates to `ResizableSplitView` for `.split` nodes and `PaneView` for `.pane` nodes.
+Renders the `LayoutNode` tree recursively using `LayoutNodeView`, avoiding `AnyView` type erasure so each pane preserves its underlying `WKWebView` identity. Delegates to `ResizableSplitView` for `.split` nodes and `PaneView` for `.pane` nodes.
 
 ### ResizableSplitView
 

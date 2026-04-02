@@ -204,3 +204,23 @@ body {
 .bubble.user .summary-title, .bubble.user .markdown blockquote { color: rgba(255,255,255,0.82); }
 .bubble.assistant-card .card-section .markdown :not(pre) > code { background: var(--code-bg); }
 
+/* Small screens: keep footer metadata readable and move action buttons to next line. */
+@media (max-width: 560px) {
+  .bubble-footer {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 6px;
+    min-height: 0;
+  }
+  .bubble-footer .spacer {
+    order: 2;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  .bubble-footer .message-copy-button {
+    order: 3;
+    margin-left: auto;
+    max-width: 100%;
+  }
+}
+

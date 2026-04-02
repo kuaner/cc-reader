@@ -606,7 +606,7 @@ document.addEventListener('click', function (e) {
   var wasFollowing = false;
 
   function pinToBottom() {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
     rafId = requestAnimationFrame(pinToBottom);
   }
 
@@ -623,7 +623,7 @@ document.addEventListener('click', function (e) {
       resizeTimer = null;
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (wasFollowing) {
-        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
       }
       emitScrollState();
     }, 300);

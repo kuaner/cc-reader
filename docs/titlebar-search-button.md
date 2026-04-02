@@ -13,7 +13,7 @@ NavigationSplitView { ... }
 .overlay(alignment: .top) {
     Button { ... }
         .frame(maxWidth: .infinity)   // 占满窗口宽度 → 按钮居中于窗口
-        .frame(height: 28)            // 匹配 unifiedCompact 标题栏高度
+        .frame(height: 28)            // 匹配 unified 标题栏中的可用区域
         .padding(.top, 6)             // 留出上边距
         .ignoresSafeArea(.all, edges: .top)  // 进入标题栏区域
 }
@@ -28,7 +28,7 @@ NavigationSplitView { ... }
 ### 前提条件
 
 - `WindowConfigView` 中设置了 `window.styleMask.insert(.fullSizeContentView)`
-- `CCReaderApp` 中设置了 `.windowToolbarStyle(.unifiedCompact(showsTitle: false))`
+- `CCReaderApp` 中设置了 `.windowToolbarStyle(.unified(showsTitle: false))`
 
 ### 尝试过但放弃的方案
 

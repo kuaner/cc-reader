@@ -14,6 +14,7 @@ struct SessionMessagesView: View {
 
     // Snapshot used by the context panel.
     @State private var contextPanel = ContextPanelSnapshot()
+    private let contextPanelCollapseThreshold: CGFloat = 760
 
     init(session: Session, visibleMessageCount: Binding<Int>, showContextPanel: Binding<Bool>) {
         self.session = session
@@ -28,25 +29,33 @@ struct SessionMessagesView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                if let summary = session.sessionSummary, !summary.isEmpty {
-                    CompactedSessionBanner(summary: summary)
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    if let summary = session.sessionSummary, !summary.isEmpty {
+                        CompactedSessionBanner(summary: summary)
+                    }
+
+                    TimelineHostView(
+                        sessionId: session.sessionId,
+                        snapshot: timeline
+                    )
+                    .equatable()
+                    .clipped()
+                    .transaction { $0.animation = nil }
                 }
 
-                TimelineHostView(
-                    sessionId: session.sessionId,
-                    snapshot: timeline
-                )
-                .equatable()
-                .clipped()
-                .transaction { $0.animation = nil }
+                if showContextPanel {
+                    Divider()
+                    ContextPanel(snapshot: contextPanel)
+                        .frame(width: 260)
+                }
             }
-
-            if showContextPanel {
-                Divider()
-                ContextPanel(snapshot: contextPanel)
-                    .frame(width: 260)
+            .onAppear {
+                autoCollapseContextPanelIfNeeded(for: proxy.size.width)
+            }
+            .onChange(of: proxy.size.width) { _, newWidth in
+                autoCollapseContextPanelIfNeeded(for: newWidth)
             }
         }
         .onAppear {
@@ -58,6 +67,13 @@ struct SessionMessagesView: View {
         .onChange(of: messageFingerprints) { _, _ in
             rebuildDerivedData()
         }
+    }
+
+    private func autoCollapseContextPanelIfNeeded(for width: CGFloat) {
+        // Ignore transient/invalid geometry during split animations to avoid false collapse.
+        guard width.isFinite, width >= 420 else { return }
+        guard width < contextPanelCollapseThreshold, showContextPanel else { return }
+        showContextPanel = false
     }
 
     // MARK: - Derived Data
