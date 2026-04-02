@@ -86,10 +86,10 @@
 "menu.tabs" = "标签页";
 "menu.splitHorizontal" = "水平分屏";
 "menu.splitVertical" = "垂直分屏";
-"menu.switchSession" = "切换会话";
+"menu.switchSession" = "选择会话";
 "menu.github" = "GitHub 仓库";
-"picker.search.placeholder" = "搜索会话...";
-"picker.switch.help" = "切换会话 (⌘E)";
+"picker.search.placeholder" = "选择会话...";
+"picker.switch.help" = "选择会话 (⌘E)";
 "sidebar.hide" = "隐藏侧边栏";
 "sidebar.show" = "显示侧边栏";
 "sidebar.toggle" = "切换侧边栏";

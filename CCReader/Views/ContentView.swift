@@ -41,16 +41,17 @@ public struct ContentView: View {
                 Button {
                     layoutManager.requestSwitchSession()
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                         Text(L("picker.switch.help"))
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                     }
                     .foregroundStyle(.secondary)
-                    .frame(minWidth: 200)
+                    .frame(minWidth: 180)
                 }
                 .buttonStyle(.plain)
+                .controlSize(.small)
             }
         }
         .navigationTitle(windowTitle)
