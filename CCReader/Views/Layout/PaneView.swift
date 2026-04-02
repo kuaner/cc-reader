@@ -38,6 +38,10 @@ struct PaneHeaderView: View {
     @Binding var showContextPanel: Bool
     @EnvironmentObject var layoutManager: LayoutManager
     @EnvironmentObject var coordinator: AppCoordinator
+    
+    private var isFocused: Bool {
+        layoutManager.focusedPaneId == pane.id
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -136,7 +140,26 @@ struct PaneHeaderView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(
+                    isFocused
+                        ? Color.accentColor.opacity(0.18)
+                        : Color(nsColor: .controlBackgroundColor)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(
+                    isFocused
+                        ? Color.accentColor.opacity(0.75)
+                        : Color.clear,
+                    lineWidth: 1
+                )
+        )
+        .foregroundStyle(isFocused ? Color.accentColor : Color.primary)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
         .animation(.easeInOut(duration: 0.12), value: layoutManager.focusedPaneId == pane.id)
     }
 }
