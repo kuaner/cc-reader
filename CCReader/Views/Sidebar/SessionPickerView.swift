@@ -9,6 +9,8 @@ struct SessionPickerView: View {
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
     @State private var searchText = ""
     @State private var selectedSessionId: String?
+    /// Only scroll-to when navigating via keyboard; hover just highlights.
+    @State private var needsKeyboardScroll = false
     @FocusState private var isSearchFocused: Bool
 
     private var filteredSessions: [Session] {
@@ -19,11 +21,6 @@ struct SessionPickerView: View {
             || (session.sessionTag?.localizedCaseInsensitiveContains(searchText) ?? false)
             || session.cwd.localizedCaseInsensitiveContains(searchText)
         }
-    }
-
-    private var selectedIndex: Int? {
-        guard let id = selectedSessionId else { return nil }
-        return filteredSessions.firstIndex(where: { $0.sessionId == id })
     }
 
     var body: some View {
@@ -56,7 +53,7 @@ struct SessionPickerView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     let openSessionIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
-                    LazyVStack(spacing: 2) {
+                    VStack(spacing: 2) {
                         ForEach(filteredSessions, id: \.sessionId) { session in
                             let alreadyOpen = openSessionIds.contains(session.sessionId)
                             let isSelected = session.sessionId == selectedSessionId
@@ -77,10 +74,13 @@ struct SessionPickerView: View {
                     .padding(8)
                 }
                 .onChange(of: selectedSessionId) { _, newId in
-                    if let newId {
-                        withAnimation {
-                            proxy.scrollTo(newId, anchor: .center)
-                        }
+                    guard needsKeyboardScroll, let newId else {
+                        needsKeyboardScroll = false
+                        return
+                    }
+                    needsKeyboardScroll = false
+                    withAnimation {
+                        proxy.scrollTo(newId, anchor: .center)
                     }
                 }
             }
@@ -122,6 +122,7 @@ struct SessionPickerView: View {
         let current = selectedSessionId.flatMap { id in list.firstIndex(where: { $0.sessionId == id }) } ?? 0
         let next = max(0, min(current + offset, list.count - 1))
         selectedSessionId = list[next].sessionId
+        needsKeyboardScroll = true
     }
 
     private func confirmSelection() {
