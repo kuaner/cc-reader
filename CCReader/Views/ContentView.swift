@@ -35,6 +35,7 @@ public struct ContentView: View {
         .environmentObject(layoutManager)
         .environmentObject(coordinator)
         .background(WindowConfigurator(layoutManager: layoutManager))
+        .toolbar(removing: .sidebarToggle)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Button {

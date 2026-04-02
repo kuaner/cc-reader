@@ -26,7 +26,6 @@ struct ProjectListView: View {
             }
         }
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 8) }
         .onChange(of: selectedSessionId) { _, newValue in
             selectedSession = sessions.first { $0.sessionId == newValue }
         }

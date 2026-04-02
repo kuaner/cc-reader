@@ -30,7 +30,7 @@ struct CCReaderApp: App {
                 .modelContainer(container)
         }
         .windowStyle(.titleBar)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+        .windowToolbarStyle(.unified(showsTitle: false))
         .defaultSize(width: 1200, height: 800)
         .commands {
             CommandGroup(after: .newItem) {
