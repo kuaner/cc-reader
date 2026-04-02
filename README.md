@@ -13,12 +13,27 @@ Monitors JSONL files under `~/.claude/projects/` and displays conversation timel
 
 ## Features
 
+- **Multi-Tab & Multi-Pane Layout** — Native macOS tabbing with per-tab split layouts, like a terminal emulator. Compare sessions side by side.
 - **Timeline Viewer** — Native timeline with markdown rendering, syntax highlighting, and per-message actions
 - **Real-time Sync** — FSEvents monitoring plus incremental JSONL parsing
-- **Workspace Layouts** — Split and arrange multiple session panes for side-by-side comparison
 - **Session Operations** — Rename sessions and clean up session/message data when needed
-- **Context Panel** — Inspect Claude's context, including loaded and edited files
+- **Context Panel** — Inspect Claude's context, including loaded and edited files (per-pane toggle)
 - **Long Timeline Optimization** — Windowed rendering with progressive loading for large histories
+- **Session Picker** — Quick-searchable session picker with keyboard navigation
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘T` | New tab |
+| `⌘W` | Close pane (last pane closes the tab) |
+| `⌘D` | Split pane horizontally |
+| `⌘⇧D` | Split pane vertically |
+| `⌘E` | Open session picker (switch or assign session) |
+| `⌘B` | Toggle sidebar |
+| `⌘[` | Focus previous pane |
+| `⌘]` | Focus next pane |
+| `⌘1`–`⌘9` | Switch to tab 1–9 |
 
 ## Requirements
 
@@ -195,9 +210,11 @@ FileWatcherService → SyncService → JSONLParser (incremental)
     ↓
 SwiftData ModelContext
     ↓
-SessionMessagesView (snapshot builder)
+LayoutManager (per-window pane tree + split/focus/assign)
     ↓
-TimelineHostView (single WKWebView, windowed rendering)
+LayoutView → PaneView → SessionMessagesView (snapshot builder)
+                       ↓
+                   TimelineHostView (single WKWebView, windowed rendering)
 ```
 
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.
