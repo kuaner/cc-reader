@@ -53,7 +53,7 @@ struct SessionPickerView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     let openSessionIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
-                    VStack(spacing: 2) {
+                    LazyVStack(spacing: 2) {
                         ForEach(filteredSessions, id: \.sessionId) { session in
                             let alreadyOpen = openSessionIds.contains(session.sessionId)
                             let isSelected = session.sessionId == selectedSessionId
