@@ -170,17 +170,17 @@ struct EmptyPaneView: View {
     @EnvironmentObject var layoutManager: LayoutManager
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: "plus.rectangle.on.rectangle")
-                .font(.system(size: 40))
+                .font(.system(size: 56))
                 .foregroundStyle(.tertiary)
 
             Text(L("content.selectSession"))
-                .font(.headline)
+                .font(.title2)
                 .foregroundStyle(.secondary)
 
             Text(L("layout.emptyHint"))
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.tertiary)
 
             Button {
@@ -188,9 +188,10 @@ struct EmptyPaneView: View {
                 layoutManager.requestSwitchSession()
             } label: {
                 Label(L("content.selectSession"), systemImage: "list.bullet")
-                    .font(.caption)
+                    .font(.body)
             }
             .buttonStyle(.bordered)
+            .controlSize(.large)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
