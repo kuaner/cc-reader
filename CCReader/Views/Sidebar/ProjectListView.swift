@@ -11,7 +11,6 @@ struct ProjectListView: View {
         List {
             ForEach(sessions) { session in
                 SessionRow(session: session, isSelected: selectedSessionId == session.sessionId)
-                    .tag(session.sessionId)
                     .listRowSeparator(.hidden)
                     .listRowBackground(
                         selectedSessionId == session.sessionId

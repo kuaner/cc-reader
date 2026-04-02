@@ -14,28 +14,16 @@ struct LayoutView: View {
         case .pane(let pane):
             return AnyView(PaneView(pane: pane, selectedSession: $selectedSession))
 
-        case .split(let direction, let first, let second, let ratio):
+        case .split(let id, let direction, let first, let second, let ratio):
             return AnyView(ResizableSplitView(
                 direction: direction,
                 ratio: ratio,
                 onRatioChanged: { newRatio in
-                    // Use the first descendant pane ID to identify the owning split.
-                    if let firstPaneId = getFirstPaneId(from: first) {
-                        layoutManager.updateRatio(at: firstPaneId, newRatio: newRatio)
-                    }
+                    layoutManager.updateRatio(at: id, newRatio: newRatio)
                 },
                 first: { renderNode(first) },
                 second: { renderNode(second) }
             ))
-        }
-    }
-
-    private func getFirstPaneId(from node: LayoutNode) -> UUID? {
-        switch node {
-        case .pane(let pane):
-            return pane.id
-        case .split(_, let first, _, _):
-            return getFirstPaneId(from: first)
         }
     }
 }
@@ -66,33 +54,33 @@ struct ResizableSplitView<First: View, Second: View>: View {
         GeometryReader { geo in
             let isHorizontal = direction == .horizontal
             let total = isHorizontal ? geo.size.width : geo.size.height
+            let dividerWidth: CGFloat = 8
+            let available = total - dividerWidth
 
             ZStack(alignment: .topLeading) {
                 // Panes — sizes only update on drag END, no jitter
                 if isHorizontal {
                     HStack(spacing: 0) {
                         first()
-                            .frame(width: total * currentRatio)
+                            .frame(width: available * currentRatio)
                         Spacer(minLength: 0)
-                            .frame(width: 8)
+                            .frame(width: dividerWidth)
                         second()
-                            .frame(maxWidth: .infinity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     VStack(spacing: 0) {
                         first()
-                            .frame(height: total * currentRatio)
+                            .frame(height: available * currentRatio)
                         Spacer(minLength: 0)
-                            .frame(height: 8)
+                            .frame(height: dividerWidth)
                         second()
-                            .frame(maxHeight: .infinity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
                 // Divider handle — lives on top so it doesn't affect pane layout
-                dividerHandle(total: total, isHorizontal: isHorizontal)
+                dividerHandle(available: available, isHorizontal: isHorizontal)
             }
         }
     }
@@ -100,9 +88,9 @@ struct ResizableSplitView<First: View, Second: View>: View {
     @State private var isHovered = false
 
     @ViewBuilder
-    private func dividerHandle(total: CGFloat, isHorizontal: Bool) -> some View {
+    private func dividerHandle(available: CGFloat, isHorizontal: Bool) -> some View {
         let liveRatio = pendingRatio ?? currentRatio
-        let offset = total * liveRatio
+        let offset = available * liveRatio
 
         ZStack {
             // Wide transparent hit area
@@ -148,7 +136,7 @@ struct ResizableSplitView<First: View, Second: View>: View {
                         dragStartRatio = currentRatio
                     }
                     let delta = isHorizontal ? value.translation.width : value.translation.height
-                    pendingRatio = min(max(dragStartRatio + delta / total, 0.1), 0.9)
+                    pendingRatio = min(max(dragStartRatio + delta / available, 0.1), 0.9)
                 }
                 .onEnded { _ in
                     isDragging = false

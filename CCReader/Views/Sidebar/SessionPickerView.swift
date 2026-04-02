@@ -8,9 +8,7 @@ struct SessionPickerView: View {
     @EnvironmentObject var layoutManager: LayoutManager
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
     @State private var searchText = ""
-    @State private var selectedIndex = 0
-    /// Only scroll-to when navigating via keyboard; hover just highlights.
-    @State private var needsKeyboardScroll = false
+    @State private var selectedSessionId: String?
     @FocusState private var isSearchFocused: Bool
 
     private var filteredSessions: [Session] {
@@ -21,6 +19,11 @@ struct SessionPickerView: View {
             || (session.sessionTag?.localizedCaseInsensitiveContains(searchText) ?? false)
             || session.cwd.localizedCaseInsensitiveContains(searchText)
         }
+    }
+
+    private var selectedIndex: Int? {
+        guard let id = selectedSessionId else { return nil }
+        return filteredSessions.firstIndex(where: { $0.sessionId == id })
     }
 
     var body: some View {
@@ -54,10 +57,11 @@ struct SessionPickerView: View {
                 ScrollView {
                     let openSessionIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
                     LazyVStack(spacing: 2) {
-                        ForEach(Array(filteredSessions.enumerated()), id: \.element.sessionId) { index, session in
+                        ForEach(filteredSessions, id: \.sessionId) { session in
                             let alreadyOpen = openSessionIds.contains(session.sessionId)
-                            SessionRow(session: session, isSelected: index == selectedIndex)
-                                .id(index)
+                            let isSelected = session.sessionId == selectedSessionId
+                            SessionRow(session: session, isSelected: isSelected)
+                                .id(session.sessionId)
                                 .contentShape(Rectangle())
                                 .opacity(alreadyOpen ? 0.35 : 1)
                                 .onTapGesture {
@@ -65,21 +69,18 @@ struct SessionPickerView: View {
                                     onSelect(session)
                                 }
                                 .onHover { hovering in
-                                    guard !alreadyOpen else { return }
-                                    if hovering { selectedIndex = index }
+                                    guard !alreadyOpen, hovering else { return }
+                                    selectedSessionId = session.sessionId
                                 }
                         }
                     }
                     .padding(8)
                 }
-                .onChange(of: selectedIndex) { _, newIndex in
-                    guard needsKeyboardScroll else {
-                        needsKeyboardScroll = false
-                        return
-                    }
-                    needsKeyboardScroll = false
-                    withAnimation {
-                        proxy.scrollTo(newIndex, anchor: .center)
+                .onChange(of: selectedSessionId) { _, newId in
+                    if let newId {
+                        withAnimation {
+                            proxy.scrollTo(newId, anchor: .center)
+                        }
                     }
                 }
             }
@@ -89,24 +90,20 @@ struct SessionPickerView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
         .onAppear {
-            selectedIndex = 0
+            selectedSessionId = filteredSessions.first?.sessionId
             isSearchFocused = true
         }
         .onChange(of: searchText) { _, _ in
-            selectedIndex = 0
+            if selectedSessionId == nil || !filteredSessions.contains(where: { $0.sessionId == selectedSessionId }) {
+                selectedSessionId = filteredSessions.first?.sessionId
+            }
         }
         .onKeyPress(.upArrow) {
-            if selectedIndex > 0 {
-                needsKeyboardScroll = true
-                selectedIndex -= 1
-            }
+            navigate(offset: -1)
             return .handled
         }
         .onKeyPress(.downArrow) {
-            if selectedIndex < filteredSessions.count - 1 {
-                needsKeyboardScroll = true
-                selectedIndex += 1
-            }
+            navigate(offset: 1)
             return .handled
         }
         .onKeyPress(.return) {
@@ -119,10 +116,18 @@ struct SessionPickerView: View {
         }
     }
 
+    private func navigate(offset: Int) {
+        let list = filteredSessions
+        guard !list.isEmpty else { return }
+        let current = selectedSessionId.flatMap { id in list.firstIndex(where: { $0.sessionId == id }) } ?? 0
+        let next = max(0, min(current + offset, list.count - 1))
+        selectedSessionId = list[next].sessionId
+    }
+
     private func confirmSelection() {
         let list = filteredSessions
-        guard !list.isEmpty, selectedIndex < list.count else { return }
-        let session = list[selectedIndex]
+        guard let id = selectedSessionId,
+              let session = list.first(where: { $0.sessionId == id }) else { return }
         guard !layoutManager.allPanes().contains(where: { $0.sessionId == session.sessionId }) else { return }
         onSelect(session)
     }

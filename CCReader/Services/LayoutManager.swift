@@ -156,10 +156,6 @@ class LayoutManager: ObservableObject {
         }
     }
 
-    func updateRatio(at nodeId: UUID, newRatio: CGFloat) {
-        layout.root = updateRatioInNode(layout.root, targetPaneId: nodeId, newRatio: newRatio)
-    }
-
     // MARK: - Picker Triggers
 
     func requestSplitFocused(direction: SplitDirection) {
@@ -242,6 +238,7 @@ class LayoutManager: ObservableObject {
         case .pane(let pane):
             if pane.id == targetId {
                 return .split(
+                    id: UUID(),
                     direction: direction,
                     first: .pane(pane),
                     second: .pane(Pane(sessionId: sessionId)),
@@ -250,8 +247,9 @@ class LayoutManager: ObservableObject {
             }
             return node
 
-        case .split(let dir, let first, let second, let ratio):
+        case .split(let id, let dir, let first, let second, let ratio):
             return .split(
+                id: id,
                 direction: dir,
                 first: splitNode(first, targetId: targetId, direction: direction, sessionId: sessionId),
                 second: splitNode(second, targetId: targetId, direction: direction, sessionId: sessionId),
@@ -265,7 +263,7 @@ class LayoutManager: ObservableObject {
         case .pane(let pane):
             return pane.id == targetId ? nil : node
 
-        case .split(let dir, let first, let second, let ratio):
+        case .split(let id, let dir, let first, let second, let ratio):
             let newFirst = removeNode(first, targetId: targetId)
             let newSecond = removeNode(second, targetId: targetId)
 
@@ -274,7 +272,7 @@ class LayoutManager: ObservableObject {
             case (let n, nil): return n
             case (nil, let n): return n
             case (let f?, let s?):
-                return .split(direction: dir, first: f, second: s, ratio: ratio)
+                return .split(id: id, direction: dir, first: f, second: s, ratio: ratio)
             }
         }
     }
@@ -284,9 +282,9 @@ class LayoutManager: ObservableObject {
         case .pane(let pane):
             return pane.id == targetId ? .pane(transform(pane)) : node
 
-        case .split(let dir, let first, let second, let ratio):
+        case .split(let id, let dir, let first, let second, let ratio):
             return .split(
-                direction: dir,
+                id: id, direction: dir,
                 first: updateNode(first, targetId: targetId, transform: transform),
                 second: updateNode(second, targetId: targetId, transform: transform),
                 ratio: ratio
@@ -298,27 +296,27 @@ class LayoutManager: ObservableObject {
         switch node {
         case .pane(let pane):
             return [pane]
-        case .split(_, let first, let second, _):
+        case .split(_, _, let first, let second, _):
             return collectPanes(first) + collectPanes(second)
         }
     }
 
-    private func updateRatioInNode(_ node: LayoutNode, targetPaneId: UUID, newRatio: CGFloat) -> LayoutNode {
+    func updateRatio(at splitId: UUID, newRatio: CGFloat) {
+        layout.root = updateRatioInNode(layout.root, splitId: splitId, newRatio: newRatio)
+    }
+
+    private func updateRatioInNode(_ node: LayoutNode, splitId: UUID, newRatio: CGFloat) -> LayoutNode {
         switch node {
         case .pane:
             return node
-        case .split(let dir, let first, let second, let ratio):
-            let firstPanes = collectPanes(first)
-            let secondPanes = collectPanes(second)
-
-            if firstPanes.contains(where: { $0.id == targetPaneId }) || secondPanes.contains(where: { $0.id == targetPaneId }) {
-                return .split(direction: dir, first: first, second: second, ratio: newRatio)
+        case .split(let id, let dir, let first, let second, let ratio):
+            if id == splitId {
+                return .split(id: id, direction: dir, first: first, second: second, ratio: newRatio)
             }
-
             return .split(
-                direction: dir,
-                first: updateRatioInNode(first, targetPaneId: targetPaneId, newRatio: newRatio),
-                second: updateRatioInNode(second, targetPaneId: targetPaneId, newRatio: newRatio),
+                id: id, direction: dir,
+                first: updateRatioInNode(first, splitId: splitId, newRatio: newRatio),
+                second: updateRatioInNode(second, splitId: splitId, newRatio: newRatio),
                 ratio: ratio
             )
         }
