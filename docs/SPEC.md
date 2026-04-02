@@ -4,7 +4,7 @@
 
 **cc-reader** is a macOS desktop app for reading and managing Claude Code session history. It monitors and parses JSONL files under `~/.claude/projects/`, displaying conversation timelines, tool usage, thinking/context information, and session metadata in a native UI optimized for long sessions.
 
-Key capabilities: multi-pane session monitoring, real-time incremental sync, sidebar-based session management, and a single-WKWebView timeline tuned for large histories.
+Key capabilities: multi-tab & multi-pane session monitoring, real-time incremental sync, sidebar-based session management, and a single-WKWebView timeline tuned for large histories.
 
 ---
 
@@ -30,17 +30,21 @@ Key capabilities: multi-pane session monitoring, real-time incremental sync, sid
 │                     (@main Entry)                        │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│  ┌──────────────┐  ┌──────────────┐                      │
-│  │ ContentView  │  │ LayoutView   │                      │
-│  │ (Main UI)    │  │ (Multi-pane) │                      │
-│  └──────┬───────┘  └──────┬───────┘                      │
-│         │                 │                               │
-│  ┌──────┴──────────────────┴──────────────────────────┐  │
-│  │              Views Layer (SwiftUI)                  │  │
-│  │  ProjectListView / SessionMessagesView / PaneView  │  │
-│  │  TimelineHostView / MarkdownRenderView             │  │
-│  │  ContextPanel / LayoutView                         │  │
-│  └────────────────────┬───────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐    │
+│  │  ContentView (per-tab) ← @SceneStorage persistence│    │
+│  │  ├── NavigationSplitView (sidebar)                │    │
+│  │  └── LayoutView ← LayoutManager (pane tree)       │    │
+│  │      ├── PaneView ── SessionMessagesView           │    │
+│  │      │              └── TimelineHostView           │    │
+│  │      └── PaneView ── ...                           │    │
+│  └──────────────────────┬───────────────────────────┘    │
+│                         │                                 │
+│  ┌──────────────────────┴───────────────────────────┐    │
+│  │              Views Layer (SwiftUI)                │    │
+│  │  ProjectListView / SessionPickerView / PaneView  │    │
+│  │  SessionMessagesView / TimelineHostView          │    │
+│  │  ContextPanel / LayoutView / ResizableSplitView  │    │
+│  └────────────────────┬─────────────────────────────┘    │
 │                       │                                  │
 │  ┌────────────────────┴───────────────────────────────┐  │
 │  │             Services Layer                          │  │
@@ -129,7 +133,7 @@ Represents a single line in the JSONL file. Stores the original JSON in `rawJson
 
 ### WorkspaceLayout (Value Type)
 
-Recursive tree structure for multi-pane layout. Persisted in UserDefaults.
+Recursive tree structure for multi-pane layout. Persisted per-tab via `@SceneStorage` (JSON-encoded). See [docs/layout-system.md](layout-system.md) for full details.
 
 - `LayoutNode` — `.pane(Pane)` / `.split(direction, first, second, ratio)`
 - `Pane` — `id`, `sessionId?`
@@ -228,14 +232,15 @@ cc-reader/
 │   │   ├── JSONLParser.swift           # Incremental JSONL parser
 │   │   ├── JSONLWriter.swift           # JSONL writer utilities
 │   │   ├── FileWatcherService.swift    # FSEvents file watcher
-│   │   ├── LayoutManager.swift         # Pane layout management
+│   │   ├── LayoutManager.swift         # Per-window pane tree + split/focus/assign
 │   │   ├── TokenEstimator.swift        # Token count estimator
 │   │   ├── ConfirmationDetector.swift  # Confirmation request detection
 │   │   └── IgnoredSessionManager.swift # Deleted session tracking
 │   ├── Views/
-│   │   ├── ContentView.swift           # Main layout
+│   │   ├── ContentView.swift           # Per-tab root (NavigationSplitView + persistence)
 │   │   ├── Sidebar/
-│   │   │   └── ProjectListView.swift   # Project/session list
+│   │   │   ├── ProjectListView.swift   # Session list sidebar
+│   │   │   └── SessionPickerView.swift # Session search/assign picker sheet
 │   │   ├── Timeline/
 │   │   │   ├── SessionMessagesView.swift   # Timeline orchestration + Context panel
 │   │   │   ├── TimelineHostView.swift      # Single WKWebView timeline host
@@ -243,8 +248,8 @@ cc-reader/
 │   │   │   ├── MarkdownRenderView.swift    # Markdown preview WebView
 │   │   │   └── WebRenderAssets.swift       # Bundled JS/CSS loaders and web chrome
 │   │   └── Layout/
-│   │       ├── LayoutView.swift        # Multi-pane renderer
-│   │       └── PaneView.swift          # Individual pane
+│   │       ├── LayoutView.swift        # Recursive pane tree renderer
+│   │       └── PaneView.swift          # Individual pane (header + timeline)
 │   ├── Resources/
 │   │   ├── marked.min.js
 │   │   ├── highlight.min.js
@@ -258,7 +263,11 @@ cc-reader/
 ├── CCReader.xcodeproj/
 ├── project.yml                         # XcodeGen config
 └── docs/
-    └── SPEC.md                         # This document
+    ├── SPEC.md                         # This document
+    ├── layout-system.md                # Multi-tab/pane layout system design
+    ├── timeline-incremental-dom.md     # Incremental DOM update strategy
+    ├── timeline-rendering-architecture.md
+    └── timeline-scroll-optimization-notes.md
 ```
 
 ---
