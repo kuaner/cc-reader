@@ -7,6 +7,7 @@ struct CCReaderApp: App {
 
     init() {
         NSWindow.allowsAutomaticWindowTabbing = true
+        TabSwitchMonitor.install()
         do {
             let schema = Schema([
                 Project.self,
@@ -80,17 +81,6 @@ struct CCReaderApp: App {
                 .keyboardShortcut("b", modifiers: .command)
             }
 
-            CommandMenu("") {
-                ForEach(1...9, id: \.self) { i in
-                    Button("") {
-                        if let windows = NSApp.keyWindow?.tabbedWindows, i <= windows.count {
-                            windows[i - 1].makeKeyAndOrderFront(nil)
-                        }
-                    }
-                    .keyboardShortcut(KeyEquivalent(Character("\(i)")), modifiers: .command)
-                }
-            }
-
             CommandGroup(replacing: .help) {
                 Button(L("menu.github")) {
                     if let url = URL(string: "https://github.com/kuaner/cc-reader") {
@@ -98,6 +88,31 @@ struct CCReaderApp: App {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Tab Switching via Key Monitor (Cmd+1…9)
+// Using NSEvent local monitor instead of CommandMenu so no menu item appears
+// and no menu bar highlight flashes when the shortcut is pressed.
+
+private enum TabSwitchMonitor {
+    static var monitor: Any?
+
+    static func install() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.contains(.command),
+                  !event.modifierFlags.contains(.shift),
+                  !event.modifierFlags.contains(.option),
+                  let char = event.charactersIgnoringModifiers,
+                  let digit = Int(char), (1...9).contains(digit) else {
+                return event
+            }
+            if let windows = NSApp.keyWindow?.tabbedWindows, digit <= windows.count {
+                windows[digit - 1].makeKeyAndOrderFront(nil)
+            }
+            return nil // consumed
         }
     }
 }
