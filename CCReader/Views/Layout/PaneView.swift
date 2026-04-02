@@ -90,7 +90,7 @@ struct PaneHeaderView: View {
 
             // Context panel toggle
             Button {
-                withAnimation { showContextPanel.toggle() }
+                withAnimation(.easeInOut(duration: 0.2)) { showContextPanel.toggle() }
             } label: {
                 Image(systemName: showContextPanel ? "sidebar.right" : "sidebar.left")
                     .font(.caption)

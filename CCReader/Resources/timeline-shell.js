@@ -597,12 +597,20 @@ document.addEventListener('click', function (e) {
   }
 });
 
-// On resize: if we were following bottom, snap back to it
-window.addEventListener('resize', function () {
-  if (scrollState.followingBottom) {
-    window.scrollTo(0, document.documentElement.scrollHeight);
-  }
-});
+// On resize: if we were following bottom, snap back to it (debounced to avoid
+// thrashing during layout animations that change the WebView frame every frame).
+(function () {
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (resizeTimer) { clearTimeout(resizeTimer); }
+    resizeTimer = setTimeout(function () {
+      resizeTimer = null;
+      if (scrollState.followingBottom) {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+      }
+    }, 100);
+  });
+})();
 
 // Initial render
 renderMarkdownIn(document);

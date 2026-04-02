@@ -6,24 +6,32 @@ struct LayoutView: View {
     @Binding var selectedSession: Session?
 
     var body: some View {
-        renderNode(layoutManager.layout.root)
+        LayoutNodeView(node: layoutManager.layout.root, selectedSession: $selectedSession)
     }
+}
 
-    private func renderNode(_ node: LayoutNode) -> AnyView {
+/// Recursive view that renders a `LayoutNode` tree without AnyView type-erasure,
+/// preserving SwiftUI's structural identity so WKWebView instances survive layout mutations.
+struct LayoutNodeView: View {
+    let node: LayoutNode
+    @Binding var selectedSession: Session?
+    @EnvironmentObject var layoutManager: LayoutManager
+
+    var body: some View {
         switch node {
         case .pane(let pane):
-            return AnyView(PaneView(pane: pane, selectedSession: $selectedSession))
+            PaneView(pane: pane, selectedSession: $selectedSession)
 
         case .split(let id, let direction, let first, let second, let ratio):
-            return AnyView(ResizableSplitView(
+            ResizableSplitView(
                 direction: direction,
                 ratio: ratio,
                 onRatioChanged: { newRatio in
                     layoutManager.updateRatio(at: id, newRatio: newRatio)
                 },
-                first: { renderNode(first) },
-                second: { renderNode(second) }
-            ))
+                first: { LayoutNodeView(node: first, selectedSession: $selectedSession) },
+                second: { LayoutNodeView(node: second, selectedSession: $selectedSession) }
+            )
         }
     }
 }

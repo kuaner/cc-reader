@@ -39,6 +39,8 @@ struct SessionMessagesView: View {
                     snapshot: timeline
                 )
                 .equatable()
+                .clipped()
+                .transaction { $0.animation = nil }
             }
 
             if showContextPanel {

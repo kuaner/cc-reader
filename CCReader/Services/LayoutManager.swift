@@ -65,8 +65,10 @@ class LayoutManager: ObservableObject {
 
     func splitPane(_ paneId: UUID, direction: SplitDirection, sessionId: String? = nil) {
         guard canSplit() else { return }
-        objectWillChange.send()
-        layout.root = splitNode(layout.root, targetId: paneId, direction: direction, sessionId: sessionId)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            objectWillChange.send()
+            layout.root = splitNode(layout.root, targetId: paneId, direction: direction, sessionId: sessionId)
+        }
     }
 
     /// Split the focused pane and assign a session to the new pane.
@@ -89,11 +91,13 @@ class LayoutManager: ObservableObject {
             window?.close()
             return
         }
-        objectWillChange.send()
-        if let newRoot = removeNode(layout.root, targetId: paneId) {
-            layout.root = newRoot
-            if focusedPaneId == paneId {
-                focusedPaneId = collectPanes(layout.root).first?.id
+        withAnimation(.easeInOut(duration: 0.25)) {
+            objectWillChange.send()
+            if let newRoot = removeNode(layout.root, targetId: paneId) {
+                layout.root = newRoot
+                if focusedPaneId == paneId {
+                    focusedPaneId = collectPanes(layout.root).first?.id
+                }
             }
         }
     }
