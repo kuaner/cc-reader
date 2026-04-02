@@ -36,23 +36,35 @@ public struct ContentView: View {
         .environmentObject(coordinator)
         .background(WindowConfigurator(layoutManager: layoutManager))
         .toolbar(removing: .sidebarToggle)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Button {
-                    layoutManager.requestSwitchSession()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 10))
-                        Text(L("picker.switch.help"))
-                            .font(.system(size: 11))
-                    }
-                    .foregroundStyle(.secondary)
-                    .frame(minWidth: 180)
+        .overlay(alignment: .top) {
+            Button {
+                layoutManager.requestSwitchSession()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10))
+                    Text(L("picker.switch.help"))
+                        .font(.system(size: 11))
                 }
-                .buttonStyle(.plain)
-                .controlSize(.small)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 180)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(.quaternary.opacity(0.5))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(.quaternary, lineWidth: 0.5)
+                )
             }
+            .buttonStyle(.plain)
+            .controlSize(.small)
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
+            .padding(.top, 6)
+            .ignoresSafeArea(.all, edges: .top)
         }
         .navigationTitle(windowTitle)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
