@@ -20,22 +20,30 @@ public struct Pane: Identifiable, Codable, Equatable {
 /// Recursive workspace layout tree.
 public indirect enum LayoutNode: Codable, Equatable {
     case pane(Pane)
-    case split(direction: SplitDirection, first: LayoutNode, second: LayoutNode, ratio: CGFloat)
+    case split(id: UUID, direction: SplitDirection, first: LayoutNode, second: LayoutNode, ratio: CGFloat)
 
     /// Return a copy with an updated split ratio.
     public func withRatio(_ newRatio: CGFloat) -> LayoutNode {
         switch self {
         case .pane:
             return self
-        case .split(let dir, let first, let second, _):
-            return .split(direction: dir, first: first, second: second, ratio: newRatio)
+        case .split(let id, let dir, let first, let second, _):
+            return .split(id: id, direction: dir, first: first, second: second, ratio: newRatio)
+        }
+    }
+
+    /// The ID of this node if it is a split, or nil if it is a pane.
+    public var splitId: UUID? {
+        switch self {
+        case .pane: return nil
+        case .split(let id, _, _, _, _): return id
         }
     }
 
     // MARK: - Codable
 
     enum CodingKeys: String, CodingKey {
-        case type, pane, direction, first, second, ratio
+        case type, pane, id, direction, first, second, ratio
     }
 
     public init(from decoder: Decoder) throws {
@@ -47,11 +55,12 @@ public indirect enum LayoutNode: Codable, Equatable {
             let pane = try container.decode(Pane.self, forKey: .pane)
             self = .pane(pane)
         case "split":
+            let id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
             let direction = try container.decode(SplitDirection.self, forKey: .direction)
             let first = try container.decode(LayoutNode.self, forKey: .first)
             let second = try container.decode(LayoutNode.self, forKey: .second)
             let ratio = try container.decode(CGFloat.self, forKey: .ratio)
-            self = .split(direction: direction, first: first, second: second, ratio: ratio)
+            self = .split(id: id, direction: direction, first: first, second: second, ratio: ratio)
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Unknown type")
         }
@@ -64,8 +73,9 @@ public indirect enum LayoutNode: Codable, Equatable {
         case .pane(let pane):
             try container.encode("pane", forKey: .type)
             try container.encode(pane, forKey: .pane)
-        case .split(let direction, let first, let second, let ratio):
+        case .split(let id, let direction, let first, let second, let ratio):
             try container.encode("split", forKey: .type)
+            try container.encode(id, forKey: .id)
             try container.encode(direction, forKey: .direction)
             try container.encode(first, forKey: .first)
             try container.encode(second, forKey: .second)
@@ -87,6 +97,7 @@ public struct WorkspaceLayout: Codable, Equatable {
     /// Two-column layout.
     public static var twoColumn: WorkspaceLayout {
         WorkspaceLayout(root: .split(
+            id: UUID(),
             direction: .horizontal,
             first: .pane(Pane()),
             second: .pane(Pane()),
@@ -97,9 +108,10 @@ public struct WorkspaceLayout: Codable, Equatable {
     /// 2x2 grid layout.
     public static var grid2x2: WorkspaceLayout {
         WorkspaceLayout(root: .split(
+            id: UUID(),
             direction: .vertical,
-            first: .split(direction: .horizontal, first: .pane(Pane()), second: .pane(Pane()), ratio: 0.5),
-            second: .split(direction: .horizontal, first: .pane(Pane()), second: .pane(Pane()), ratio: 0.5),
+            first: .split(id: UUID(), direction: .horizontal, first: .pane(Pane()), second: .pane(Pane()), ratio: 0.5),
+            second: .split(id: UUID(), direction: .horizontal, first: .pane(Pane()), second: .pane(Pane()), ratio: 0.5),
             ratio: 0.5
         ))
     }
@@ -109,6 +121,7 @@ public struct WorkspaceLayout: Codable, Equatable {
         func makeRow(count: Int) -> LayoutNode {
             if count == 1 { return .pane(Pane()) }
             return .split(
+                id: UUID(),
                 direction: .horizontal,
                 first: .pane(Pane()),
                 second: makeRow(count: count - 1),
@@ -119,6 +132,7 @@ public struct WorkspaceLayout: Codable, Equatable {
         func makeGrid(rows: Int, columns: Int) -> LayoutNode {
             if rows == 1 { return makeRow(count: columns) }
             return .split(
+                id: UUID(),
                 direction: .vertical,
                 first: makeRow(count: columns),
                 second: makeGrid(rows: rows - 1, columns: columns),
@@ -129,3 +143,5 @@ public struct WorkspaceLayout: Codable, Equatable {
         return WorkspaceLayout(root: makeGrid(rows: rows, columns: columns))
     }
 }
+
+

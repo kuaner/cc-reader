@@ -4,112 +4,259 @@ import SwiftUI
 class LayoutManager: ObservableObject {
     @Published var layout: WorkspaceLayout = .single
     @Published var focusedPaneId: UUID?
+    @Published var sidebarVisible: Bool = true
+
+    /// The window this LayoutManager is attached to.
+    weak var window: NSWindow?
+
+    // MARK: - Window Registry
+
+    private static var windowRegistry: [ObjectIdentifier: LayoutManager] = [:]
+
+    /// The LayoutManager for the currently focused window (key window).
+    static var active: LayoutManager? {
+        guard let window = NSApp.keyWindow else { return nil }
+        return windowRegistry[ObjectIdentifier(window)]
+    }
+
+    func registerWindow(_ window: NSWindow) {
+        self.window = window
+        Self.windowRegistry[ObjectIdentifier(window)] = self
+    }
+
+    func unregisterWindow() {
+        if let window {
+            Self.windowRegistry.removeValue(forKey: ObjectIdentifier(window))
+        }
+        self.window = nil
+    }
+
+    // MARK: - Sidebar
+
+    func toggleSidebar() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            sidebarVisible.toggle()
+        }
+    }
+
+    /// The kind of picker action the user has requested.
+    enum PickerAction: Identifiable {
+        case splitPane(direction: SplitDirection)
+        case switchSession
+
+        var id: String {
+            switch self {
+            case .splitPane(let d): return "split-\(d.rawValue)"
+            case .switchSession: return "switch"
+            }
+        }
+    }
+
+    /// Set this to present the SessionPicker.
+    @Published var pendingPickerAction: PickerAction?
 
     static let maxPanes = 12
-    private static let layoutKey = "workspace.layout"
-
-    init() {
-        restore()
-    }
 
     // MARK: - Pane Operations
 
-    /// Whether another split can be added.
     func canSplit() -> Bool {
         allPanes().count < Self.maxPanes
     }
 
-    /// Split the current pane and add a new one.
-    func splitPane(_ paneId: UUID, direction: SplitDirection) {
+    func splitPane(_ paneId: UUID, direction: SplitDirection, sessionId: String? = nil) {
         guard canSplit() else { return }
-        objectWillChange.send()
-        layout.root = splitNode(layout.root, targetId: paneId, direction: direction)
-        save()
-    }
-
-    /// Close a pane.
-    func closePane(_ paneId: UUID) {
-        // Keep at least one pane alive.
-        guard allPanes().count > 1 else { return }
-        objectWillChange.send()
-        if let newRoot = removeNode(layout.root, targetId: paneId) {
-            layout.root = newRoot
-            save()
+        withAnimation(.easeInOut(duration: 0.25)) {
+            objectWillChange.send()
+            layout.root = splitNode(layout.root, targetId: paneId, direction: direction, sessionId: sessionId)
         }
     }
 
-    /// Assign a session to a pane.
+    /// Split the focused pane and assign a session to the new pane.
+    func splitFocusedPane(direction: SplitDirection, sessionId: String) {
+        guard let paneId = focusedPaneId else { return }
+        // Prevent duplicate session
+        if allPanes().contains(where: { $0.sessionId == sessionId }) { return }
+        splitPane(paneId, direction: direction, sessionId: sessionId)
+        // Focus the newly created pane.
+        let panes = allPanes()
+        if let newPane = panes.last(where: { $0.sessionId == sessionId && $0.id != paneId }) {
+            focusedPaneId = newPane.id
+        }
+    }
+
+    func closePane(_ paneId: UUID) {
+        let panes = allPanes()
+        if panes.count <= 1 {
+            // Last pane — close this window/tab (like Ghostty's closeTabImmediately)
+            window?.close()
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            objectWillChange.send()
+            if let newRoot = removeNode(layout.root, targetId: paneId) {
+                layout.root = newRoot
+                if focusedPaneId == paneId {
+                    focusedPaneId = collectPanes(layout.root).first?.id
+                }
+            }
+        }
+    }
+
+    /// Close the focused pane, or close the window if it's the last pane.
+    func closeFocused() {
+        let paneId = focusedPaneId ?? allPanes().first?.id
+        if let paneId {
+            closePane(paneId)
+        }
+    }
+
+    /// Focus the previous pane in traversal order (⌘[ like Ghostty).
+    func focusPreviousPane() { focusPane(offset: -1) }
+
+    /// Focus the next pane in traversal order (⌘] like Ghostty).
+    func focusNextPane() { focusPane(offset: 1) }
+
+    private func focusPane(offset: Int) {
+        let panes = allPanes()
+        guard panes.count > 1 else { return }
+        let current = focusedPaneId
+        if let idx = panes.firstIndex(where: { $0.id == current }) {
+            focusedPaneId = panes[(idx + offset + panes.count) % panes.count].id
+        } else {
+            focusedPaneId = offset < 0 ? panes.last?.id : panes.first?.id
+        }
+    }
+
     func assignSession(_ sessionId: String, to paneId: UUID) {
+        // Prevent duplicate: if this session is already open in another pane, refuse
+        let existing = allPanes().first { $0.sessionId == sessionId }
+        if let existing, existing.id != paneId { return }
         objectWillChange.send()
         layout.root = updateNode(layout.root, targetId: paneId) { pane in
             var newPane = pane
             newPane.sessionId = sessionId
             return newPane
         }
-        save()
     }
 
-    /// Return every pane in the current layout.
     func allPanes() -> [Pane] {
         collectPanes(layout.root)
     }
 
-    /// Find the pane that shows a specific session.
     func findPane(for sessionId: String) -> Pane? {
         allPanes().first { $0.sessionId == sessionId }
     }
 
-    /// Update the ratio for the split nearest to the target pane.
-    func updateRatio(at nodeId: UUID, newRatio: CGFloat) {
-        layout.root = updateRatioInNode(layout.root, path: [], targetPaneId: nodeId, newRatio: newRatio)
-        save()
-    }
-
-    // MARK: - Persistence
-
-    func save() {
-        if let data = try? JSONEncoder().encode(layout) {
-            UserDefaults.standard.set(data, forKey: Self.layoutKey)
+    /// Focus the pane showing a session, or assign it to the focused pane.
+    func focusOrAssignSession(_ sessionId: String) {
+        if let pane = findPane(for: sessionId) {
+            focusedPaneId = pane.id
+        } else {
+            let targetPaneId = focusedPaneId ?? allPanes().first?.id
+            if let paneId = targetPaneId {
+                focusedPaneId = paneId
+                assignSession(sessionId, to: paneId)
+            }
         }
     }
 
-    func restore() {
-        if let data = UserDefaults.standard.data(forKey: Self.layoutKey),
+    // MARK: - Picker Triggers
+
+    func requestSplitFocused(direction: SplitDirection) {
+        guard canSplit(), focusedPaneId != nil else { return }
+        pendingPickerAction = .splitPane(direction: direction)
+    }
+
+    func requestSwitchSession() {
+        guard focusedPaneId != nil else { return }
+        pendingPickerAction = .switchSession
+    }
+
+    /// Called when the user picks a session from the SessionPicker.
+    func handlePickerSelection(sessionId: String) {
+        guard let action = pendingPickerAction else { return }
+        pendingPickerAction = nil
+
+        switch action {
+        case .splitPane(let direction):
+            splitFocusedPane(direction: direction, sessionId: sessionId)
+        case .switchSession:
+            if let paneId = focusedPaneId {
+                assignSession(sessionId, to: paneId)
+            }
+        }
+    }
+
+    func cancelPicker() {
+        pendingPickerAction = nil
+    }
+
+    // MARK: - Persistence (via @SceneStorage in ContentView)
+
+    func encodeLayout() -> String? {
+        guard let data = try? JSONEncoder().encode(layout) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    func restoreLayout(from json: String?) {
+        guard let json, let data = json.data(using: .utf8),
+              let saved = try? JSONDecoder().decode(WorkspaceLayout.self, from: data) else { return }
+        layout = saved
+        focusedPaneId = collectPanes(layout.root).first?.id
+    }
+
+    /// Migrate legacy data from UserDefaults (old TabGroup or single layout).
+    func migrateFromUserDefaults() {
+        // Try old TabGroup format — extract active tab's layout
+        if let data = UserDefaults.standard.data(forKey: "workspace.tabGroup") {
+            // Decode just the active layout from the legacy structure
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let tabs = json["tabs"] as? [[String: Any]],
+               let activeId = json["activeTabId"] as? String,
+               let activeTab = tabs.first(where: { ($0["id"] as? String) == activeId }) ?? tabs.first,
+               let layoutData = try? JSONSerialization.data(withJSONObject: activeTab["layout"] ?? [:]),
+               let migratedLayout = try? JSONDecoder().decode(WorkspaceLayout.self, from: layoutData) {
+                layout = migratedLayout
+            }
+            UserDefaults.standard.removeObject(forKey: "workspace.tabGroup")
+            return
+        }
+        // Try old single-layout format
+        if let data = UserDefaults.standard.data(forKey: "workspace.layout"),
            let saved = try? JSONDecoder().decode(WorkspaceLayout.self, from: data) {
             layout = saved
+            UserDefaults.standard.removeObject(forKey: "workspace.layout")
         }
-    }
-
-    func setLayout(_ newLayout: WorkspaceLayout) {
-        objectWillChange.send()
-        layout = newLayout
-        save()
     }
 
     func reset() {
-        setLayout(.single)
+        objectWillChange.send()
+        layout = .single
+        focusedPaneId = nil
     }
 
     // MARK: - Private Helpers
 
-    private func splitNode(_ node: LayoutNode, targetId: UUID, direction: SplitDirection) -> LayoutNode {
+    private func splitNode(_ node: LayoutNode, targetId: UUID, direction: SplitDirection, sessionId: String? = nil) -> LayoutNode {
         switch node {
         case .pane(let pane):
             if pane.id == targetId {
                 return .split(
+                    id: UUID(),
                     direction: direction,
                     first: .pane(pane),
-                    second: .pane(Pane()),
+                    second: .pane(Pane(sessionId: sessionId)),
                     ratio: 0.5
                 )
             }
             return node
 
-        case .split(let dir, let first, let second, let ratio):
+        case .split(let id, let dir, let first, let second, let ratio):
             return .split(
+                id: id,
                 direction: dir,
-                first: splitNode(first, targetId: targetId, direction: direction),
-                second: splitNode(second, targetId: targetId, direction: direction),
+                first: splitNode(first, targetId: targetId, direction: direction, sessionId: sessionId),
+                second: splitNode(second, targetId: targetId, direction: direction, sessionId: sessionId),
                 ratio: ratio
             )
         }
@@ -120,7 +267,7 @@ class LayoutManager: ObservableObject {
         case .pane(let pane):
             return pane.id == targetId ? nil : node
 
-        case .split(let dir, let first, let second, let ratio):
+        case .split(let id, let dir, let first, let second, let ratio):
             let newFirst = removeNode(first, targetId: targetId)
             let newSecond = removeNode(second, targetId: targetId)
 
@@ -129,7 +276,7 @@ class LayoutManager: ObservableObject {
             case (let n, nil): return n
             case (nil, let n): return n
             case (let f?, let s?):
-                return .split(direction: dir, first: f, second: s, ratio: ratio)
+                return .split(id: id, direction: dir, first: f, second: s, ratio: ratio)
             }
         }
     }
@@ -139,9 +286,9 @@ class LayoutManager: ObservableObject {
         case .pane(let pane):
             return pane.id == targetId ? .pane(transform(pane)) : node
 
-        case .split(let dir, let first, let second, let ratio):
+        case .split(let id, let dir, let first, let second, let ratio):
             return .split(
-                direction: dir,
+                id: id, direction: dir,
                 first: updateNode(first, targetId: targetId, transform: transform),
                 second: updateNode(second, targetId: targetId, transform: transform),
                 ratio: ratio
@@ -153,29 +300,27 @@ class LayoutManager: ObservableObject {
         switch node {
         case .pane(let pane):
             return [pane]
-        case .split(_, let first, let second, _):
+        case .split(_, _, let first, let second, _):
             return collectPanes(first) + collectPanes(second)
         }
     }
 
-    private func updateRatioInNode(_ node: LayoutNode, path: [Int], targetPaneId: UUID, newRatio: CGFloat) -> LayoutNode {
+    func updateRatio(at splitId: UUID, newRatio: CGFloat) {
+        layout.root = updateRatioInNode(layout.root, splitId: splitId, newRatio: newRatio)
+    }
+
+    private func updateRatioInNode(_ node: LayoutNode, splitId: UUID, newRatio: CGFloat) -> LayoutNode {
         switch node {
         case .pane:
             return node
-        case .split(let dir, let first, let second, let ratio):
-            // Update this split if the target pane is in either branch.
-            let firstPanes = collectPanes(first)
-            let secondPanes = collectPanes(second)
-
-            if firstPanes.contains(where: { $0.id == targetPaneId }) || secondPanes.contains(where: { $0.id == targetPaneId }) {
-                // This is the nearest split that owns the target pane.
-                return .split(direction: dir, first: first, second: second, ratio: newRatio)
+        case .split(let id, let dir, let first, let second, let ratio):
+            if id == splitId {
+                return .split(id: id, direction: dir, first: first, second: second, ratio: newRatio)
             }
-
             return .split(
-                direction: dir,
-                first: updateRatioInNode(first, path: path + [0], targetPaneId: targetPaneId, newRatio: newRatio),
-                second: updateRatioInNode(second, path: path + [1], targetPaneId: targetPaneId, newRatio: newRatio),
+                id: id, direction: dir,
+                first: updateRatioInNode(first, splitId: splitId, newRatio: newRatio),
+                second: updateRatioInNode(second, splitId: splitId, newRatio: newRatio),
                 ratio: ratio
             )
         }

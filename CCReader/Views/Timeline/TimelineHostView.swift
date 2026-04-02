@@ -21,6 +21,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         config.userContentController.add(context.coordinator, name: "ccreader")
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
+        // Prevent automatic redraws on every frame change during layout animations.
+        // The web content layer will only redraw when explicitly invalidated.
+        webView.wantsLayer = true
+        webView.layerContentsRedrawPolicy = .onSetNeedsDisplay
         webView.navigationDelegate = context.coordinator
         context.coordinator.attach(to: webView)
         return webView
