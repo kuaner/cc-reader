@@ -6,6 +6,7 @@ struct CCReaderApp: App {
     let container: ModelContainer
 
     init() {
+        NSWindow.allowsAutomaticWindowTabbing = true
         do {
             let schema = Schema([
                 Project.self,
@@ -28,7 +29,67 @@ struct CCReaderApp: App {
                 .modelContainer(container)
         }
         .windowStyle(.titleBar)
-        .windowToolbarStyle(.unified)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         .defaultSize(width: 1200, height: 800)
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button(L("menu.newTab")) {
+                    NSApp.sendAction(Selector(("newWindowForTab:")), to: nil, from: nil)
+                }
+                .keyboardShortcut("t", modifiers: .command)
+
+                Button(L("menu.splitHorizontal")) {
+                    LayoutManager.active?.requestSplitFocused(direction: .horizontal)
+                }
+                .keyboardShortcut("d", modifiers: .command)
+
+                Button(L("menu.splitVertical")) {
+                    LayoutManager.active?.requestSplitFocused(direction: .vertical)
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button(L("menu.switchSession")) {
+                    LayoutManager.active?.requestSwitchSession()
+                }
+                .keyboardShortcut("e", modifiers: .command)
+
+                Divider()
+
+                Button(L("menu.closePane")) {
+                    LayoutManager.active?.closeFocused()
+                }
+                .keyboardShortcut("w", modifiers: .command)
+
+                Button(L("menu.prevPane")) {
+                    LayoutManager.active?.focusPreviousPane()
+                }
+                .keyboardShortcut("[", modifiers: .command)
+
+                Button(L("menu.nextPane")) {
+                    LayoutManager.active?.focusNextPane()
+                }
+                .keyboardShortcut("]", modifiers: .command)
+
+                Divider()
+
+                Button(L("sidebar.toggle")) {
+                    LayoutManager.active?.toggleSidebar()
+                }
+                .keyboardShortcut("b", modifiers: .command)
+            }
+
+            CommandMenu(L("menu.tabs")) {
+                ForEach(1...9, id: \.self) { i in
+                    Button("\(L("menu.selectTab")) \(i)") {
+                        if let windows = NSApp.keyWindow?.tabbedWindows, i <= windows.count {
+                            windows[i - 1].makeKeyAndOrderFront(nil)
+                        }
+                    }
+                    .keyboardShortcut(KeyEquivalent(Character("\(i)")), modifiers: .command)
+                }
+            }
+        }
     }
 }

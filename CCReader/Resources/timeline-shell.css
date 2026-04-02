@@ -59,7 +59,7 @@ body {
 .row.assistant { justify-content: flex-start; }
 .stack { display: flex; flex-direction: column; gap: 8px; width: min(100%, var(--max-width)); max-width: 100%; }
 /* ===== Message Components ===== */
-.bubble { border-radius: 14px; padding: 10px 12px; overflow-wrap: anywhere; word-break: break-word; position: relative; }
+.bubble { border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; word-break: break-word; position: relative; }
 .bubble.user {
   background: var(--surface-user);
   color: var(--surface-user-text);
@@ -81,7 +81,7 @@ body {
   padding-bottom: 6px;
   border-bottom: 1px dashed rgba(20,184,166,0.30);
 }
-.card-section { border-radius: 8px; padding: 8px 10px; }
+.card-section { border-radius: 10px; padding: 8px 10px; }
 .card-section.thinking { background: var(--surface-thinking); }
 .card-section.tool { background: var(--surface-tool); }
 .card-section.tool-flat-body { background: transparent; padding: 0; }
@@ -189,7 +189,7 @@ body {
 .markdown h3 { font-size: 1.05em; }
 .markdown :not(pre) > code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 6px;
+  background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px;
 }
 .markdown blockquote {
   margin: 0.75em 0; padding-left: 12px; border-left: 3px solid var(--border); color: var(--muted);

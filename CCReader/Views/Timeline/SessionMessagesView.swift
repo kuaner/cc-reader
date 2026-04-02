@@ -7,8 +7,7 @@ struct SessionMessagesView: View {
 
     @Query private var messages: [Message]
 
-    // Toggle the context panel on and off.
-    @State private var showContextPanel = true
+    @Binding var showContextPanel: Bool
 
     // Snapshot of the timeline render state.
     @State private var timeline = TimelineRenderSnapshot()
@@ -16,9 +15,10 @@ struct SessionMessagesView: View {
     // Snapshot used by the context panel.
     @State private var contextPanel = ContextPanelSnapshot()
 
-    init(session: Session, visibleMessageCount: Binding<Int>) {
+    init(session: Session, visibleMessageCount: Binding<Int>, showContextPanel: Binding<Bool>) {
         self.session = session
         self._visibleMessageCount = visibleMessageCount
+        self._showContextPanel = showContextPanel
         let sid = session.sessionId
         _messages = Query(
             filter: #Predicate<Message> { $0.session?.sessionId == sid },
@@ -30,7 +30,6 @@ struct SessionMessagesView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                // Session summary banner for compacted sessions
                 if let summary = session.sessionSummary, !summary.isEmpty {
                     CompactedSessionBanner(summary: summary)
                 }
@@ -44,22 +43,8 @@ struct SessionMessagesView: View {
 
             if showContextPanel {
                 Divider()
-            }
-            ContextPanel(snapshot: contextPanel)
-            .frame(width: showContextPanel ? 260 : 0)
-            .opacity(showContextPanel ? 1 : 0)
-            .clipped()
-            .allowsHitTesting(showContextPanel)
-        }
-        .navigationTitle(sessionTitle)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    showContextPanel.toggle()
-                } label: {
-                    Image(systemName: showContextPanel ? "sidebar.right" : "sidebar.left")
-                }
-                .help(L("timeline.context.help"))
+                ContextPanel(snapshot: contextPanel)
+                    .frame(width: 260)
             }
         }
         .onAppear {
@@ -494,7 +479,6 @@ struct ContextPanel: View {
             }
             .padding()
         }
-        .background(.quaternary.opacity(0.5))
         .sheet(item: $selectedFileItem) { item in
             if let path = item.filePath {
                 FilePreviewSheet(filePath: path)
@@ -549,7 +533,7 @@ struct CurrentUnderstandingView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
                     .background(.orange.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 if thinking.count > 500 {
                     Button {
@@ -709,12 +693,12 @@ struct ContextItemView: View {
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(item.color.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
         .padding(8)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -868,6 +852,6 @@ struct FilePreviewSheet: View {
     let session = Session(sessionId: "test-session", cwd: "/test", slug: "test-slug")
     container.mainContext.insert(session)
 
-    return SessionMessagesView(session: session, visibleMessageCount: .constant(0))
+    return SessionMessagesView(session: session, visibleMessageCount: .constant(0), showContextPanel: .constant(true))
         .modelContainer(container)
 }

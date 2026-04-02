@@ -597,6 +597,13 @@ document.addEventListener('click', function (e) {
   }
 });
 
+// On resize: if we were following bottom, snap back to it
+window.addEventListener('resize', function () {
+  if (scrollState.followingBottom) {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  }
+});
+
 // Initial render
 renderMarkdownIn(document);
 highlightCodeBlocksIn(document);

@@ -6,6 +6,7 @@ struct PaneView: View {
     @Binding var selectedSession: Session?
     @EnvironmentObject var layoutManager: LayoutManager
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
+    @State private var showContextPanel = true
 
     private var session: Session? {
         guard let sessionId = pane.sessionId else { return nil }
@@ -13,30 +14,18 @@ struct PaneView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            PaneHeaderView(pane: pane, sessions: sessions)
-
-            // Main content
-            if let session = session {
-                SessionMessagesView(session: session, visibleMessageCount: .constant(0))
-            } else {
-                EmptyPaneView(pane: pane, sessions: sessions)
+        if let session = session {
+            VStack(spacing: 0) {
+                PaneHeaderView(pane: pane, sessions: sessions, showContextPanel: $showContextPanel)
+                SessionMessagesView(session: session, visibleMessageCount: .constant(0), showContextPanel: $showContextPanel)
             }
-        }
-        .background(layoutManager.focusedPaneId == pane.id ? Color.accentColor.opacity(0.05) : Color.clear)
-        .onTapGesture {
-            layoutManager.focusedPaneId = pane.id
-            if let session = session {
+            .background(Color(nsColor: .windowBackgroundColor))
+            .onTapGesture {
+                layoutManager.focusedPaneId = pane.id
                 selectedSession = session
             }
-        }
-        .dropDestination(for: String.self) { sessionIds, _ in
-            if let sessionId = sessionIds.first {
-                layoutManager.assignSession(sessionId, to: pane.id)
-                return true
-            }
-            return false
+        } else {
+            EmptyPaneView(pane: pane)
         }
     }
 }
@@ -46,7 +35,9 @@ struct PaneView: View {
 struct PaneHeaderView: View {
     let pane: Pane
     let sessions: [Session]
+    @Binding var showContextPanel: Bool
     @EnvironmentObject var layoutManager: LayoutManager
+    @EnvironmentObject var coordinator: AppCoordinator
 
     private var currentSession: Session? {
         guard let sessionId = pane.sessionId else { return nil }
@@ -54,8 +45,7 @@ struct PaneHeaderView: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            // Session title
+        HStack(spacing: 6) {
             HStack(spacing: 4) {
                 if let session = currentSession {
                     if session.needsAttention {
@@ -74,15 +64,67 @@ struct PaneHeaderView: View {
 
             Spacer()
 
-            // Split menu
+            // Per-session action buttons
+            if let session = currentSession {
+                // Open CWD
+                Button {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: session.cwd))
+                } label: {
+                    Image(systemName: "folder")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .help(session.cwd)
+
+                // Resume (copy command)
+                if !session.sessionId.hasPrefix("agent-") {
+                    PaneResumeButton(sessionId: session.sessionId)
+                }
+
+                // Refresh
+                Button {
+                    Task { await coordinator.syncSession(session) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .disabled(coordinator.isSyncing)
+                .help(L("content.refresh.help"))
+            }
+
+            // Context panel toggle
+            Button {
+                withAnimation { showContextPanel.toggle() }
+            } label: {
+                Image(systemName: showContextPanel ? "sidebar.right" : "sidebar.left")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .help(L("timeline.context.help"))
+
+            // Switch session
+            Button {
+                layoutManager.focusedPaneId = pane.id
+                layoutManager.requestSwitchSession()
+            } label: {
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .help(L("picker.switch.help"))
+
+            // Split / close menu
             Menu {
                 Button(L("layout.split.horizontal")) {
-                    layoutManager.splitPane(pane.id, direction: .horizontal)
+                    layoutManager.focusedPaneId = pane.id
+                    layoutManager.requestSplitFocused(direction: .horizontal)
                 }
                 .disabled(!layoutManager.canSplit())
 
                 Button(L("layout.split.vertical")) {
-                    layoutManager.splitPane(pane.id, direction: .vertical)
+                    layoutManager.focusedPaneId = pane.id
+                    layoutManager.requestSplitFocused(direction: .vertical)
                 }
                 .disabled(!layoutManager.canSplit())
 
@@ -91,7 +133,6 @@ struct PaneHeaderView: View {
                 Button(L("layout.pane.close"), role: .destructive) {
                     layoutManager.closePane(pane.id)
                 }
-                .disabled(layoutManager.allPanes().count <= 1)
             } label: {
                 Image(systemName: "rectangle.split.3x1")
                     .font(.caption)
@@ -101,6 +142,29 @@ struct PaneHeaderView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(Color(nsColor: .controlBackgroundColor))
+        .animation(.easeInOut(duration: 0.12), value: layoutManager.focusedPaneId == pane.id)
+    }
+}
+
+// MARK: - Pane Resume Button
+
+private struct PaneResumeButton: View {
+    let sessionId: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            let command = "claude --resume \(sessionId)"
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(command, forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .help(copied ? L("session.resume.copied") : L("session.resume.help"))
     }
 }
 
@@ -108,7 +172,6 @@ struct PaneHeaderView: View {
 
 struct EmptyPaneView: View {
     let pane: Pane
-    let sessions: [Session]
     @EnvironmentObject var layoutManager: LayoutManager
 
     var body: some View {
@@ -125,44 +188,14 @@ struct EmptyPaneView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
-            // Recent sessions for quick assignment.
-            if !sessions.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L("layout.recentSessions"))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-
-                    ForEach(sessions.prefix(5)) { session in
-                        Button {
-                            layoutManager.assignSession(session.sessionId, to: pane.id)
-                        } label: {
-                            HStack(spacing: 6) {
-                                if session.needsAttention {
-                                    Image(systemName: "bell.fill")
-                                        .foregroundStyle(.orange)
-                                        .font(.caption2)
-                                }
-                                Text(session.displayTitle)
-                                    .lineLimit(1)
-
-                                if session.unacknowledgedCount > 0 {
-                                    Text("\(session.unacknowledgedCount)")
-                                        .font(.caption2)
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 1)
-                                        .background(.orange.opacity(0.2))
-                                        .clipShape(Capsule())
-                                }
-                            }
-                            .font(.caption)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding()
-                .background(.quaternary.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            Button {
+                layoutManager.focusedPaneId = pane.id
+                layoutManager.requestSwitchSession()
+            } label: {
+                Label(L("content.selectSession"), systemImage: "list.bullet")
+                    .font(.caption)
             }
+            .buttonStyle(.bordered)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

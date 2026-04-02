@@ -6,29 +6,35 @@ struct ProjectListView: View {
     @Binding var selectedProject: Project?
     @Binding var selectedSession: Session?
 
+    @State private var selectedSessionId: String?
+
     var body: some View {
-        ScrollViewReader { proxy in
-            List {
-                ForEach(sessions) { session in
-                    SessionRow(
-                        session: session,
-                        isSelected: selectedSession?.sessionId == session.sessionId
+        List {
+            ForEach(sessions) { session in
+                SessionRow(session: session, isSelected: selectedSessionId == session.sessionId)
+                    .tag(session.sessionId)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(
+                        selectedSessionId == session.sessionId
+                            ? RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color(nsColor: .selectedContentBackgroundColor).opacity(0.5))
+                                .padding(.horizontal, 4)
+                            : nil
                     )
-                        .id(session.sessionId)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedSession = session
-                        }
-                        .listRowBackground(Color.clear)
-                }
-            }
-            .listStyle(.sidebar)
-            .onChange(of: selectedSession?.sessionId) { _, newValue in
-                if let id = newValue {
-                    withAnimation {
-                        proxy.scrollTo(id, anchor: .center)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedSessionId = session.sessionId
                     }
-                }
+            }
+        }
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 8) }
+        .onChange(of: selectedSessionId) { _, newValue in
+            selectedSession = sessions.first { $0.sessionId == newValue }
+        }
+        .onChange(of: selectedSession?.sessionId) { _, newValue in
+            if selectedSessionId != newValue {
+                selectedSessionId = newValue
             }
         }
     }
@@ -38,7 +44,7 @@ struct ProjectListView: View {
 
 struct SessionRow: View {
     @Bindable var session: Session
-    let isSelected: Bool
+    var isSelected: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -47,7 +53,7 @@ struct SessionRow: View {
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(2)
-                .foregroundStyle(.primary)
+                .foregroundStyle(isSelected ? .white : .primary)
                 .help(taskSummaryTooltip)
 
             // Metadata badges
@@ -160,16 +166,10 @@ struct SessionRow: View {
                 // Last message timestamp
                 Text(formattedDate)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary.opacity(0.5))
             }
         }
-        .padding(10)
-        .background(
-            isSelected
-                ? AnyShapeStyle(Color.accentColor.opacity(0.18))
-                : AnyShapeStyle(.quaternary.opacity(0.5))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.vertical, 2)
     }
 
     private static let sessionDateFormatter: DateFormatter = {
@@ -200,6 +200,7 @@ struct SessionRow: View {
         session.taskSummary.map { "Task: " + $0 } ?? ""
     }
 }
+
 
 #Preview {
     ProjectListView(selectedProject: .constant(nil), selectedSession: .constant(nil))
