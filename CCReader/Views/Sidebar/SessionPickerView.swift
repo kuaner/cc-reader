@@ -9,8 +9,7 @@ struct SessionPickerView: View {
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
     @State private var searchText = ""
     @State private var selectedSessionId: String?
-    /// Only scroll-to when navigating via keyboard; hover just highlights.
-    @State private var needsKeyboardScroll = false
+    @State private var scrollTarget: String?
     @FocusState private var isSearchFocused: Bool
 
     private var filteredSessions: [Session] {
@@ -21,6 +20,12 @@ struct SessionPickerView: View {
             || (session.sessionTag?.localizedCaseInsensitiveContains(searchText) ?? false)
             || session.cwd.localizedCaseInsensitiveContains(searchText)
         }
+    }
+
+    /// Selectable sessions (filtered, excluding already-open ones).
+    private var selectableSessions: [Session] {
+        let openIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
+        return filteredSessions.filter { !openIds.contains($0.sessionId) }
     }
 
     var body: some View {
@@ -51,37 +56,32 @@ struct SessionPickerView: View {
 
             // Session list
             ScrollViewReader { proxy in
-                ScrollView {
+                List(selection: $selectedSessionId) {
                     let openSessionIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
-                    LazyVStack(spacing: 2) {
-                        ForEach(filteredSessions, id: \.sessionId) { session in
-                            let alreadyOpen = openSessionIds.contains(session.sessionId)
-                            let isSelected = session.sessionId == selectedSessionId
-                            SessionRow(session: session, isSelected: isSelected)
-                                .id(session.sessionId)
-                                .contentShape(Rectangle())
-                                .opacity(alreadyOpen ? 0.35 : 1)
-                                .onTapGesture {
-                                    guard !alreadyOpen else { return }
-                                    onSelect(session)
-                                }
-                                .onHover { hovering in
-                                    guard !alreadyOpen, hovering else { return }
-                                    selectedSessionId = session.sessionId
-                                }
-                        }
+                    ForEach(filteredSessions, id: \.sessionId) { session in
+                        let alreadyOpen = openSessionIds.contains(session.sessionId)
+                        SessionRow(session: session, isSelected: session.sessionId == selectedSessionId && !alreadyOpen)
+                            .tag(session.sessionId)
+                            .id(session.sessionId)
+                            .listRowSeparator(.hidden)
+                            .opacity(alreadyOpen ? 0.35 : 1)
+                            .contentShape(Rectangle())
+                            .onHover { hovering in
+                                guard !alreadyOpen, hovering else { return }
+                                selectedSessionId = session.sessionId
+                            }
+                            .onTapGesture {
+                                guard !alreadyOpen else { return }
+                                onSelect(session)
+                            }
                     }
-                    .padding(8)
                 }
-                .onChange(of: selectedSessionId) { _, newId in
-                    guard needsKeyboardScroll, let newId else {
-                        needsKeyboardScroll = false
-                        return
-                    }
-                    needsKeyboardScroll = false
-                    withAnimation {
-                        proxy.scrollTo(newId, anchor: .center)
-                    }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .onChange(of: scrollTarget) { _, target in
+                    guard let target else { return }
+                    scrollTarget = nil
+                    proxy.scrollTo(target)
                 }
             }
         }
@@ -90,12 +90,12 @@ struct SessionPickerView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
         .onAppear {
-            selectedSessionId = filteredSessions.first?.sessionId
+            selectedSessionId = selectableSessions.first?.sessionId
             isSearchFocused = true
         }
         .onChange(of: searchText) { _, _ in
             if selectedSessionId == nil || !filteredSessions.contains(where: { $0.sessionId == selectedSessionId }) {
-                selectedSessionId = filteredSessions.first?.sessionId
+                selectedSessionId = selectableSessions.first?.sessionId
             }
         }
         .onKeyPress(.upArrow) {
@@ -117,19 +117,22 @@ struct SessionPickerView: View {
     }
 
     private func navigate(offset: Int) {
-        let list = filteredSessions
+        let list = selectableSessions
         guard !list.isEmpty else { return }
-        let current = selectedSessionId.flatMap { id in list.firstIndex(where: { $0.sessionId == id }) } ?? 0
-        let next = max(0, min(current + offset, list.count - 1))
+        guard let currentId = selectedSessionId,
+              let idx = list.firstIndex(where: { $0.sessionId == currentId }) else {
+            selectedSessionId = list.first?.sessionId
+            return
+        }
+        let next = idx + offset
+        guard next >= 0, next < list.count else { return }
         selectedSessionId = list[next].sessionId
-        needsKeyboardScroll = true
+        scrollTarget = list[next].sessionId
     }
 
     private func confirmSelection() {
-        let list = filteredSessions
         guard let id = selectedSessionId,
-              let session = list.first(where: { $0.sessionId == id }) else { return }
-        guard !layoutManager.allPanes().contains(where: { $0.sessionId == session.sessionId }) else { return }
+              let session = selectableSessions.first(where: { $0.sessionId == id }) else { return }
         onSelect(session)
     }
 }
