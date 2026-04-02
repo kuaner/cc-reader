@@ -597,18 +597,36 @@ document.addEventListener('click', function (e) {
   }
 });
 
-// On resize: if we were following bottom, snap back to it (debounced to avoid
-// thrashing during layout animations that change the WebView frame every frame).
+// On resize: if we were following bottom, keep pinned to bottom on every frame
+// so the scroll position never visibly drifts.  Stop the rAF loop 300ms after
+// the last resize event (i.e. after sidebar / split-pane animation finishes).
 (function () {
   var resizeTimer = null;
+  var rafId = null;
+  var wasFollowing = false;
+
+  function pinToBottom() {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+    rafId = requestAnimationFrame(pinToBottom);
+  }
+
   window.addEventListener('resize', function () {
-    if (resizeTimer) { clearTimeout(resizeTimer); }
+    if (!resizeTimer) {
+      // First event in burst — capture follow state before reflow changes it.
+      wasFollowing = scrollState.followingBottom;
+      if (wasFollowing && !rafId) {
+        rafId = requestAnimationFrame(pinToBottom);
+      }
+    }
+    clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
       resizeTimer = null;
-      if (scrollState.followingBottom) {
-        window.scrollTo(0, document.documentElement.scrollHeight);
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      if (wasFollowing) {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
       }
-    }, 100);
+      emitScrollState();
+    }, 300);
   });
 })();
 
