@@ -35,7 +35,7 @@ struct CCReaderApp: App {
         .commands {
             CommandGroup(after: .newItem) {
                 Button(L("menu.newTab")) {
-                    NSApp.sendAction(Selector(("newWindowForTab:")), to: nil, from: nil)
+                    NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
                 }
                 .keyboardShortcut("t", modifiers: .command)
 

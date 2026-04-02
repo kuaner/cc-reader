@@ -30,7 +30,7 @@ VOLNAME ?= CC Reader
 
 .DEFAULT_GOAL := help
 
-.PHONY: help gen open-xcode build debug release run app-path archive dmg version release-tag publish clean
+.PHONY: help gen open-xcode build debug release run app-path archive dmg version release-tag clean
 
 help:
 	@printf "cc-reader build helpers\n\n"
@@ -43,8 +43,7 @@ help:
 	@printf "  make archive     Create an xcarchive at $(ARCHIVE_PATH)\n"
 	@printf "  make dmg         Build Release and package $(DMG_PATH)\n"
 	@printf "  make version     Update MARKETING_VERSION (and optional build number)\n"
-	@printf "  make release-tag Commit version metadata and create a git tag\n"
-	@printf "  make publish     Commit version metadata, tag, and push branch + tag\n"
+	@printf "  make release-tag Update version, commit, tag, and push to remote\n"
 	@printf "  make clean       Remove the local build directory\n\n"
 	@printf "Optional overrides:\n"
 	@printf "  make build CONFIG=Release\n"
@@ -53,7 +52,7 @@ help:
 	@printf "  make dmg DMG_NAME=cc-reader-beta.dmg\n"
 	@printf "  make build ARCHS='arm64 x86_64'\n"
 	@printf "  make version VERSION=0.2.0 BUILD_NUMBER=2\n"
-	@printf "  make publish VERSION=0.2.0 BUILD_NUMBER=2\n"
+	@printf "  make release-tag VERSION=0.2.0 BUILD_NUMBER=2\n"
 
 gen:
 	@command -v $(XCODEGEN) >/dev/null || { echo "xcodegen not found. Install it with: brew install xcodegen"; exit 1; }
@@ -131,11 +130,9 @@ release-tag:
 	@$(GIT) add "$(PROJECT_YML)"
 	@$(GIT) commit -m "Release $(TAG_PREFIX)$(VERSION)"
 	@$(GIT) tag "$(TAG_PREFIX)$(VERSION)"
-	@printf "Created commit and tag %s\n" "$(TAG_PREFIX)$(VERSION)"
-
-publish: release-tag
 	$(GIT) push $(REMOTE) HEAD
 	$(GIT) push $(REMOTE) "$(TAG_PREFIX)$(VERSION)"
+	@printf "Released %s (commit + tag + pushed)\n" "$(TAG_PREFIX)$(VERSION)"
 
 clean:
 	rm -rf build
