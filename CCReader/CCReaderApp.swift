@@ -80,14 +80,11 @@ struct CCReaderApp: App {
                 .keyboardShortcut("b", modifiers: .command)
             }
 
-            CommandMenu(L("menu.tabs")) {
-                ForEach(1...9, id: \.self) { i in
-                    Button("\(L("menu.selectTab")) \(i)") {
-                        if let windows = NSApp.keyWindow?.tabbedWindows, i <= windows.count {
-                            windows[i - 1].makeKeyAndOrderFront(nil)
-                        }
+            CommandGroup(replacing: .help) {
+                Button(L("menu.github")) {
+                    if let url = URL(string: "https://github.com/kuaner/cc-reader") {
+                        NSWorkspace.shared.open(url)
                     }
-                    .keyboardShortcut(KeyEquivalent(Character("\(i)")), modifiers: .command)
                 }
             }
         }

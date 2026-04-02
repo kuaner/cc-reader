@@ -87,6 +87,7 @@
 "menu.splitHorizontal" = "Split Horizontal";
 "menu.splitVertical" = "Split Vertical";
 "menu.switchSession" = "Switch Session";
+"menu.github" = "GitHub Repository";
 "picker.search.placeholder" = "Search sessions...";
 "picker.switch.help" = "Switch session (⌘E)";
 "sidebar.hide" = "Hide Sidebar";

@@ -87,6 +87,7 @@
 "menu.splitHorizontal" = "横に分割";
 "menu.splitVertical" = "縦に分割";
 "menu.switchSession" = "セッションを切り替え";
+"menu.github" = "GitHub リポジトリ";
 "picker.search.placeholder" = "セッションを検索...";
 "picker.switch.help" = "セッション切り替え (⌘E)";
 "sidebar.hide" = "サイドバーを隠す";
