@@ -107,26 +107,19 @@ class LayoutManager: ObservableObject {
     }
 
     /// Focus the previous pane in traversal order (⌘[ like Ghostty).
-    func focusPreviousPane() {
-        let panes = allPanes()
-        guard panes.count > 1 else { return }
-        let current = focusedPaneId
-        if let idx = panes.firstIndex(where: { $0.id == current }) {
-            focusedPaneId = panes[(idx - 1 + panes.count) % panes.count].id
-        } else {
-            focusedPaneId = panes.last?.id
-        }
-    }
+    func focusPreviousPane() { focusPane(offset: -1) }
 
     /// Focus the next pane in traversal order (⌘] like Ghostty).
-    func focusNextPane() {
+    func focusNextPane() { focusPane(offset: 1) }
+
+    private func focusPane(offset: Int) {
         let panes = allPanes()
         guard panes.count > 1 else { return }
         let current = focusedPaneId
         if let idx = panes.firstIndex(where: { $0.id == current }) {
-            focusedPaneId = panes[(idx + 1) % panes.count].id
+            focusedPaneId = panes[(idx + offset + panes.count) % panes.count].id
         } else {
-            focusedPaneId = panes.first?.id
+            focusedPaneId = offset < 0 ? panes.last?.id : panes.first?.id
         }
     }
 
@@ -150,8 +143,21 @@ class LayoutManager: ObservableObject {
         allPanes().first { $0.sessionId == sessionId }
     }
 
+    /// Focus the pane showing a session, or assign it to the focused pane.
+    func focusOrAssignSession(_ sessionId: String) {
+        if let pane = findPane(for: sessionId) {
+            focusedPaneId = pane.id
+        } else {
+            let targetPaneId = focusedPaneId ?? allPanes().first?.id
+            if let paneId = targetPaneId {
+                focusedPaneId = paneId
+                assignSession(sessionId, to: paneId)
+            }
+        }
+    }
+
     func updateRatio(at nodeId: UUID, newRatio: CGFloat) {
-        layout.root = updateRatioInNode(layout.root, path: [], targetPaneId: nodeId, newRatio: newRatio)
+        layout.root = updateRatioInNode(layout.root, targetPaneId: nodeId, newRatio: newRatio)
     }
 
     // MARK: - Picker Triggers
@@ -297,7 +303,7 @@ class LayoutManager: ObservableObject {
         }
     }
 
-    private func updateRatioInNode(_ node: LayoutNode, path: [Int], targetPaneId: UUID, newRatio: CGFloat) -> LayoutNode {
+    private func updateRatioInNode(_ node: LayoutNode, targetPaneId: UUID, newRatio: CGFloat) -> LayoutNode {
         switch node {
         case .pane:
             return node
@@ -311,8 +317,8 @@ class LayoutManager: ObservableObject {
 
             return .split(
                 direction: dir,
-                first: updateRatioInNode(first, path: path + [0], targetPaneId: targetPaneId, newRatio: newRatio),
-                second: updateRatioInNode(second, path: path + [1], targetPaneId: targetPaneId, newRatio: newRatio),
+                first: updateRatioInNode(first, targetPaneId: targetPaneId, newRatio: newRatio),
+                second: updateRatioInNode(second, targetPaneId: targetPaneId, newRatio: newRatio),
                 ratio: ratio
             )
         }

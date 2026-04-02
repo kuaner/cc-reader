@@ -15,12 +15,11 @@ struct SessionPickerView: View {
 
     private var filteredSessions: [Session] {
         if searchText.isEmpty { return Array(sessions) }
-        let query = searchText.lowercased()
         return sessions.filter { session in
-            session.displayTitle.lowercased().contains(query)
-            || (session.gitBranch?.lowercased().contains(query) ?? false)
-            || (session.sessionTag?.lowercased().contains(query) ?? false)
-            || session.cwd.lowercased().contains(query)
+            session.displayTitle.localizedCaseInsensitiveContains(searchText)
+            || (session.gitBranch?.localizedCaseInsensitiveContains(searchText) ?? false)
+            || (session.sessionTag?.localizedCaseInsensitiveContains(searchText) ?? false)
+            || session.cwd.localizedCaseInsensitiveContains(searchText)
         }
     }
 
@@ -53,9 +52,10 @@ struct SessionPickerView: View {
             // Session list
             ScrollViewReader { proxy in
                 ScrollView {
+                    let openSessionIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
                     LazyVStack(spacing: 2) {
                         ForEach(Array(filteredSessions.enumerated()), id: \.element.sessionId) { index, session in
-                            let alreadyOpen = layoutManager.allPanes().contains { $0.sessionId == session.sessionId }
+                            let alreadyOpen = openSessionIds.contains(session.sessionId)
                             SessionRow(session: session, isSelected: index == selectedIndex)
                                 .id(index)
                                 .contentShape(Rectangle())
@@ -122,6 +122,8 @@ struct SessionPickerView: View {
     private func confirmSelection() {
         let list = filteredSessions
         guard !list.isEmpty, selectedIndex < list.count else { return }
-        onSelect(list[selectedIndex])
+        let session = list[selectedIndex]
+        guard !layoutManager.allPanes().contains(where: { $0.sessionId == session.sessionId }) else { return }
+        onSelect(session)
     }
 }

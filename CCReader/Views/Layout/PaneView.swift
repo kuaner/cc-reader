@@ -16,7 +16,7 @@ struct PaneView: View {
     var body: some View {
         if let session = session {
             VStack(spacing: 0) {
-                PaneHeaderView(pane: pane, sessions: sessions, showContextPanel: $showContextPanel)
+                PaneHeaderView(pane: pane, session: session, showContextPanel: $showContextPanel)
                 SessionMessagesView(session: session, visibleMessageCount: .constant(0), showContextPanel: $showContextPanel)
             }
             .background(Color(nsColor: .windowBackgroundColor))
@@ -34,20 +34,15 @@ struct PaneView: View {
 
 struct PaneHeaderView: View {
     let pane: Pane
-    let sessions: [Session]
+    let session: Session?
     @Binding var showContextPanel: Bool
     @EnvironmentObject var layoutManager: LayoutManager
     @EnvironmentObject var coordinator: AppCoordinator
 
-    private var currentSession: Session? {
-        guard let sessionId = pane.sessionId else { return nil }
-        return sessions.first { $0.sessionId == sessionId }
-    }
-
     var body: some View {
         HStack(spacing: 6) {
             HStack(spacing: 4) {
-                if let session = currentSession {
+                if let session = session {
                     if session.needsAttention {
                         Image(systemName: "bell.fill")
                             .foregroundStyle(.orange)
@@ -65,7 +60,7 @@ struct PaneHeaderView: View {
             Spacer()
 
             // Per-session action buttons
-            if let session = currentSession {
+            if let session = session {
                 // Open CWD
                 Button {
                     NSWorkspace.shared.open(URL(fileURLWithPath: session.cwd))

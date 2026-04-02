@@ -19,7 +19,6 @@ public struct ContentView: View {
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             ProjectListView(
-                selectedProject: .constant(nil),
                 selectedSession: $selectedSession
             )
             .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
@@ -28,15 +27,9 @@ public struct ContentView: View {
         }
         .onChange(of: selectedSession) { _, newSession in
             guard let session = newSession else { return }
-            if let pane = layoutManager.allPanes().first(where: { $0.sessionId == session.sessionId }) {
-                layoutManager.focusedPaneId = pane.id
-            } else {
-                let targetPaneId = layoutManager.focusedPaneId
-                    ?? layoutManager.allPanes().first?.id
-                if let paneId = targetPaneId {
-                    layoutManager.focusedPaneId = paneId
-                    layoutManager.assignSession(session.sessionId, to: paneId)
-                }
+            layoutManager.focusOrAssignSession(session.sessionId)
+            Task(priority: .utility) {
+                await coordinator.syncSession(session)
             }
         }
         .environmentObject(layoutManager)
@@ -59,30 +52,13 @@ public struct ContentView: View {
                 .buttonStyle(.plain)
             }
         }
-        .onChange(of: selectedSession) { _, newSession in
-            if let session = newSession {
-                Task(priority: .utility) {
-                    await coordinator.syncSession(session)
-                }
-            }
-        }
         .navigationTitle(windowTitle)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
             guard layoutManager.window?.isKeyWindow == true else { return }
             guard let targetSessionId = notification.object as? String else { return }
-            let descriptor = FetchDescriptor<Session>(predicate: #Predicate { $0.sessionId == targetSessionId })
-            guard let session = try? modelContext.fetch(descriptor).first else { return }
+            guard let session = sessions.first(where: { $0.sessionId == targetSessionId }) else { return }
 
-            if let pane = layoutManager.findPane(for: targetSessionId) {
-                layoutManager.focusedPaneId = pane.id
-            } else {
-                let targetPaneId = layoutManager.focusedPaneId
-                    ?? layoutManager.allPanes().first?.id
-                if let paneId = targetPaneId {
-                    layoutManager.focusedPaneId = paneId
-                    layoutManager.assignSession(targetSessionId, to: paneId)
-                }
-            }
+            layoutManager.focusOrAssignSession(targetSessionId)
             selectedSession = session
         }
         .sheet(item: $layoutManager.pendingPickerAction) { _ in
@@ -119,12 +95,16 @@ public struct ContentView: View {
             layoutData = layoutManager.encodeLayout()
         }
         .onChange(of: layoutManager.sidebarVisible) { _, visible in
+            let target = visible ? NavigationSplitViewVisibility.doubleColumn : .detailOnly
+            guard columnVisibility != target else { return }
             withAnimation {
-                columnVisibility = visible ? .doubleColumn : .detailOnly
+                columnVisibility = target
             }
         }
         .onChange(of: columnVisibility) { _, visibility in
-            layoutManager.sidebarVisible = (visibility != .detailOnly)
+            let visible = visibility != .detailOnly
+            guard layoutManager.sidebarVisible != visible else { return }
+            layoutManager.sidebarVisible = visible
         }
     }
 

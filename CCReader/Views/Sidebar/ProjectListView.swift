@@ -3,7 +3,6 @@ import SwiftData
 
 struct ProjectListView: View {
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
-    @Binding var selectedProject: Project?
     @Binding var selectedSession: Session?
 
     @State private var selectedSessionId: String?
@@ -203,6 +202,6 @@ struct SessionRow: View {
 
 
 #Preview {
-    ProjectListView(selectedProject: .constant(nil), selectedSession: .constant(nil))
+    ProjectListView(selectedSession: .constant(nil))
         .modelContainer(for: [Project.self, Session.self, Message.self], inMemory: true)
 }

@@ -168,5 +168,8 @@ struct ResizableSplitView<First: View, Second: View>: View {
                 NSCursor.pop()
             }
         }
+        .onDisappear {
+            if isHovered { NSCursor.pop() }
+        }
     }
 }
