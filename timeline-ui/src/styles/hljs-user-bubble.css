@@ -1,0 +1,101 @@
+/**
+ * User-bubble code — Monokai-inspired, warm “ember tray” for amber Session Ledger bubbles.
+ * Tray + #272822-style block are retinted so highlights don’t clash with orange surfaces.
+ * Assistant / default remains GitHub in hljsThemes.ts.
+ */
+
+/* Tray: warm charcoal + cream edge + amber accent (ties to --surface-user) */
+.bubble.user .markdown .code-block {
+  border: 1px solid rgba(255, 251, 235, 0.2);
+  border-left: 3px solid color-mix(in srgb, var(--surface-user) 58%, rgba(255, 251, 235, 0.35));
+  background: rgba(22, 18, 14, 0.78);
+  border-radius: 14px;
+}
+
+.bubble.user .markdown .code-block-header {
+  background: rgba(32, 26, 20, 0.96);
+  border-bottom: 1px solid rgba(255, 251, 235, 0.12);
+}
+
+.bubble.user .markdown .code-block-language {
+  color: rgba(255, 251, 235, 0.82);
+}
+
+.bubble.user .markdown pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+.bubble.user .markdown code.hljs {
+  padding: 3px 5px;
+}
+
+/* Core block: warm dark (not cold #272822) */
+.bubble.user .markdown .hljs {
+  background: #261f18;
+  color: #f5f0eb;
+}
+
+.bubble.user .markdown .hljs-tag,
+.bubble.user .markdown .hljs-keyword,
+.bubble.user .markdown .hljs-selector-tag,
+.bubble.user .markdown .hljs-literal,
+.bubble.user .markdown .hljs-strong,
+.bubble.user .markdown .hljs-number,
+.bubble.user .markdown .hljs-name {
+  color: #fb7185;
+}
+
+/* Was neon cyan — shifted to cream-gold so it reads as “same family” as the bubble */
+.bubble.user .markdown .hljs-code {
+  color: #fde68a;
+}
+
+.bubble.user .markdown .hljs-attribute,
+.bubble.user .markdown .hljs-attr,
+.bubble.user .markdown .hljs-symbol,
+.bubble.user .markdown .hljs-regexp,
+.bubble.user .markdown .hljs-link {
+  color: #c4b5fd;
+}
+
+.bubble.user .markdown .hljs-string,
+.bubble.user .markdown .hljs-bullet,
+.bubble.user .markdown .hljs-subst,
+.bubble.user .markdown .hljs-title,
+.bubble.user .markdown .hljs-section,
+.bubble.user .markdown .hljs-emphasis,
+.bubble.user .markdown .hljs-type,
+.bubble.user .markdown .hljs-built_in,
+.bubble.user .markdown .hljs-selector-attr,
+.bubble.user .markdown .hljs-selector-pseudo,
+.bubble.user .markdown .hljs-addition,
+.bubble.user .markdown .hljs-variable,
+.bubble.user .markdown .hljs-template-tag,
+.bubble.user .markdown .hljs-template-variable {
+  color: #bef264;
+}
+
+.bubble.user .markdown .hljs-title.class_,
+.bubble.user .markdown .hljs-class .hljs-title {
+  color: #fffbeb;
+}
+
+.bubble.user .markdown .hljs-comment,
+.bubble.user .markdown .hljs-quote,
+.bubble.user .markdown .hljs-deletion,
+.bubble.user .markdown .hljs-meta {
+  color: #9c8a7a;
+}
+
+.bubble.user .markdown .hljs-keyword,
+.bubble.user .markdown .hljs-selector-tag,
+.bubble.user .markdown .hljs-literal,
+.bubble.user .markdown .hljs-doctag,
+.bubble.user .markdown .hljs-title,
+.bubble.user .markdown .hljs-section,
+.bubble.user .markdown .hljs-type,
+.bubble.user .markdown .hljs-selector-id {
+  font-weight: bold;
+}

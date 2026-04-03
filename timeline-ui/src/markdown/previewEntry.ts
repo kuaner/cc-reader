@@ -1,26 +1,23 @@
 /**
  * MarkdownRenderView bundle: `marked` + `hljs` globals, page CSS, code-block chrome.
  */
-import './markdownPreviewPage.css';
-import './markdownHljs.css';
-import './styles/web-chrome.css';
+import '../markdownPreviewPage.css';
+import '../markdownHljs.css';
+import '../styles/web-chrome.css';
 import hljs from 'highlight.js/lib/common';
+import { decodeUtf8Base64 } from '../lib/decodeUtf8Base64';
 import { ensureCcreaderMarkedConfigured, marked } from './ccreaderMarkedConfig';
-import { enhanceCodeBlocks } from './webChrome';
+import { enhanceCodeBlocks } from '../webChrome';
 
 ensureCcreaderMarkedConfigured();
 
 (window as unknown as { marked: typeof marked }).marked = marked;
 (window as unknown as { hljs: typeof hljs }).hljs = hljs;
 
-function decodeMarkdownBase64(source: string): string {
-  return decodeURIComponent(escape(window.atob(source)));
-}
-
 function applyPlainTextFallback(root: HTMLElement, source: string): void {
   let text = '';
   try {
-    text = decodeMarkdownBase64(source);
+    text = decodeUtf8Base64(source);
   } catch {
     text = '';
   }
@@ -42,7 +39,7 @@ function runMarkdownPreview(): void {
     return;
   }
   try {
-    const markdown = decodeMarkdownBase64(source);
+    const markdown = decodeUtf8Base64(source);
     node.innerHTML = w.marked.parse(markdown) as string;
     if (w.hljs) {
       node.querySelectorAll('pre code').forEach((block) => {

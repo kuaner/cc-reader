@@ -2,7 +2,7 @@
 .code-block {
   margin: 0.85em 0;
   border: 1px solid var(--code-block-border);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   background: var(--code-bg);
 }
@@ -10,13 +10,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 6px 10px;
   background: var(--code-header-bg);
   border-bottom: 1px solid var(--code-header-border);
 }
 .code-block-language {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -28,22 +28,32 @@
   background: var(--code-button-bg);
   color: inherit;
   font: inherit;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.2;
   border-radius: 999px;
+  min-height: 28px;
   padding: 4px 9px;
   cursor: pointer;
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease;
+    color 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
 }
 .code-copy-button:hover {
   background: color-mix(in srgb, var(--code-button-bg) 65%, var(--text));
 }
+.code-copy-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.code-copy-button:active {
+  transform: scale(0.97);
+}
 .code-copy-button.is-copied {
-  color: #16a34a;
-  border-color: rgba(22, 163, 74, 0.28);
+  color: var(--chrome-copy-success-fg);
+  border-color: var(--chrome-copy-success-border);
 }
 .code-block-body {
   overflow-x: auto;
@@ -65,28 +75,74 @@
   background: var(--message-button-bg);
   color: inherit;
   font: inherit;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.2;
   border-radius: 999px;
+  min-height: 28px;
   padding: 4px 9px;
   cursor: pointer;
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease;
+    color 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
 }
 .message-copy-button:hover {
   background: color-mix(in srgb, var(--message-button-bg) 55%, var(--text));
 }
+.message-copy-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.message-copy-button:active {
+  transform: scale(0.97);
+}
 .message-copy-button.is-copied {
-  color: #16a34a;
-  border-color: rgba(22, 163, 74, 0.28);
+  color: var(--chrome-copy-success-fg);
+  border-color: var(--chrome-copy-success-border);
 }
 .bubble.user .message-copy-button {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.96);
+  border-color: var(--bubble-user-control-border);
+  background: var(--bubble-user-control-bg);
+  color: var(--bubble-user-control-fg);
 }
 .bubble.user .message-copy-button:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--bubble-user-control-hover-bg);
+}
+.bubble.user .message-copy-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--bubble-user-focus-ring);
+}
+
+/*
+ * Adapt: touch only — larger hit targets. Do NOT use max-width here: macOS 分屏会变窄，
+ * 但仍为 fine pointer，不应把「原数据」等按钮撑成 44px。
+ */
+@media (pointer: coarse) {
+  .code-copy-button,
+  .message-copy-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+    font-size: 11px;
+    line-height: 1.25;
+    touch-action: manipulation;
+  }
+
+  .code-block-header {
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-copy-button,
+  .message-copy-button {
+    transition: none !important;
+  }
+
+  .code-copy-button:active,
+  .message-copy-button:active {
+    transform: none;
+  }
 }

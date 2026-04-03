@@ -1,5 +1,7 @@
 /** Clipboard + code-block chrome + message copy (ported from WebRenderChrome.swift). */
 
+import { decodeUtf8Base64 } from './lib/decodeUtf8Base64';
+
 export type CcreaderI18n = {
   copy: string;
   copied: string;
@@ -98,7 +100,7 @@ export function enhanceCodeBlocks(root: ParentNode): void {
   if (!root || typeof (root as HTMLElement).querySelectorAll !== 'function') return;
   const { copy, copied } = getI18n();
 
-  root.querySelectorAll('pre code').forEach((block) => {
+  root.querySelectorAll('pre:not([data-ccreader-code-chrome]) > code').forEach((block) => {
     if (!(block instanceof HTMLElement)) return;
     const pre = block.parentElement;
     if (!pre || (pre.parentElement && pre.parentElement.classList.contains('code-block-body'))) {
@@ -145,6 +147,7 @@ export function enhanceCodeBlocks(root: ParentNode): void {
     body.appendChild(pre);
     wrapper.appendChild(header);
     wrapper.appendChild(body);
+    pre.dataset.ccreaderCodeChrome = '1';
   });
 }
 
@@ -165,9 +168,8 @@ export function enhanceMessageCopyButtons(root: ParentNode): void {
   if (!root || typeof (root as HTMLElement).querySelectorAll !== 'function') return;
   const { copied } = getI18n();
 
-  root.querySelectorAll('[data-message-copy-base64]').forEach((button) => {
+  root.querySelectorAll('[data-message-copy-base64]:not([data-copy-bound])').forEach((button) => {
     if (!(button instanceof HTMLElement)) return;
-    if (button.dataset.copyBound === '1') return;
     button.dataset.copyBound = '1';
 
     button.addEventListener('click', () => {
@@ -176,7 +178,7 @@ export function enhanceMessageCopyButtons(root: ParentNode): void {
 
       let text = '';
       try {
-        text = decodeURIComponent(escape(window.atob(source)));
+        text = decodeUtf8Base64(source);
       } catch (decodeError) {
         console.error('decode message copy failed', decodeError);
         return;

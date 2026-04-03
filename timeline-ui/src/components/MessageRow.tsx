@@ -1,4 +1,5 @@
 import type { ComponentChildren, JSX } from 'preact';
+import { memo } from 'preact/compat';
 import { looksLikeMarkdown } from '../lib/strings';
 import type { MessagePayload, ToolPayload } from '../types';
 import { MessageBody, type MessageBodyOptions } from './MessageBody';
@@ -11,7 +12,7 @@ function fmtTok(n: number): string {
 }
 
 const footerBase =
-  'bubble-footer mt-2 flex min-h-7 flex-wrap items-center gap-2 border-t pt-2 text-[11px] max-[560px]:min-h-0 max-[560px]:items-start max-[560px]:gap-1.5';
+  'bubble-footer mt-2 flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1.5 border-t pt-2 text-[11px] font-medium';
 
 function BubbleFooter({
   timestamp,
@@ -25,17 +26,15 @@ function BubbleFooter({
   userStyle?: boolean;
 }): JSX.Element {
   const borderMuted = userStyle
-    ? 'border-white/20 text-white/70'
+    ? 'border-[color:var(--bubble-user-footer-border)] text-[color:var(--bubble-user-footer-muted)]'
     : 'border-[color:var(--border)] text-[color:var(--muted)]';
   return (
     <div class={`${footerBase} ${borderMuted}`}>
-      <span>{timestamp}</span>
-      {children}
-      <span class="flex-1 max-[560px]:order-2 max-[560px]:h-0 max-[560px]:basis-full" />
-      <RawDataButton
-        payload={copyPayload}
-        class="max-[560px]:order-3 max-[560px]:ml-auto max-[560px]:max-w-full"
-      />
+      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+        <span class="shrink-0">{timestamp}</span>
+        {children}
+      </div>
+      <RawDataButton payload={copyPayload} class="shrink-0 ml-auto" />
     </div>
   );
 }
@@ -56,7 +55,7 @@ function renderToolSection(
             body = <MessageBody content={tool.body} options={{ markdownTone: 'assistant' }} />;
           } else {
             body = (
-              <pre class="my-2.5 whitespace-pre-wrap break-words rounded-[10px] bg-[color:var(--code-bg)] p-3 font-mono text-xs leading-normal">
+              <pre class="my-2.5 whitespace-pre-wrap break-words rounded-xl bg-[color:var(--code-bg)] p-3 font-mono text-xs leading-normal">
                 {tool.body}
               </pre>
             );
@@ -64,7 +63,9 @@ function renderToolSection(
         }
         return (
           <div key={i}>
-            <div class="mb-1.5 text-xs font-semibold text-[color:var(--muted)]">{tool.title || ''}</div>
+            <div class="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[color:var(--muted)]">
+              {tool.title || ''}
+            </div>
             {body}
           </div>
         );
@@ -72,29 +73,29 @@ function renderToolSection(
     </>
   );
   if (useFlatToolBody) {
-    return <div class="rounded-[10px] p-0">{toolBody}</div>;
+    return <div class="rounded-xl p-0">{toolBody}</div>;
   }
   return (
-    <div class="rounded-[10px] bg-[color:var(--surface-tool)] px-2.5 py-2">
-      <div class="mb-1.5 text-xs font-semibold text-[color:var(--muted)]">{contextLabel}</div>
+    <div class="rounded-xl bg-[color:var(--surface-tool)] px-2.5 py-2">
+      <div class="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[color:var(--muted)]">{contextLabel}</div>
       {toolBody}
     </div>
   );
 }
 
-export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Element {
+function MessageRowImpl({ payload }: { payload: MessagePayload }): JSX.Element {
   const domId = payload.domId || '';
   const timestamp = payload.timeLabel || '';
 
   if (payload.isCompactSummary) {
     return (
       <div class="row flex w-full justify-start" id={domId}>
-        <div class="stack flex w-full max-w-timeline flex-col gap-2">
-          <div class="bubble rounded-[10px] border border-orange-400/30 bg-[color:var(--surface-summary)] p-2.5">
+        <div class="stack flex w-full max-w-timeline flex-col gap-2.5">
+          <div class="bubble rounded-2xl border border-[color:var(--border-summary)] bg-[color:var(--surface-summary)] px-4 py-3">
             <div class="flex gap-2.5 align-top">
               <div class="mt-0.5 shrink-0 text-base opacity-60">&#x21BB;</div>
               <div class="min-w-0 flex-1">
-                <div class="mb-1 text-xs font-semibold text-orange-500">
+                <div class="mb-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--accent-summary-fg)]">
                   {payload.summaryLabel || 'Conversation summarized'}
                 </div>
                 <MessageBody content={payload.content || ''} options={{ markdownTone: 'summary' }} />
@@ -112,8 +113,8 @@ export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Elemen
   if (payload.isApiError) {
     return (
       <div class="row flex w-full justify-start" id={domId}>
-        <div class="stack flex w-full max-w-timeline flex-col gap-2">
-          <div class="bubble rounded-[10px] border border-red-500/20 bg-red-500/10 p-2.5">
+        <div class="stack flex w-full max-w-timeline flex-col gap-2.5">
+          <div class="bubble rounded-2xl border border-[color:var(--accent-error-border)] bg-[color:var(--accent-error-bg)] px-4 py-3">
             <BubbleFooter timestamp={timestamp} copyPayload={payload}>
               <ErrorTag>{payload.legendLabel || 'API Error'}</ErrorTag>
               {payload.specialTag ? <ErrorTag>{payload.specialTag}</ErrorTag> : null}
@@ -140,9 +141,9 @@ export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Elemen
     if (payload.isSummary) {
       return (
         <div class="row user flex w-full justify-end" id={domId}>
-          <div class="stack flex w-full max-w-timeline flex-col gap-2">
-            <div class="bubble summary rounded-[10px] border border-orange-400/30 bg-[color:var(--surface-summary)] p-2.5">
-              <div class="summary-title mb-1.5 text-xs font-semibold text-orange-500">
+          <div class="stack flex w-full max-w-timeline flex-col items-end gap-2.5">
+            <div class="bubble summary w-fit max-w-[min(100%,52rem)] rounded-2xl border border-[color:var(--border-summary)] bg-[color:var(--surface-summary)] px-4 py-3">
+              <div class="summary-title mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--accent-summary-fg)]">
                 {payload.summaryLabel || 'Summary'}
               </div>
               <MessageBody content={payload.content || ''} options={{ ...bodyOpts, markdownTone: 'summary' }} />
@@ -158,8 +159,8 @@ export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Elemen
 
     return (
       <div class="row user flex w-full justify-end" id={domId}>
-        <div class="stack flex w-full max-w-timeline flex-col gap-2">
-          <div class="bubble user relative break-words rounded-[10px] bg-[color:var(--surface-user)] p-2.5 text-[color:var(--surface-user-text)]">
+        <div class="stack flex w-full max-w-timeline flex-col items-end gap-2.5">
+          <div class="bubble user relative w-fit max-w-[min(100%,52rem)] break-words rounded-2xl rounded-br-lg border border-[color:var(--bubble-user-rim)] border-l-[4px] border-l-[color:var(--bubble-user-accent)] bg-[color:var(--surface-user)] px-4 py-3 text-[color:var(--surface-user-text)] shadow-[0_2px_6px_rgba(0,0,0,0.07)]">
             <MessageBody content={payload.content || ''} options={bodyOpts} />
             <ToolResultImages payload={payload} />
             <BubbleFooter userStyle timestamp={timestamp} copyPayload={payload}>
@@ -195,40 +196,44 @@ export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Elemen
       inPart += ` (${fmtTok(cacheR)} cached)`;
     }
     usageEl = (
-      <span class="inline-block rounded px-[7px] py-px text-[9px] font-semibold leading-snug bg-violet-500/25">
+      <span class="inline-block min-w-0 max-w-full break-words rounded px-1.5 py-px text-[9px] font-bold leading-snug tracking-wide bg-[color:var(--usage-token-bg)] text-[color:var(--usage-token-text)]">
         {inPart} / {fmtTok(outT)} out
       </span>
     );
   }
 
   const cardTone = isAgentDispatch
-    ? 'border border-teal-500/40 bg-teal-500/10 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.16)]'
-    : 'bg-[color:var(--surface-assistant)]';
+    ? 'border border-[color:var(--bubble-dispatch-border)] bg-[color:var(--bubble-dispatch-bg)] shadow-[inset_0_0_0_1px_var(--bubble-dispatch-inset)]'
+    : 'border border-[color:var(--bubble-assistant-border)] bg-[color:var(--surface-assistant)]';
 
   return (
     <div class="row assistant flex w-full justify-start" id={domId}>
-      <div class="stack flex w-full max-w-timeline flex-col gap-2">
+      <div class="stack flex w-full max-w-timeline flex-col gap-2.5">
         <div
-          class={`bubble assistant-card flex flex-col gap-2 break-words rounded-[10px] p-2.5 ${cardTone}`}
+          class={`bubble assistant-card ${isAgentDispatch ? 'tone-dispatch' : 'tone-assistant'} flex max-w-[min(100%,52rem)] flex-col gap-2.5 break-words rounded-2xl px-4 py-3 ${cardTone}`}
         >
           <div
-            class={`assistant-header flex min-h-5 items-center gap-2.5 px-0.5 ${isAgentDispatch ? 'border-b border-dashed border-teal-500/30 pb-1.5' : ''}`}
+            class={`assistant-header border-b px-0.5 pb-2 ${
+              isAgentDispatch
+                ? 'border-dashed border-[color:var(--bubble-dispatch-header-border)]'
+                : 'border-[color:var(--border)]'
+            }`}
           >
-            <span class="text-xs font-bold leading-none text-[color:var(--muted)]">
+            <span class="inline-flex h-6 shrink-0 items-center text-[10px] font-bold uppercase leading-none tracking-[0.16em] text-[color:var(--muted)]">
               {payload.assistantLabel || 'Assistant'}
             </span>
             {!isAgentDispatch && payload.specialTag ? (
-              <span class="pill special text-xs">{payload.specialTag}</span>
+              <span class="pill special">{payload.specialTag}</span>
             ) : null}
             {payload.modelTitle ? (
-              <span class="pill inline-block rounded-full bg-[color:var(--button)] px-2.5 py-1 text-xs">
+              <span class="pill shrink-0 rounded-full bg-[color:var(--button)] text-[color:var(--text)]">
                 {payload.modelTitle}
               </span>
             ) : null}
           </div>
           {payload.thinking ? (
-            <div class="rounded-[10px] bg-[color:var(--surface-thinking)] px-2.5 py-2">
-              <div class="mb-1.5 text-xs font-semibold text-[color:var(--muted)]">
+            <div class="rounded-lg bg-[color:var(--surface-thinking)] px-2.5 py-2">
+              <div class="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--muted)]">
                 {payload.thinkingTitle || 'Thinking'}
               </div>
               <MessageBody content={payload.thinking} options={{ markdownTone: 'assistant' }} />
@@ -236,7 +241,7 @@ export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Elemen
           ) : null}
           {renderToolSection(tools, useFlatToolBody, payload.contextLabel || 'Context')}
           {payload.content ? (
-            <div class="rounded-[10px] px-2.5 py-2">
+            <div class="rounded-lg px-0.5 py-1">
               <MessageBody content={payload.content} options={{ markdownTone: 'assistant' }} />
             </div>
           ) : null}
@@ -253,3 +258,8 @@ export function MessageRow({ payload }: { payload: MessagePayload }): JSX.Elemen
     </div>
   );
 }
+
+export const MessageRow = memo(
+  MessageRowImpl,
+  (prev: { payload: MessagePayload }, next: { payload: MessagePayload }) => prev.payload === next.payload,
+);

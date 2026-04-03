@@ -1,20 +1,17 @@
 import hljs from 'highlight.js/lib/common';
+import { decodeUtf8Base64 } from '../lib/decodeUtf8Base64';
+import { enhanceCodeBlocks, enhanceMessageCopyButtons } from '../webChrome';
 import { ensureCcreaderMarkedConfigured, marked } from './ccreaderMarkedConfig';
-import { enhanceCodeBlocks, enhanceMessageCopyButtons } from './webChrome';
-
-function decodeMarkdownBase64(source: string): string {
-  return decodeURIComponent(escape(window.atob(source)));
-}
 
 export function renderMarkdownIn(root: ParentNode): void {
   ensureCcreaderMarkedConfigured();
-  root.querySelectorAll('[data-markdown-base64]').forEach((node) => {
+  /* Only nodes not yet rendered — avoids scanning every markdown cell on each commit */
+  root.querySelectorAll('[data-markdown-base64]:not([data-md-rendered])').forEach((node) => {
     if (!(node instanceof HTMLElement)) return;
-    if (node.dataset.mdRendered === '1') return;
     const source = node.getAttribute('data-markdown-base64') || '';
     if (!source) return;
     try {
-      node.innerHTML = marked.parse(decodeMarkdownBase64(source)) as string;
+      node.innerHTML = marked.parse(decodeUtf8Base64(source)) as string;
       node.dataset.mdRendered = '1';
     } catch (e) {
       console.error('markdown render failed', e);
@@ -23,9 +20,8 @@ export function renderMarkdownIn(root: ParentNode): void {
 }
 
 export function highlightCodeBlocksIn(root: ParentNode): void {
-  root.querySelectorAll('pre code').forEach((block) => {
+  root.querySelectorAll('pre code:not([data-hl-rendered])').forEach((block) => {
     if (!(block instanceof HTMLElement)) return;
-    if (block.dataset.hlRendered === '1') return;
     try {
       hljs.highlightElement(block);
       block.dataset.hlRendered = '1';

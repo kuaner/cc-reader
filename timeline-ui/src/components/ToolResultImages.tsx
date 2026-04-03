@@ -12,7 +12,7 @@ export function ToolResultImages({ payload }: { payload: MessagePayload }): JSX.
       const mediaType = escapeHTML(String(item?.mediaType || 'image/png'));
       return (
         <div
-          class="flex h-[220px] w-[min(360px,100%)] items-center justify-center overflow-hidden rounded-[10px] border border-[color:var(--border)] bg-white/10"
+          class="flex h-[220px] w-[min(360px,100%)] items-center justify-center overflow-hidden rounded-[10px] border border-[color:var(--border)] bg-[color:var(--attachment-bg)]"
           key={base64.slice(0, 24)}
         >
           <img class="block h-full w-full object-contain" src={`data:${mediaType};base64,${base64}`} loading="lazy" alt="" />

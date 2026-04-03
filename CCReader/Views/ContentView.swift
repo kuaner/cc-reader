@@ -37,7 +37,8 @@ public struct ContentView: View {
         .background(WindowConfigurator(layoutManager: layoutManager))
         .toolbar(removing: .sidebarToggle)
         .toolbar {
-            ToolbarItem(placement: .principal) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Spacer()
                 Button {
                     layoutManager.requestSwitchSession()
                 } label: {

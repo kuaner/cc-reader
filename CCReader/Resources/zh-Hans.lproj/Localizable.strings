@@ -60,6 +60,7 @@
 "timeline.message.copied" = "已复制";
 "timeline.message.rawdata" = "原数据";
 "timeline.noMessages" = "暂无消息";
+"timeline.empty.hint" = "会话加载后，将在此显示轮次、工具调用与思考块。";
 "timeline.rewind.confirmMessage" = "将删除此消息之后的所有内容。此操作无法撤销。";
 "timeline.rewind.confirmTitle" = "确认回滚";
 "timeline.rewind.execute" = "回滚";

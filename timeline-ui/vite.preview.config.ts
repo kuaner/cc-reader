@@ -1,24 +1,29 @@
 import { resolve } from 'node:path';
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, mergeConfig } from 'vite';
+import { sharedCcreaderBuild } from './vite.build.shared';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 /** MarkdownRenderView: globals `marked` + `hljs` + hljs themes (no Preact). */
-export default defineConfig({
-  plugins: [],
-  build: {
-    emptyOutDir: false,
-    outDir: resolve(__dirname, '../CCReader/Resources'),
-    cssCodeSplit: false,
-    lib: {
-      entry: resolve(__dirname, 'src/markdownPreview.ts'),
-      name: 'ccreaderMarkdownPreview',
-      formats: ['iife'],
-      fileName: () => 'markdown-preview.js',
-    },
-    rollupOptions: {
-      output: {
-        inlineDynamicImports: true,
-        assetFileNames: 'markdown-preview[extname]',
+export default mergeConfig(
+  defineConfig({
+    build: sharedCcreaderBuild,
+  }),
+  defineConfig({
+    plugins: [],
+    build: {
+      lib: {
+        entry: resolve(__dirname, 'src/markdown/previewEntry.ts'),
+        name: 'ccreaderMarkdownPreview',
+        formats: ['iife'],
+        fileName: () => 'markdown-preview.js',
+      },
+      rollupOptions: {
+        output: {
+          assetFileNames: 'markdown-preview[extname]',
+        },
       },
     },
-  },
-});
+  }),
+);

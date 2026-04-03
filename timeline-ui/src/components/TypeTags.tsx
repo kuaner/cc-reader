@@ -4,27 +4,23 @@ import type { MessagePayload } from '../types';
 type Role = 'user' | 'assistant' | 'dispatch';
 
 const base =
-  'inline-block rounded px-[7px] py-px text-[9px] font-semibold leading-snug';
+  'inline-block rounded px-1.5 py-px text-[9px] font-bold tracking-wide leading-snug border';
 
-function classesForTag(
-  payload: MessagePayload,
-  tag: string,
-  role: Role,
-): string {
+function classesForTag(payload: MessagePayload, tag: string, role: Role): string {
   const token = String(tag || '').toLowerCase();
   if (!payload.isUser && token === 'tool_use') {
-    return `${base} border border-blue-400/40 bg-blue-500/25 text-blue-100`;
+    return `${base} border-[color:var(--tag-tool-use-border)] bg-[color:var(--tag-tool-use-bg)] text-[color:var(--tag-tool-use-text)]`;
   }
   if (payload.isUser && token === 'tool_result') {
-    return `${base} border border-green-400/40 bg-green-500/25 text-green-100`;
+    return `${base} border-[color:var(--tag-tool-result-border)] bg-[color:var(--tag-tool-result-bg)] text-[color:var(--tag-tool-result-text)]`;
   }
   if (role === 'user') {
-    return `${base} bg-white/20 text-white`;
+    return `${base} border-transparent bg-[color:var(--tag-user-bg)] text-[color:var(--tag-user-text)]`;
   }
   if (role === 'dispatch') {
-    return `${base} border border-teal-500/40 bg-teal-500/25 text-teal-800 dark:text-teal-100`;
+    return `${base} border-[color:var(--tag-dispatch-border)] bg-[color:var(--tag-dispatch-bg)] text-[color:var(--tag-dispatch-text)]`;
   }
-  return `${base} bg-violet-500/25 text-violet-950 dark:text-violet-100`;
+  return `${base} border-transparent bg-[color:var(--tag-assistant-bg)] text-[color:var(--tag-assistant-text)]`;
 }
 
 export function TypeTags({
@@ -53,12 +49,18 @@ export function TypeTags({
 
 export function SummaryTag({ label }: { label: string }): JSX.Element {
   return (
-    <span class={`${base} bg-orange-400/25 text-orange-600 dark:text-orange-300`}>{label}</span>
+    <span
+      class={`${base} border-transparent bg-[color:var(--tag-summary-bg)] text-[color:var(--tag-summary-text)]`}
+    >
+      {label}
+    </span>
   );
 }
 
 export function ErrorTag({ children }: { children: string }): JSX.Element {
   return (
-    <span class={`${base} bg-red-500/20 text-red-600 dark:text-red-400`}>{children}</span>
+    <span class={`${base} border-transparent bg-[color:var(--tag-error-bg)] text-[color:var(--tag-error-text)]`}>
+      {children}
+    </span>
   );
 }

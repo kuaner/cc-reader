@@ -60,6 +60,7 @@
 "timeline.message.copied" = "Copied";
 "timeline.message.rawdata" = "Raw";
 "timeline.noMessages" = "No messages";
+"timeline.empty.hint" = "Agent turns, tool calls, and thinking blocks appear here once the session is loaded.";
 "timeline.rewind.confirmMessage" = "All messages after this one will be deleted. This action cannot be undone.";
 "timeline.rewind.confirmTitle" = "Confirm Rewind";
 "timeline.rewind.execute" = "Rewind";

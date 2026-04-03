@@ -5,7 +5,7 @@ export {};
 declare global {
   interface Window {
     __FOLLOW_BOTTOM_THRESHOLD__?: number;
-    __CCREADER_I18N__?: { copy: string; copied: string };
+    __CCREADER_I18N__?: { copy: string; copied: string; emptyTitle: string; emptyHint: string };
     webkit?: {
       messageHandlers: {
         ccreader: { postMessage: (msg: Record<string, unknown>) => void };

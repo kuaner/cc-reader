@@ -10,31 +10,44 @@ export interface MessageBodyOptions {
   markdownTone?: MarkdownTone;
 }
 
+/** Chat-style reading: comfortable size, line length, link affordance (Tailwind Typography). */
 function proseForTone(tone: MarkdownTone): string {
+  const readability = [
+    'max-w-[min(100%,65ch)]',
+    'leading-[1.45]',
+    'break-words',
+    '[&_p]:my-[0.45em] [&_p:first-child]:mt-0 [&_p:last-child]:mb-0',
+    '[&_li]:my-0.5',
+    '[&_a]:font-medium [&_a]:underline [&_a]:underline-offset-[3px] [&_a]:transition-colors',
+  ].join(' ');
+
   if (tone === 'user') {
     return [
       'markdown',
       'prose',
       'prose-sm',
-      'prose-invert',
-      'max-w-none',
-      'break-words',
-      '[&_pre]:bg-white/15',
+      'markdown-prose-user',
+      'text-[color:var(--surface-user-text)]',
+      readability,
+      '[&_a]:decoration-[color:color-mix(in_srgb,var(--bubble-user-link)_40%,transparent)]',
+      '[&_a:hover]:decoration-[color:color-mix(in_srgb,var(--bubble-user-link)_75%,transparent)]',
+      /* Code blocks: ember-tray hljs (hljs-user-bubble.css); pre shell transparent */
+      '[&_pre]:bg-transparent [&_pre]:rounded-xl [&_pre]:overflow-hidden',
       '[&_pre_code]:bg-transparent',
-      '[&_:not(pre)>code]:bg-white/15',
-      '[&_blockquote]:text-white/80',
+      '[&_:not(pre)>code]:rounded-md [&_:not(pre)>code]:bg-[color:var(--bubble-user-inline-code-bg)] [&_:not(pre)>code]:text-[color:var(--bubble-user-inline-code-fg)] [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-px',
+      '[&_blockquote]:border-[color:var(--bubble-user-blockquote-border)]',
     ].join(' ');
   }
   return [
     'markdown',
     'prose',
     'prose-sm',
-    'max-w-none',
-    'break-words',
-    'text-neutral-900',
-    'dark:prose-invert',
-    'dark:text-neutral-100',
-    '[&_blockquote]:text-[color:var(--muted)]',
+    'markdown-prose-assistant',
+    'text-[color:var(--text)]',
+    readability,
+    '[&_a]:decoration-[color:color-mix(in_srgb,var(--accent-link)_35%,transparent)]',
+    '[&_a:hover]:decoration-[color:color-mix(in_srgb,var(--accent-link)_65%,transparent)]',
+    '[&_blockquote]:text-[color:var(--muted)] [&_blockquote]:border-[color:var(--border)]',
     '[&_th]:border-[color:var(--border)]',
     '[&_td]:border-[color:var(--border)]',
   ].join(' ');
@@ -53,16 +66,23 @@ export function MessageBody({
   const source = String(content || '');
 
   if (!source) {
-    return <div class="whitespace-pre-wrap break-words" />;
+    return (
+      <div
+        class={['whitespace-pre-wrap break-words', tone === 'user' ? 'text-[color:var(--surface-user-text)]' : '']
+          .filter(Boolean)
+          .join(' ')}
+      />
+    );
   }
 
   if (preserveLineBreaks || !renderMarkdown) {
+    const userPlain = tone === 'user' ? 'text-[color:var(--surface-user-text)]' : '';
     return (
       <div
         class={
           preserveLineBreaks
-            ? 'whitespace-pre-wrap break-words font-mono text-xs'
-            : 'whitespace-pre-wrap break-words'
+            ? `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.6] ${userPlain}`
+            : `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words text-[13px] leading-[1.45] ${userPlain}`
         }
       >
         {source}

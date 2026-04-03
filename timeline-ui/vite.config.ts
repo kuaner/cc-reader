@@ -1,26 +1,30 @@
 import preact from '@preact/preset-vite';
 import { resolve } from 'node:path';
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, mergeConfig } from 'vite';
+import { sharedCcreaderBuild } from './vite.build.shared';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 /** Timeline WKWebView shell (Preact + Tailwind + marked + highlight.js). */
-export default defineConfig({
-  plugins: [preact()],
-  build: {
-    // Never wipe ../CCReader/Resources — it also holds Assets.xcassets and *.lproj.
-    emptyOutDir: false,
-    outDir: resolve(__dirname, '../CCReader/Resources'),
-    cssCodeSplit: false,
-    lib: {
-      entry: resolve(__dirname, 'src/main.tsx'),
-      name: 'ccreaderTimeline',
-      formats: ['iife'],
-      fileName: () => 'timeline-shell.js',
-    },
-    rollupOptions: {
-      output: {
-        inlineDynamicImports: true,
-        assetFileNames: 'timeline-shell[extname]',
+export default mergeConfig(
+  defineConfig({
+    build: sharedCcreaderBuild,
+  }),
+  defineConfig({
+    plugins: [preact()],
+    build: {
+      lib: {
+        entry: resolve(__dirname, 'src/timeline/main.tsx'),
+        name: 'ccreaderTimeline',
+        formats: ['iife'],
+        fileName: () => 'timeline-shell.js',
+      },
+      rollupOptions: {
+        output: {
+          assetFileNames: 'timeline-shell[extname]',
+        },
       },
     },
-  },
-});
+  }),
+);

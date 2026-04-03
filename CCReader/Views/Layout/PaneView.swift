@@ -45,21 +45,43 @@ struct PaneHeaderView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            HStack(spacing: 4) {
-                if let session = session {
-                    if session.needsAttention {
-                        Image(systemName: "bell.fill")
-                            .foregroundStyle(.orange)
-                            .font(.caption2)
+            Group {
+                HStack(spacing: 4) {
+                    if let session = session {
+                        if session.needsAttention {
+                            Image(systemName: "bell.fill")
+                                .foregroundStyle(.orange)
+                                .font(.caption2)
+                        }
+                        Text(session.displayTitle)
+                            .lineLimit(1)
+                            .foregroundStyle(isFocused ? Color.primary : Color.secondary)
+                    } else {
+                        Text(L("layout.noSessionSelected"))
+                            .foregroundStyle(.secondary)
                     }
-                    Text(session.displayTitle)
-                        .lineLimit(1)
-                } else {
-                    Text(L("layout.noSessionSelected"))
-                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(
+                            isFocused
+                                ? Color.primary.opacity(0.12)
+                                : Color.primary.opacity(0.06)
+                        )
+                }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(
+                            isFocused
+                                ? Color.primary.opacity(0.22)
+                                : Color(nsColor: .separatorColor).opacity(0.65),
+                            lineWidth: 1
+                        )
                 }
             }
-            .font(.caption)
 
             Spacer()
 
@@ -142,22 +164,8 @@ struct PaneHeaderView: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(
-                    isFocused
-                        ? Color.accentColor.opacity(0.18)
-                        : Color(nsColor: .controlBackgroundColor)
-                )
+                .fill(Color(nsColor: .controlBackgroundColor))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(
-                    isFocused
-                        ? Color.accentColor.opacity(0.75)
-                        : Color.clear,
-                    lineWidth: 1
-                )
-        )
-        .foregroundStyle(isFocused ? Color.accentColor : Color.primary)
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
         .animation(.easeInOut(duration: 0.12), value: layoutManager.focusedPaneId == pane.id)

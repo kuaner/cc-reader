@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       maxWidth: {
-        timeline: 'min(100%, clamp(560px, 72vw, 980px))',
+        timeline: 'min(100%, clamp(560px, 82vw, 1080px))',
       },
     },
   },
