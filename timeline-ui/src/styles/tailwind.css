@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (--text, --code-bg, message buttons, etc.; see styles/web-chrome.css for chrome widgets) */
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --text: #1d1d1f;
+    --muted: rgba(60, 60, 67, 0.68);
+    --border: rgba(60, 60, 67, 0.2);
+    --surface-user: #1f8fff;
+    --surface-user-text: #ffffff;
+    --surface-assistant: rgba(151, 71, 255, 0.12);
+    --surface-thinking: rgba(255, 149, 0, 0.1);
+    --surface-tool: rgba(20, 184, 166, 0.08);
+    --surface-summary: rgba(255, 149, 0, 0.14);
+    --button: rgba(60, 60, 67, 0.08);
+    --code-bg: rgba(60, 60, 67, 0.08);
+    --code-block-border: rgba(60, 60, 67, 0.16);
+    --code-header-bg: rgba(60, 60, 67, 0.05);
+    --code-header-border: rgba(60, 60, 67, 0.12);
+    --code-button-bg: rgba(60, 60, 67, 0.08);
+    --code-button-border: rgba(60, 60, 67, 0.14);
+    --message-button-bg: rgba(60, 60, 67, 0.08);
+    --message-button-border: rgba(60, 60, 67, 0.14);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #f5f5f7;
+      --muted: rgba(235, 235, 245, 0.6);
+      --border: rgba(255, 255, 255, 0.12);
+      --surface-assistant: rgba(151, 71, 255, 0.16);
+      --surface-thinking: rgba(255, 149, 0, 0.12);
+      --surface-tool: rgba(45, 212, 191, 0.1);
+      --surface-summary: rgba(255, 149, 0, 0.16);
+      --button: rgba(255, 255, 255, 0.08);
+      --code-bg: rgba(255, 255, 255, 0.08);
+      --code-block-border: rgba(255, 255, 255, 0.14);
+      --code-header-bg: rgba(255, 255, 255, 0.05);
+      --code-header-border: rgba(255, 255, 255, 0.1);
+      --code-button-bg: rgba(255, 255, 255, 0.06);
+      --code-button-border: rgba(255, 255, 255, 0.14);
+      --message-button-bg: rgba(255, 255, 255, 0.06);
+      --message-button-border: rgba(255, 255, 255, 0.14);
+    }
+  }
+
+  html,
+  body {
+    @apply m-0 overflow-x-hidden bg-transparent;
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      'SF Pro Text',
+      sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  body {
+    @apply px-3 pb-5 pt-3.5;
+  }
+}
+
+/* Swift-injected “load older” / links share these hooks */
+@layer components {
+  .timeline {
+    @apply flex flex-col gap-3.5;
+  }
+
+  .topbar {
+    @apply flex justify-center text-[11px];
+    color: var(--muted);
+  }
+
+  .pill {
+    @apply inline-block cursor-pointer rounded-full px-2.5 py-1 text-xs leading-snug no-underline;
+    background: var(--button);
+    color: inherit;
+  }
+
+  .pill.special {
+    @apply border border-teal-500/30 bg-teal-500/15;
+    color: rgb(15, 118, 110);
+  }
+
+  /* Swift `waitingIndicatorHTML` / load-older chrome (class names fixed in TimelineHostView) */
+  .row {
+    @apply flex w-full;
+  }
+  .row.assistant {
+    @apply justify-start;
+  }
+  .row.user {
+    @apply justify-end;
+  }
+  .stack {
+    @apply flex w-full max-w-timeline flex-col gap-2;
+  }
+  /* Waiting row: `.bubble.assistant` without `.assistant-card` */
+  .bubble.assistant:not(.assistant-card) {
+    @apply rounded-[10px] p-2.5 text-sm;
+    color: var(--muted);
+    background: var(--surface-assistant);
+  }
+}

@@ -1,0 +1,126 @@
+/* MarkdownRenderView page chrome (was inline in Swift). */
+:root {
+  color-scheme: light dark;
+  --text: #1d1d1f;
+  --muted: rgba(60, 60, 67, 0.68);
+  --code-bg: rgba(60, 60, 67, 0.08);
+  --border: rgba(60, 60, 67, 0.2);
+  --code-block-border: rgba(60, 60, 67, 0.16);
+  --code-header-bg: rgba(60, 60, 67, 0.05);
+  --code-header-border: rgba(60, 60, 67, 0.12);
+  --code-button-bg: rgba(60, 60, 67, 0.08);
+  --code-button-border: rgba(60, 60, 67, 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f5f5f7;
+    --muted: rgba(235, 235, 245, 0.6);
+    --code-bg: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.12);
+    --code-block-border: rgba(255, 255, 255, 0.14);
+    --code-header-bg: rgba(255, 255, 255, 0.05);
+    --code-header-border: rgba(255, 255, 255, 0.1);
+    --code-button-bg: rgba(255, 255, 255, 0.06);
+    --code-button-border: rgba(255, 255, 255, 0.14);
+  }
+}
+
+body {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Text',
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  margin: 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.markdown {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown blockquote,
+.markdown table,
+.markdown hr {
+  margin: 0.75em 0;
+}
+.markdown ul,
+.markdown ol {
+  padding-left: 1.4em;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  line-height: 1.25;
+  margin: 0.9em 0 0.45em;
+}
+.markdown h1 {
+  font-size: 1.45em;
+}
+.markdown h2 {
+  font-size: 1.2em;
+}
+.markdown h3 {
+  font-size: 1.05em;
+}
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  background: var(--code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+}
+.markdown pre {
+  background: var(--code-bg);
+  padding: 12px;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+.markdown blockquote {
+  border-left: 3px solid var(--border);
+  margin-left: 0;
+  padding-left: 12px;
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+}
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown img {
+  max-width: 100%;
+}
+.markdown a {
+  color: inherit;
+  text-decoration: underline;
+}
+.plain-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

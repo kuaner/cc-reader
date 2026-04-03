@@ -1,0 +1,92 @@
+/* Code blocks + message copy (was WebRenderChrome in Swift). */
+.code-block {
+  margin: 0.85em 0;
+  border: 1px solid var(--code-block-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--code-bg);
+}
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--code-header-bg);
+  border-bottom: 1px solid var(--code-header-border);
+}
+.code-block-language {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.code-copy-button {
+  appearance: none;
+  border: 1px solid var(--code-button-border);
+  background: var(--code-button-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.code-copy-button:hover {
+  background: color-mix(in srgb, var(--code-button-bg) 65%, var(--text));
+}
+.code-copy-button.is-copied {
+  color: #16a34a;
+  border-color: rgba(22, 163, 74, 0.28);
+}
+.code-block-body {
+  overflow-x: auto;
+}
+.markdown .code-block pre {
+  margin: 0;
+  border-radius: 0;
+  padding: 14px;
+  overflow: visible;
+}
+.markdown .code-block pre code {
+  display: block;
+  min-width: max-content;
+}
+
+.message-copy-button {
+  appearance: none;
+  border: 1px solid var(--message-button-border);
+  background: var(--message-button-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.message-copy-button:hover {
+  background: color-mix(in srgb, var(--message-button-bg) 55%, var(--text));
+}
+.message-copy-button.is-copied {
+  color: #16a34a;
+  border-color: rgba(22, 163, 74, 0.28);
+}
+.bubble.user .message-copy-button {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.96);
+}
+.bubble.user .message-copy-button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

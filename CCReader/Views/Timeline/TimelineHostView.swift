@@ -18,6 +18,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        let labels = TimelineWebLabels.localized()
+        let bootSource = Coordinator.ccreaderTimelineBootScriptSource(labels: labels)
+        let bootScript = WKUserScript(source: bootSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        config.userContentController.addUserScript(bootScript)
         config.userContentController.add(context.coordinator, name: "ccreader")
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
@@ -139,7 +143,6 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             guard let webView else { return }
 
             let messages = currentRenderedMessages()
-            let labels = TimelineWebLabels.localized()
 
             // Track initial state (DOM filled in `didFinish` via payload → JS, same path as session replace).
             renderedMessageUUIDs = messages.map(\.uuid)
@@ -151,12 +154,11 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let document = makeShellHTML(
                 messageHTML: "",
                 loadOlderHTML: "",
-                waitingHTML: "",
-                labels: labels
+                waitingHTML: ""
             )
 
             shellState = .loading
-            webView.loadHTMLString(document, baseURL: nil)
+            webView.loadHTMLString(document, baseURL: WebRenderResourceLoader.resourceDirectoryURL)
         }
 
         // MARK: - Incremental update (no page reload!)
@@ -481,43 +483,31 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         // MARK: - Shell HTML (loaded once per session)
 
-        private func makeShellHTML(messageHTML: String, loadOlderHTML: String, waitingHTML: String, labels: TimelineWebLabels) -> String {
-            let highlightStyles = HighlightThemeLoader.stylesheet
-            let codeBlockStyles = WebRenderChrome.codeBlockStylesheet
-            let messageActionStyles = WebRenderChrome.messageActionStylesheet
-            let markedJS = MarkedJavaScriptLoader.script
-            let highlightJS = HighlightJavaScriptLoader.script
-            let codeBlockScript = WebRenderChrome.codeBlockEnhancementScript(copyLabel: labels.copy, copiedLabel: labels.copied)
-            let messageCopyScript = WebRenderChrome.messageCopyEnhancementScript(copiedLabel: labels.copied)
-            let shellCSS = WebRenderResourceLoader.text(named: "timeline-shell", extension: "css")
-            let shellJS = WebRenderResourceLoader.text(named: "timeline-shell", extension: "js")
-                .replacingOccurrences(of: "__FOLLOW_BOTTOM_THRESHOLD__", with: "\(Int(Self.followBottomThreshold))")
+        private func makeShellHTML(messageHTML: String, loadOlderHTML: String, waitingHTML: String) -> String {
+            var template = WebRenderResourceLoader.text(named: "timeline-shell", extension: "html")
+            let body = "\(loadOlderHTML)\(messageHTML)\(waitingHTML)"
+            template = template.replacingOccurrences(of: "<!-- CCREADER_TIMELINE_BODY -->", with: body)
+            return template
+        }
 
+        /// Injected at `documentStart` so `timeline-shell.js` runs after globals exist (no boot in HTML).
+        static func ccreaderTimelineBootScriptSource(labels: TimelineWebLabels) -> String {
+            struct Boot: Encodable {
+                let copy: String
+                let copied: String
+            }
+
+            let boot = Boot(copy: labels.copy, copied: labels.copied)
+            let json: String
+            if let data = try? JSONEncoder().encode(boot), let s = String(data: data, encoding: .utf8) {
+                json = s
+            } else {
+                json = #"{"copy":"Copy","copied":"Copied"}"#
+            }
+            let threshold = Int(Self.followBottomThreshold)
             return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <style>
-                \(shellCSS)
-                \(codeBlockStyles)
-                \(messageActionStyles)
-                \(highlightStyles)
-              </style>
-            </head>
-            <body>
-              <div class="timeline">\(loadOlderHTML)\(messageHTML)\(waitingHTML)</div>
-              <script>
-                \(markedJS)
-                \(highlightJS)
-                \(codeBlockScript)
-                \(messageCopyScript)
-
-                \(shellJS)
-              </script>
-            </body>
-            </html>
+            window.__CCREADER_I18N__=\(json);
+            window.__FOLLOW_BOTTOM_THRESHOLD__=\(threshold);
             """
         }
 

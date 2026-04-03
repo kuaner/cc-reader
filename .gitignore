@@ -21,3 +21,6 @@ Package.resolved
 
 # Claude Code
 .claude/
+
+# Timeline UI (Vite + Preact)
+timeline-ui/node_modules/
