@@ -1,6 +1,7 @@
-@import './styles/design-tokens.css';
+@import './design-tokens.css';
+@import './markdown-shared.css';
 
-/* Markdown preview: layout + prose rules; semantic tokens — design-tokens.css (same as timeline-shell). */
+/* Markdown 独立预览（markdown-preview bundle）：仅本页的 body / .markdown；共用见 markdown-shared。 */
 
 body {
   font-family: var(--font-ui);
@@ -103,8 +104,9 @@ body {
 .markdown img {
   max-width: 100%;
 }
-.markdown a {
-  color: var(--accent-link);
+.markdown a[href] {
+  color: var(--accent-link) !important;
+  -webkit-text-fill-color: var(--accent-link) !important;
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--accent-link) 35%, transparent);
   text-underline-offset: 3px;

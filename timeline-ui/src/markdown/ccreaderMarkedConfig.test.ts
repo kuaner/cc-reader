@@ -21,4 +21,14 @@ describe('ccreaderMarkedConfig', () => {
     expect(out).toContain('rel="noreferrer noopener"');
     expect(out).toContain('[image:');
   });
+
+  it('renders fenced code as code-block chrome from renderer', async () => {
+    const { ensureCcreaderMarkedConfigured, marked } = await import('./ccreaderMarkedConfig');
+    ensureCcreaderMarkedConfigured();
+    const out = marked.parse("```js\nconst x = '<div>';\n```") as string;
+    expect(out).toContain('class="code-block"');
+    expect(out).toContain('code-block-language');
+    expect(out).toContain('code-block-body');
+    expect(out).toContain('&lt;div&gt;');
+  });
 });

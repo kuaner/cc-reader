@@ -1,5 +1,0 @@
-/*
- * Highlight.js for markdown-preview bundle (build-time CSS).
- * Same hljs base as timeline-shell — see src/styles/hljs-shared-base.css (no user-bubble hljs).
- */
-@import './styles/hljs-shared-base.css';

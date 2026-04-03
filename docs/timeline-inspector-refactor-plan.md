@@ -25,7 +25,7 @@
 
 ## 3. 现状摘要（基线）
 
-- **timeline-ui** 已独立构建：`timeline-shell.*`、`markdown-preview.*`；样式主源 `tailwind.css`；组件以 `MessageRow` 为核心。
+- **timeline-ui** 已独立构建：`timeline-shell.*`、`markdown-preview.*`；样式主源 `timeline-app.css`；组件以 `MessageRow` 为核心。
 - **语义色与紧凑密度**已多轮迭代；**用户消息靠右**、**报头与模型 chip 对齐**等已落地。
 - **空状态**：`.impeccable.md` 要求无消息时由 **Swift 注入**可本地化短文案；若尚未实现，为本规划 **Phase 1** 缺口。
 
@@ -57,7 +57,7 @@
 | **MessageRow 拆分** | 按消息类型或「报头 / 正文 / 页脚」拆子组件，降低单文件心智负担 | 单文件行数下降；行为不变 |
 | **高密度开关（可选）** | 若未来需要「更紧一档」，用 **CSS 变量或 `data-density`** 切换，而非复制一套样式 | 一种 token 源；构建一次 |
 
-**主要触点**：`timeline-ui/src/components/*`、`tailwind.css`。
+**主要触点**：`timeline-ui/src/components/*`、`timeline-app.css`。
 
 ---
 

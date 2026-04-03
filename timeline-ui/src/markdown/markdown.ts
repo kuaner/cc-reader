@@ -1,6 +1,5 @@
 import hljs from 'highlight.js/lib/common';
 import { decodeUtf8Base64 } from '../lib/decodeUtf8Base64';
-import { enhanceCodeBlocks, enhanceMessageCopyButtons } from '../webChrome';
 import { ensureCcreaderMarkedConfigured, marked } from './ccreaderMarkedConfig';
 
 export function renderMarkdownIn(root: ParentNode): void {
@@ -34,6 +33,4 @@ export function highlightCodeBlocksIn(root: ParentNode): void {
 export function enhanceSubtree(node: ParentNode): void {
   renderMarkdownIn(node);
   highlightCodeBlocksIn(node);
-  enhanceCodeBlocks(node);
-  enhanceMessageCopyButtons(node);
 }

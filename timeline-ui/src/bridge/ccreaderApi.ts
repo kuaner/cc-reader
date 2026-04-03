@@ -1,5 +1,5 @@
 import type { MessagePayload, PrependOlderOpts, ReplaceTimelineOpts } from '../types';
-import { commit, state } from './timelineState';
+import { commit, state } from './timelineState.svelte';
 import { isNearBottom, scrollBottomStable } from './scroll';
 
 export function registerCcreaderApi(ccreader: Window['ccreader']): void {
@@ -10,8 +10,7 @@ export function registerCcreaderApi(ccreader: Window['ccreader']): void {
     state.messages = payloads.slice();
     state.loadOlderHTML = String(opts.loadOlderBarHTML || '');
     state.waitingHTML = String(opts.waitingHTML || '');
-    commit();
-    scrollBottomStable();
+    void commit().then(() => scrollBottomStable());
   };
 
   ccreader.replaceTimelineFromPayloadsProgressive = function (opts: ReplaceTimelineOpts): void {
@@ -63,10 +62,10 @@ export function registerCcreaderApi(ccreader: Window['ccreader']): void {
     if (opts.removeOlderBar) {
       state.loadOlderHTML = '';
     }
-    commit();
-
-    const scrollHeightAfter = document.documentElement.scrollHeight;
-    window.scrollTo(0, scrollYBefore + (scrollHeightAfter - scrollHeightBefore));
+    void commit().then(() => {
+      const scrollHeightAfter = document.documentElement.scrollHeight;
+      window.scrollTo(0, scrollYBefore + (scrollHeightAfter - scrollHeightBefore));
+    });
   };
 
   ccreader.appendMessagesFromPayload = function (payloads: MessagePayload[]): void {
@@ -74,11 +73,11 @@ export function registerCcreaderApi(ccreader: Window['ccreader']): void {
     const wasAtBottom = isNearBottom();
 
     state.messages = [...state.messages, ...payloads];
-    commit();
-
-    if (wasAtBottom) {
-      window.scrollTo(0, document.body.scrollHeight);
-    }
+    void commit().then(() => {
+      if (wasAtBottom) {
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    });
   };
 
   ccreader.replaceMessagesFromPayload = function (payloads: MessagePayload[]): void {
@@ -93,22 +92,24 @@ export function registerCcreaderApi(ccreader: Window['ccreader']): void {
         state.messages[idx] = payload;
       }
     }
-    commit();
-    if (wasAtBottom) {
-      scrollBottomStable();
-    }
+    void commit().then(() => {
+      if (wasAtBottom) {
+        scrollBottomStable();
+      }
+    });
   };
 
   ccreader.setWaitingIndicator = function (htmlOrEmpty: string): void {
     state.waitingHTML = htmlOrEmpty || '';
-    commit();
-    if (isNearBottom()) {
-      window.scrollTo(0, document.body.scrollHeight);
-    }
+    void commit().then(() => {
+      if (isNearBottom()) {
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    });
   };
 
   ccreader.setLoadOlderBar = function (htmlOrEmpty: string): void {
     state.loadOlderHTML = htmlOrEmpty || '';
-    commit();
+    void commit();
   };
 }

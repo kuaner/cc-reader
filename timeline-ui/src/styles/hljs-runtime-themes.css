@@ -1,3 +1,0 @@
-/* Timeline shell only: user-bubble hljs (ember tray) on top of shared hljs base. */
-@import './hljs-shared-base.css';
-@import './hljs-user-bubble.css';

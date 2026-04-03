@@ -21,7 +21,7 @@ export function looksLikeMarkdown(text: string): boolean {
   );
 }
 
-/** Stable key so Preact remounts rows when streamed content changes. */
+/** Stable key so list rows reconcile when streamed content changes. */
 export function messageRowKey(p: MessagePayload): string {
   const c = p.content ?? '';
   const t = p.thinking ?? '';

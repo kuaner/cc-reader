@@ -1,6 +1,9 @@
 /**
  * Session Ledger — semantic design tokens (single source of truth).
- * Imported by: `tailwind.css` (timeline shell), `markdownPreviewPage.css` (preview).
+ * Imported by: `timeline-app.css`, `markdown-preview.css`.
+ *
+ * 样式分层：`design-tokens` → 共用 `markdown-shared` → 时间线 `timeline` + `timeline-app`；
+ * 预览页：`markdown-preview`（已 @import tokens + shared）。
  */
 
 :root {
@@ -74,8 +77,6 @@
   --code-block-border: rgba(28, 25, 23, 0.1);
   --code-header-bg: #ebe4dc;
   --code-header-border: rgba(28, 25, 23, 0.1);
-  --code-button-bg: rgba(28, 25, 23, 0.06);
-  --code-button-border: rgba(28, 25, 23, 0.1);
   --message-button-bg: rgba(28, 25, 23, 0.06);
   --message-button-border: rgba(28, 25, 23, 0.1);
   --chrome-copy-success-fg: #15803d;
@@ -156,14 +157,13 @@
     --code-block-border: rgba(255, 255, 255, 0.1);
     --code-header-bg: #2c3238;
     --code-header-border: rgba(255, 255, 255, 0.08);
-    --code-button-bg: rgba(255, 255, 255, 0.06);
-    --code-button-border: rgba(255, 255, 255, 0.12);
     --message-button-bg: rgba(255, 255, 255, 0.06);
     --message-button-border: rgba(255, 255, 255, 0.12);
     --chrome-copy-success-fg: #86efac;
     --chrome-copy-success-border: rgba(22, 163, 74, 0.35);
-    --accent-link: #a8bfb8;
-    --accent-link-hover: #c9d4d0;
+    /* Brighter than muted sage — :where(prose) lost to UA link blue without explicit a:any-link rules */
+    --accent-link: #5eead4;
+    --accent-link-hover: #a7f3d0;
     --ring: rgba(161, 98, 7, 0.45);
     --bubble-assistant-hover-border: rgba(148, 163, 184, 0.34);
     --bubble-dispatch-hover-border: rgba(255, 255, 255, 0.22);

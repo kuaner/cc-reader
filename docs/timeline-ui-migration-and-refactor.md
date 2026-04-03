@@ -1,6 +1,6 @@
 # Timeline Web 栈：已完成工作与后续重构备忘
 
-本文档总结 **cc-reader** 中将时间线 / Markdown 预览从「Swift 内联 Web 资源」迁到 **`timeline-ui`（Vite + Preact + TypeScript）** 的主要变更，并列出 **`timeline-ui` 下一步可重构方向**，便于你规划迭代。
+本文档总结 **cc-reader** 中将时间线 / Markdown 预览从「Swift 内联 Web 资源」迁到 **`timeline-ui`（Vite + Svelte 5 + TypeScript）** 的主要变更，并列出 **`timeline-ui` 下一步可重构方向**，便于你规划迭代。
 
 **Inspector 导向的分阶段重构路线**（产品语义、优先级、验收）见：[timeline-inspector-refactor-plan.md](./timeline-inspector-refactor-plan.md)（设计上下文见根目录 [`.impeccable.md`](../.impeccable.md)）。
 
@@ -10,8 +10,8 @@
 
 ### 1. 双产物构建
 
-- **时间线壳**：`npm run build` 第一步产出 `timeline-shell.js` + `timeline-shell.css`，由 [`src/timeline/main.tsx`](../timeline-ui/src/timeline/main.tsx) 入口打包（Preact、Tailwind、marked、highlight.js、`src/bridge/*` 等）。
-- **Markdown 独立预览**：第二步使用 `vite.preview.config.ts` 产出 `markdown-preview.js` + `markdown-preview.css`，入口为 [`src/markdown/previewEntry.ts`](../timeline-ui/src/markdown/previewEntry.ts)（无 Preact）。
+- **时间线壳**：`npm run build` 第一步产出 `timeline-shell.js` + `timeline-shell.css`，由 [`src/timeline/main.ts`](../timeline-ui/src/timeline/main.ts) 入口打包（Svelte 5、Tailwind、marked、highlight.js、`src/bridge/*` 等）。
+- **Markdown 独立预览**：第二步使用 `vite.preview.config.ts` 产出 `markdown-preview.js` + `markdown-preview.css`，入口为 [`src/markdown/previewEntry.ts`](../timeline-ui/src/markdown/previewEntry.ts)（无 Svelte）。
 - **静态 HTML 模板**：`timeline-ui/public/` 下的 `timeline-shell.html`、`markdown-preview.html` 在构建时复制到 `CCReader/Resources/`，与上述静态资源同目录。
 
 ### 2. Swift 侧瘦身
@@ -23,15 +23,15 @@
 
 ### 3. 前端侧能力迁移（原 `WebRenderChrome`）
 
-- **样式**：`styles/web-chrome.css`（代码块头部、复制按钮、消息复制按钮等）。
-- **逻辑**：`webChrome.ts`（`copyCodeText`、`enhanceCodeBlocks`、`enhanceMessageCopyButtons`）；`src/markdown/markdown.ts` 中 `enhanceSubtree` 直接引用，不再依赖 Swift 注入的全局函数字符串。
-- **时间线 i18n**：`window.__CCREADER_I18N__` 由 Swift 的 `WKUserScript` 设置；`webChrome.ts` 在运行时读取。
+- **样式**：`styles/markdown-shared.css`（共用 Markdown 代码块 + hljs）；`styles/timeline.css`（仅时间线：原数据按钮、用户气泡代码）。
+- **逻辑**：代码块外壳由 **`ccreaderMarkedConfig` 的 `code` renderer** 输出（仅语言条，**无**代码复制按钮）；剪贴板与 i18n 在 **`lib/clipboardCopy.ts`**（供「原数据」等）；**「原数据」** 在 **`RawDataButton.svelte`** 内 `onclick`。
+- **时间线 i18n**：`window.__CCREADER_I18N__` 由 Swift 的 `WKUserScript` 设置；`clipboardCopy.getCcreaderI18n()` 在运行时读取。
 
 ### 4. Markdown 与代码高亮
 
-- **marked**：npm 依赖 + `src/markdown/ccreaderMarkedConfig.ts`（renderer 安全策略等）。
-- **时间线**：`src/styles/hljs-runtime-themes.css`（`@import` GitHub light/dark + `hljs-assistant-ledger` + `hljs-user-bubble`）由 `main.tsx` 引入，打进 **`timeline-shell.css`**（与 Tailwind 同源外链，不再把 hljs 文本塞进 `timeline-shell.js`）。
-- **Markdown 预览**：`markdownHljs.css` → `hljs-shared-base.css`（与助手侧 GitHub hljs + assistant-ledger 一致；无用户气泡 hljs），打进 `markdown-preview.css`。
+- **marked**：npm 依赖 + `src/markdown/ccreaderMarkedConfig.ts`（HTML 安全、图片、**围栏代码块 + chrome**）。
+- **时间线**：`main.ts` 引入 `timeline-app` + `markdown-shared` + `timeline`，打进 **`timeline-shell.css`**。
+- **Markdown 预览**：`markdown-preview.css`（`@import` tokens + `markdown-shared` + 本页 body/.markdown），打进 `markdown-preview.css`。
 - **Markdown 预览 fallback**：仅在 **`marked` 不可用或解析/增强流程抛错** 时，在 `previewEntry.ts` 中退回纯文本（`.plain-text`）；**不在** HTML 里先塞 fallback 再被覆盖。
 
 ### 5. 构建与资源安全
@@ -74,7 +74,7 @@
 ### B. 结构与可维护性
 
 4. **`ccreaderBridge` 体积**  
-   - **已做**：拆为 `src/bridge/`（`scroll.ts`、`timelineState.tsx`、`ccreaderApi.ts`、`nativeHooks.ts`、`installCcreader.ts`）。
+   - **已做**：拆为 `src/bridge/`（`scroll.ts`、`timelineState.svelte.ts`、`ccreaderApi.ts`、`nativeHooks.ts`、`installCcreader.ts`）。
 
 5. **组件与 `MessageRow` 相关**  
    - 随功能增长，可按「消息类型 / 行内工具 / 原始数据」等继续拆子组件或 hooks，避免单文件过长。
@@ -90,10 +90,10 @@
    - **`npm run dev:all`**：`concurrently` 同时跑上述两段，改任一侧都会重建。
 
 8. **类型与全局**  
-   - `globals.d.ts` 中 `Window` 扩展与 `webChrome` 等保持同步；可考虑收紧 `any` 与 `window as unknown as` 的用法。
+   - `globals.d.ts` 中 `Window` 扩展与桥接 API 等保持同步；可考虑收紧 `any` 与 `window as unknown as` 的用法。
 
 9. **测试**  
-   - 已引入 **Vitest**：`npm test` 运行 `src/**/*.test.ts`（当前覆盖 `decodeUtf8Base64`、`ccreaderMarkedConfig` 的 renderer）。`webChrome` 等需 DOM 的测试可后续用 `happy-dom` / `jsdom` 补充。
+   - 已引入 **Vitest**：`npm test` 运行 `src/**/*.test.ts`（当前覆盖 `decodeUtf8Base64`、`ccreaderMarkedConfig` 的 renderer）。需 DOM 的测试可后续用 `happy-dom` / `jsdom` 补充。
 
 ### D. 产物与仓库策略
 
@@ -104,7 +104,7 @@
 
 ## 四、配色方案（如何改主题色）
 
-时间线 UI 使用 **Session Ledger 语义 token**（暖中性 + 琥珀用户侧），**唯一主源**为 [`timeline-ui/src/styles/tailwind.css`](../timeline-ui/src/styles/tailwind.css) 中 `:root` 与 `prefers-color-scheme: dark`。设计说明见 [`.impeccable.md`](../.impeccable.md)。修改后执行 `npm run build` 生成 `CCReader/Resources` 内样式。
+时间线 UI 使用 **Session Ledger 语义 token**（暖中性 + 琥珀用户侧），**唯一主源**为 [`timeline-ui/src/styles/design-tokens.css`](../timeline-ui/src/styles/design-tokens.css) 中 `:root` 与 `prefers-color-scheme: dark`；布局与 Tailwind 工具类入口为 [`timeline-app.css`](../timeline-ui/src/styles/timeline-app.css)。设计说明见 [`.impeccable.md`](../.impeccable.md)。修改后执行 `npm run build` 生成 `CCReader/Resources` 内样式。
 
 **完整变量表**、**未纳入 token 的例外**（hljs 语法色、独立预览页同步等）、**用户气泡禁止 `prose-invert` 的原因**见：[timeline-ui-color-tokens.md](./timeline-ui-color-tokens.md)。
 
@@ -115,7 +115,7 @@
 | 路径 | 说明 |
 |------|------|
 | `timeline-ui/` | 前端工程与 `public/*.html` 源模板 |
-| `timeline-ui/src/timeline/main.tsx` | 时间线 shell 入口（Vite 主配置 `entry`） |
+| `timeline-ui/src/timeline/main.ts` | 时间线 shell 入口（Vite 主配置 `entry`） |
 | `timeline-ui/src/bridge/` | `window.ccreader` 桥接（滚动、状态、WK 消息等） |
 | `timeline-ui/src/markdown/` | `marked` 配置、管线、`previewEntry`（markdown-preview 入口） |
 | [`timeline-ui-color-tokens.md`](./timeline-ui-color-tokens.md) | 配色语义变量、修改方式、例外说明 |

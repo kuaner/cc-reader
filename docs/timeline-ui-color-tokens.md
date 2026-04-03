@@ -14,12 +14,12 @@
 ## 如何修改配色
 
 1. 打开 [`timeline-ui/src/styles/design-tokens.css`](../timeline-ui/src/styles/design-tokens.css)（**语义色与字体的唯一来源**）。
-2. 在 **`:root { ... }`** 中改浅色变量；在 **`@media (prefers-color-scheme: dark) { :root { ... } }`** 中改深色变量。`tailwind.css` 通过 `@import` 引用该文件；布局与组件样式仍在 `tailwind.css`。
+2. 在 **`:root { ... }`** 中改浅色变量；在 **`@media (prefers-color-scheme: dark) { :root { ... } }`** 中改深色变量。`timeline-app.css` 通过 `@import` 引用该文件；布局与组件样式仍在 `timeline-app.css`。
 3. 在 `timeline-ui` 目录执行 **`npm run build`**，将产物同步到 `CCReader/Resources/`（若团队不提交构建产物，则发布流水线需包含该步骤）。
 
-**原则**：组件内应使用 `var(--token-name)` 或已在 `tailwind.css` 中绑定的工具类；**不要**在 TSX 里写死 `#rrggbb` 或 `bg-red-500` 这类与主题无关的 Tailwind 色阶（历史代码已迁到 token）。
+**原则**：组件内应使用 `var(--token-name)` 或已在 `timeline-app.css` 中绑定的工具类；**不要**在 TSX 里写死 `#rrggbb` 或 `bg-red-500` 这类与主题无关的 Tailwind 色阶（历史代码已迁到 token）。
 
-**用户气泡正文**：不要使用 `prose-invert`。用户气泡为 **暖褐/赭底 + 与模式匹配的对比色字**（`--surface-user-text`；深色为奶油色字而非纯黑）。助手/摘要使用 **`markdown-prose-assistant`** 与 `--tw-prose-*` token（见 `tailwind.css`）；用户侧为 **`markdown-prose-user`**。入口在 [`MessageBody.tsx`](../timeline-ui/src/components/MessageBody.tsx)。
+**用户气泡正文**：不要使用 `prose-invert`。用户气泡为 **暖褐/赭底 + 与模式匹配的对比色字**（`--surface-user-text`；深色为奶油色字而非纯黑）。助手/摘要使用 **`prose-ccreader-assistant`**（`@utility` + `--tw-prose-*`，见 `timeline-app.css`）；用户侧为 **`prose-ccreader-user`**。入口在 [`MessageBody.svelte`](../timeline-ui/src/components/MessageBody.svelte)。
 
 ---
 
@@ -82,7 +82,7 @@
 |------|------|
 | `--code-bg` | `pre` / 代码块区域底（助手侧等） |
 | `--code-block-border` / `--code-header-*` | 代码块容器与头部条 |
-| `--code-button-*` / `--message-button-*` | 代码复制、消息复制按钮默认态 |
+| `--message-button-*` | 「原数据」等消息级复制按钮默认态（Markdown 代码块无复制按钮） |
 | `--chrome-copy-success-fg` / `--chrome-copy-success-border` | 复制成功 `.is-copied` 状态 |
 
 ### 选区与交互
@@ -97,10 +97,11 @@
 
 | 文件 | 说明 |
 |------|------|
-| [`timeline-ui/src/styles/web-chrome.css`](../timeline-ui/src/styles/web-chrome.css) | 代码块布局、复制按钮；**颜色均引用** `tailwind.css` 中的变量（含 `--chrome-copy-success-*`、`--ring`）。 |
+| [`timeline-ui/src/styles/markdown-shared.css`](../timeline-ui/src/styles/markdown-shared.css) | 时间线 + 预览 **共用**：围栏代码块壳、hljs、助手区代码对比度。 |
+| [`timeline-ui/src/styles/timeline.css`](../timeline-ui/src/styles/timeline.css) | **仅时间线**：「原数据」按钮、用户气泡内代码块暖色托盘；变量来自 `design-tokens`。 |
 | [`timeline-ui/src/styles/hljs-user-bubble.css`](../timeline-ui/src/styles/hljs-user-bubble.css) | **仅用户气泡内** Monokai 语法高亮（token 色为固定十六进制）。换整体 UI 主题时一般**不必**改；若需统一品牌，可整段替换为另一套 hljs 主题并仍用 `.bubble.user .markdown` 作用域。 |
 | [`hljs-shared-base.css`](../timeline-ui/src/styles/hljs-shared-base.css)、[`hljs-runtime-themes.css`](../timeline-ui/src/styles/hljs-runtime-themes.css)、[`markdownHljs.css`](../timeline-ui/src/markdownHljs.css) | GitHub 风格 hljs + Session Ledger 助手覆盖；时间线另含用户气泡 hljs；与主盘 token **独立**，见迁移文档。 |
-| [`timeline-ui/src/markdownPreviewPage.css`](../timeline-ui/src/markdownPreviewPage.css) | 独立 **markdown-preview** bundle **不经过** `tailwind.css`，需在此重复声明与 UI 相关的变量（如 `--text`、`--code-bg`、`--ring`、`--chrome-copy-success-*`）；改主盘后请**同步**此处，避免预览页与 timeline 脱节。 |
+| [`timeline-ui/src/styles/markdown-preview.css`](../timeline-ui/src/styles/markdown-preview.css) | 独立 **markdown-preview** bundle **不经过** `timeline-app.css`；通过 `@import design-tokens.css` 与主盘对齐；改 token 时以 `design-tokens.css` 为准。 |
 
 ---
 
@@ -111,10 +112,10 @@
    - 用户气泡：Monokai 衍生 **暖色余烬托盘**（[`hljs-user-bubble.css`](../timeline-ui/src/styles/hljs-user-bubble.css)），与用户暖褐底同温、左侧强调条与 `--surface-user` 混色；**不是** 语义 token 盘的一部分。
 
 2. **Tailwind Typography 默认色阶**  
-   [`MessageBody.tsx`](../timeline-ui/src/components/MessageBody.tsx) 中助手侧仍可能使用 `text-neutral-900`、`dark:prose-invert` 等与 Typography 插件搭配的 utility；**用户气泡**已通过 `.bubble.user .markdown.prose` 覆盖 `--tw-prose-*`。若全面改为「全部只认 token」，可再收一版仅保留 `prose` + `text-[color:var(--text)]` 等。
+   [`MessageBody.svelte`](../timeline-ui/src/components/MessageBody.svelte) 中助手侧仍可能使用 `text-neutral-900`、`dark:prose-invert` 等与 Typography 插件搭配的 utility；**用户气泡**已通过 `.bubble.user .markdown.prose` 覆盖 `--tw-prose-*`。若全面改为「全部只认 token」，可再收一版仅保留 `prose` + `text-[color:var(--text)]` 等。
 
 3. **极少量装饰性 rgba**  
-   `tailwind.css` 内助手卡片 hover 的 `0 1px 0 rgba(0,0,0,0.04)` 等阴影为结构用中性色，未单独提成变量；若需严格「零硬编码」，可再抽 `--shadow-assistant-line` 等。
+   `timeline-app.css` 内助手卡片 hover 的 `0 1px 0 rgba(0,0,0,0.04)` 等阴影为结构用中性色，未单独提成变量；若需严格「零硬编码」，可再抽 `--shadow-assistant-line` 等。
 
 ---
 

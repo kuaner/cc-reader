@@ -5,7 +5,7 @@ import { sharedCcreaderBuild } from './vite.build.shared';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-/** MarkdownRenderView: globals `marked` + `hljs` + hljs themes (no Preact). */
+/** MarkdownRenderView: `marked` + hljs + `markdown-preview.css` (no Svelte). */
 export default mergeConfig(
   defineConfig({
     build: sharedCcreaderBuild,

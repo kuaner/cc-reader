@@ -1,13 +1,10 @@
 /**
- * MarkdownRenderView bundle: `marked` + `hljs` globals, page CSS, code-block chrome.
+ * MarkdownRenderView bundle: `marked` + hljs + page CSS (code-block 无复制按钮).
  */
-import '../markdownPreviewPage.css';
-import '../markdownHljs.css';
-import '../styles/web-chrome.css';
+import '../styles/markdown-preview.css';
 import hljs from 'highlight.js/lib/common';
 import { decodeUtf8Base64 } from '../lib/decodeUtf8Base64';
 import { ensureCcreaderMarkedConfigured, marked } from './ccreaderMarkedConfig';
-import { enhanceCodeBlocks } from '../webChrome';
 
 ensureCcreaderMarkedConfigured();
 
@@ -51,7 +48,6 @@ function runMarkdownPreview(): void {
         }
       });
     }
-    enhanceCodeBlocks(node);
   } catch (error) {
     console.error('markdown render failed', error);
     applyPlainTextFallback(node, source);

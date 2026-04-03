@@ -1,10 +1,54 @@
 /**
- * User-bubble code — Monokai-inspired, warm “ember tray” for amber Session Ledger bubbles.
- * Tray + #272822-style block are retinted so highlights don’t clash with orange surfaces.
- * Assistant / default: GitHub hljs in hljs-shared-base.css (timeline-shell.css).
+ * 仅 **时间线** bundle：消息「原数据」按钮、用户气泡内代码块暖色托盘（与预览页无关）。
+ * 依赖：先 `timeline-app.css`（含 design-tokens）+ `markdown-shared.css`。
  */
 
-/* Tray: warm charcoal + cream edge + amber accent (ties to --surface-user) */
+.message-copy-button {
+  appearance: none;
+  border: 1px solid var(--message-button-border);
+  background: var(--message-button-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  border-radius: 999px;
+  min-height: 28px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
+}
+.message-copy-button:hover {
+  background: color-mix(in srgb, var(--message-button-bg) 55%, var(--text));
+}
+.message-copy-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.message-copy-button:active {
+  transform: scale(0.97);
+}
+.message-copy-button.is-copied {
+  color: var(--chrome-copy-success-fg);
+  border-color: var(--chrome-copy-success-border);
+}
+.bubble.user .message-copy-button {
+  border-color: var(--bubble-user-control-border);
+  background: var(--bubble-user-control-bg);
+  color: var(--bubble-user-control-fg);
+}
+.bubble.user .message-copy-button:hover {
+  background: var(--bubble-user-control-hover-bg);
+}
+.bubble.user .message-copy-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--bubble-user-focus-ring);
+}
+
+/* User bubble — 暖色代码块 + hljs token（仅 .bubble.user） */
 .bubble.user .markdown .code-block {
   border: 1px solid rgba(255, 251, 235, 0.2);
   border-left: 3px solid color-mix(in srgb, var(--surface-user) 58%, rgba(255, 251, 235, 0.35));
@@ -31,7 +75,6 @@
   padding: 3px 5px;
 }
 
-/* Core block: warm dark (not cold #272822) */
 .bubble.user .markdown .hljs {
   background: #261f18;
   color: #f5f0eb;
@@ -47,7 +90,6 @@
   color: #fb7185;
 }
 
-/* Was neon cyan — shifted to cream-gold so it reads as “same family” as the bubble */
 .bubble.user .markdown .hljs-code {
   color: #fde68a;
 }
@@ -98,4 +140,33 @@
 .bubble.user .markdown .hljs-type,
 .bubble.user .markdown .hljs-selector-id {
   font-weight: bold;
+}
+
+/*
+ * Touch：放大「原数据」命中区；代码块头略增高。不把 fine pointer 强行拉到 44px。
+ */
+@media (pointer: coarse) {
+  .message-copy-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+    font-size: 11px;
+    line-height: 1.25;
+    touch-action: manipulation;
+  }
+
+  .bubble.user .markdown .code-block-header {
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-copy-button {
+    transition: none !important;
+  }
+
+  .message-copy-button:active {
+    transform: none;
+  }
 }

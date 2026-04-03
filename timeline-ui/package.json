@@ -14,10 +14,10 @@
   "dependencies": {
     "highlight.js": "^11.11.1",
     "marked": "^17.0.5",
-    "preact": "^10.24.3"
+    "svelte": "^5.55.1"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.5",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^25.5.0",

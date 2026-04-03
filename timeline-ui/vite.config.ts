@@ -1,4 +1,4 @@
-import preact from '@preact/preset-vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,16 +7,16 @@ import { sharedCcreaderBuild } from './vite.build.shared';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-/** Timeline WKWebView shell (Preact + Tailwind + marked + highlight.js). */
+/** Timeline WKWebView shell (Svelte 5 + Tailwind + marked + highlight.js). */
 export default mergeConfig(
   defineConfig({
     build: sharedCcreaderBuild,
   }),
   defineConfig({
-    plugins: [tailwindcss(), preact()],
+    plugins: [tailwindcss(), svelte()],
     build: {
       lib: {
-        entry: resolve(__dirname, 'src/timeline/main.tsx'),
+        entry: resolve(__dirname, 'src/timeline/main.ts'),
         name: 'ccreaderTimeline',
         formats: ['iife'],
         fileName: () => 'timeline-shell.js',

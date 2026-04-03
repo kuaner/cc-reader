@@ -1,8 +1,8 @@
 import { installCcreader } from '../bridge/installCcreader';
 import { enhanceSubtree } from '../markdown/markdown';
-import '../styles/tailwind.css';
-import '../styles/web-chrome.css';
-import '../styles/hljs-runtime-themes.css';
+import '../styles/timeline-app.css';
+import '../styles/markdown-shared.css';
+import '../styles/timeline.css';
 
 installCcreader();
 
