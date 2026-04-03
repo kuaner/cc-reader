@@ -1,8 +1,10 @@
 @import './design-tokens.css';
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --max-width-timeline: min(100%, clamp(560px, 82vw, 1080px));
+}
 
 /*
  * Timeline shell — layout, components, prose. Semantic colors/fonts: `design-tokens.css`.

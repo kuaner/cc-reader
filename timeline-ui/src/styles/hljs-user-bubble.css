@@ -1,7 +1,7 @@
 /**
  * User-bubble code — Monokai-inspired, warm “ember tray” for amber Session Ledger bubbles.
  * Tray + #272822-style block are retinted so highlights don’t clash with orange surfaces.
- * Assistant / default remains GitHub in hljsThemes.ts.
+ * Assistant / default: GitHub hljs in hljs-shared-base.css (timeline-shell.css).
  */
 
 /* Tray: warm charcoal + cream edge + amber accent (ties to --surface-user) */

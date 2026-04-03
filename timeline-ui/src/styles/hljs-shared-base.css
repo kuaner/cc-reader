@@ -1,0 +1,7 @@
+/*
+ * Highlight.js GitHub light/dark + Session Ledger assistant overrides.
+ * Shared by: timeline-shell (via hljs-runtime-themes.css) and markdown-preview (markdownHljs.css).
+ */
+@import 'highlight.js/styles/github.css' (prefers-color-scheme: light);
+@import 'highlight.js/styles/github-dark.css' (prefers-color-scheme: dark);
+@import './hljs-assistant-ledger.css';

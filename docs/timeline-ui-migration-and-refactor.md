@@ -30,8 +30,8 @@
 ### 4. Markdown 与代码高亮
 
 - **marked**：npm 依赖 + `src/markdown/ccreaderMarkedConfig.ts`（renderer 安全策略等）。
-- **时间线**：`hljsThemes.ts` 使用 highlight 的 CSS（`?raw`）按 `prefers-color-scheme` 注入 `<style>`。
-- **Markdown 预览**：`markdownHljs.css` 使用带媒体条件的 `@import` 引入 light/dark 主题，打进 `markdown-preview.css`。
+- **时间线**：`src/styles/hljs-runtime-themes.css`（`@import` GitHub light/dark + `hljs-assistant-ledger` + `hljs-user-bubble`）由 `main.tsx` 引入，打进 **`timeline-shell.css`**（与 Tailwind 同源外链，不再把 hljs 文本塞进 `timeline-shell.js`）。
+- **Markdown 预览**：`markdownHljs.css` → `hljs-shared-base.css`（与助手侧 GitHub hljs + assistant-ledger 一致；无用户气泡 hljs），打进 `markdown-preview.css`。
 - **Markdown 预览 fallback**：仅在 **`marked` 不可用或解析/增强流程抛错** 时，在 `previewEntry.ts` 中退回纯文本（`.plain-text`）；**不在** HTML 里先塞 fallback 再被覆盖。
 
 ### 5. 构建与资源安全
@@ -60,10 +60,10 @@
 
 ### A. 一致性与去重
 
-1. **highlight.js 主题策略分裂**  
-   - 时间线：`hljsThemes.ts`（运行时注入 `<style>` + `?raw`）。  
-   - 预览：`markdownHljs.css`（构建期 CSS `@import` + `prefers-color-scheme`）。  
-   - **已做**：`hljsThemes.ts` 导出与 `markdownHljs.css` 同一对主题文件；`markdownHljs.css` 顶部注释说明与 `hljsThemes.ts` 对齐。进一步「二选一」仍可按体积/FOUC 再评估。
+1. **highlight.js 主题**  
+   - **共享基座**：`src/styles/hljs-shared-base.css`（GitHub light/dark + `hljs-assistant-ledger`）。  
+   - **时间线**：再叠 `hljs-user-bubble.css` → `hljs-runtime-themes.css` → `timeline-shell.css`。  
+   - **预览**：仅 `hljs-shared-base.css` → `markdown-preview.css`。
 
 2. **Base64 解码**  
    - **已做**：统一为 [`src/lib/decodeUtf8Base64.ts`](../timeline-ui/src/lib/decodeUtf8Base64.ts)，并有 Vitest 覆盖。

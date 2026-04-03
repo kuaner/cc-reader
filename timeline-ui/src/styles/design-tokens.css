@@ -25,6 +25,8 @@
   --bubble-user-inline-code-fg: #fffbeb;
   /* Assistant: warm paper; user: rust — hue separation vs pure white */
   --surface-assistant: #faf8f5;
+  --assistant-inline-code-bg: rgba(28, 25, 23, 0.08);
+  --assistant-inline-code-fg: #292524;
   --bubble-assistant-border: rgba(28, 25, 23, 0.09);
   --surface-thinking: rgba(124, 45, 18, 0.1);
   --surface-tool: rgba(22, 101, 52, 0.12);
@@ -105,6 +107,8 @@
     --bubble-user-inline-code-bg: rgba(0, 0, 0, 0.28);
     --bubble-user-inline-code-fg: #faf6f3;
     --surface-assistant: #252a2e;
+    --assistant-inline-code-bg: rgba(255, 255, 255, 0.14);
+    --assistant-inline-code-fg: #faf8f5;
     --bubble-assistant-border: rgba(148, 163, 184, 0.16);
     --surface-thinking: rgba(217, 119, 6, 0.14);
     --surface-tool: rgba(87, 83, 78, 0.5);

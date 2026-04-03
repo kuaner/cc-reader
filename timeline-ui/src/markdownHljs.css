@@ -1,7 +1,5 @@
 /*
- * Highlight.js themes for markdown-preview (build-time CSS, zero extra JS).
- * Same theme sources as src/hljsThemes.ts (timeline-shell injects raw CSS at runtime).
- * Keep in sync: highlight.js/styles/github.css + github-dark.css
+ * Highlight.js for markdown-preview bundle (build-time CSS).
+ * Same hljs base as timeline-shell — see src/styles/hljs-shared-base.css (no user-bubble hljs).
  */
-@import 'highlight.js/styles/github.css' (prefers-color-scheme: light);
-@import 'highlight.js/styles/github-dark.css' (prefers-color-scheme: dark);
+@import './styles/hljs-shared-base.css';

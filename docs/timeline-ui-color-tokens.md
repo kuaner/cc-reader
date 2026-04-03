@@ -99,7 +99,7 @@
 |------|------|
 | [`timeline-ui/src/styles/web-chrome.css`](../timeline-ui/src/styles/web-chrome.css) | 代码块布局、复制按钮；**颜色均引用** `tailwind.css` 中的变量（含 `--chrome-copy-success-*`、`--ring`）。 |
 | [`timeline-ui/src/styles/hljs-user-bubble.css`](../timeline-ui/src/styles/hljs-user-bubble.css) | **仅用户气泡内** Monokai 语法高亮（token 色为固定十六进制）。换整体 UI 主题时一般**不必**改；若需统一品牌，可整段替换为另一套 hljs 主题并仍用 `.bubble.user .markdown` 作用域。 |
-| [`timeline-ui/src/hljsThemes.ts`](../timeline-ui/src/hljsThemes.ts) + [`markdownHljs.css`](../timeline-ui/src/markdownHljs.css) | 时间线全局 / Markdown 预览的 **GitHub 风格** highlight.js；与 Session Ledger **独立**，见迁移文档「hljs 主题」说明。 |
+| [`hljs-shared-base.css`](../timeline-ui/src/styles/hljs-shared-base.css)、[`hljs-runtime-themes.css`](../timeline-ui/src/styles/hljs-runtime-themes.css)、[`markdownHljs.css`](../timeline-ui/src/markdownHljs.css) | GitHub 风格 hljs + Session Ledger 助手覆盖；时间线另含用户气泡 hljs；与主盘 token **独立**，见迁移文档。 |
 | [`timeline-ui/src/markdownPreviewPage.css`](../timeline-ui/src/markdownPreviewPage.css) | 独立 **markdown-preview** bundle **不经过** `tailwind.css`，需在此重复声明与 UI 相关的变量（如 `--text`、`--code-bg`、`--ring`、`--chrome-copy-success-*`）；改主盘后请**同步**此处，避免预览页与 timeline 脱节。 |
 
 ---

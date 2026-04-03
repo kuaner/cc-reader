@@ -50,6 +50,8 @@ function proseForTone(tone: MarkdownTone): string {
     '[&_blockquote]:text-[color:var(--muted)] [&_blockquote]:border-[color:var(--border)]',
     '[&_th]:border-[color:var(--border)]',
     '[&_td]:border-[color:var(--border)]',
+    '[&_strong]:text-[color:var(--text)] [&_strong]:font-semibold',
+    '[&_:not(pre)>code]:rounded-md [&_:not(pre)>code]:bg-[color:var(--assistant-inline-code-bg)] [&_:not(pre)>code]:text-[color:var(--assistant-inline-code-fg)] [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-px',
   ].join(' ');
 }
 

@@ -1,4 +1,5 @@
 import preact from '@preact/preset-vite';
+import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, mergeConfig } from 'vite';
@@ -12,7 +13,7 @@ export default mergeConfig(
     build: sharedCcreaderBuild,
   }),
   defineConfig({
-    plugins: [preact()],
+    plugins: [tailwindcss(), preact()],
     build: {
       lib: {
         entry: resolve(__dirname, 'src/timeline/main.tsx'),

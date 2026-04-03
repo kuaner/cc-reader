@@ -67,11 +67,11 @@
 
 | 任务 | 说明 | 验收 |
 |------|------|------|
-| **hljs 策略** | 评估时间线运行时注入 vs 预览构建期 CSS 的最终策略（体积、FOUC） | 文档结论 + 可选代码收敛 |
+| **hljs 策略** | ~~运行时注入~~ 已收敛：时间线与预览均走构建期 CSS（`hljs-shared-base` / `hljs-runtime-themes`） | 与 `timeline-shell.css` 外链一致 |
 | **测试** | 为纯函数与 renderer 扩展现有 Vitest；DOM 行为再议 `jsdom` | CI 可跑 |
 | **文档** | `timeline-ui-color-tokens.md` 开篇增加一句 **Inspector 定位**（与阅读器区分） | 与 `.impeccable.md` 不矛盾 |
 
-**主要触点**：`hljsThemes.ts`、`markdownHljs.css`、`vite.build.shared.ts`、文档。
+**主要触点**：`hljs-shared-base.css`、`hljs-runtime-themes.css`、`markdownHljs.css`、`vite.build.shared.ts`、文档。
 
 ---
 

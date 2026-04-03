@@ -1,0 +1,95 @@
+/**
+ * Session Ledger — assistant / summary prose + code blocks.
+ * GitHub-dark hljs targets #0d1117; on our --code-bg and bubble surfaces, lift token contrast.
+ */
+@media (prefers-color-scheme: dark) {
+  .markdown-prose-assistant .code-block pre code.hljs,
+  .markdown-prose-assistant .code-block .hljs {
+    color: #e6edf3 !important;
+    background: transparent !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-doctag,
+  .markdown-prose-assistant .code-block .hljs-keyword,
+  .markdown-prose-assistant .code-block .hljs-meta .hljs-keyword,
+  .markdown-prose-assistant .code-block .hljs-template-tag,
+  .markdown-prose-assistant .code-block .hljs-template-variable,
+  .markdown-prose-assistant .code-block .hljs-type,
+  .markdown-prose-assistant .code-block .hljs-variable.language_ {
+    color: #ff9d94 !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-title,
+  .markdown-prose-assistant .code-block .hljs-title.class_,
+  .markdown-prose-assistant .code-block .hljs-title.class_.inherited__,
+  .markdown-prose-assistant .code-block .hljs-title.function_ {
+    color: #e6c4ff !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-attr,
+  .markdown-prose-assistant .code-block .hljs-attribute,
+  .markdown-prose-assistant .code-block .hljs-literal,
+  .markdown-prose-assistant .code-block .hljs-meta,
+  .markdown-prose-assistant .code-block .hljs-number,
+  .markdown-prose-assistant .code-block .hljs-operator,
+  .markdown-prose-assistant .code-block .hljs-variable,
+  .markdown-prose-assistant .code-block .hljs-selector-attr,
+  .markdown-prose-assistant .code-block .hljs-selector-class,
+  .markdown-prose-assistant .code-block .hljs-selector-id {
+    color: #a8d8ff !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-regexp,
+  .markdown-prose-assistant .code-block .hljs-string,
+  .markdown-prose-assistant .code-block .hljs-meta .hljs-string {
+    color: #c8e6ff !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-built_in,
+  .markdown-prose-assistant .code-block .hljs-symbol {
+    color: #ffc48a !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-comment,
+  .markdown-prose-assistant .code-block .hljs-code,
+  .markdown-prose-assistant .code-block .hljs-formula {
+    color: #b8c0c8 !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-name,
+  .markdown-prose-assistant .code-block .hljs-quote,
+  .markdown-prose-assistant .code-block .hljs-selector-tag,
+  .markdown-prose-assistant .code-block .hljs-selector-pseudo {
+    color: #a8f0b8 !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-subst {
+    color: #e6edf3 !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-section {
+    color: #6eb6ff !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-bullet {
+    color: #fde08a !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-emphasis {
+    color: #e6edf3 !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-strong {
+    color: #f0f4f8 !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-addition {
+    color: #b8f5c4 !important;
+    background-color: rgba(3, 58, 22, 0.55) !important;
+  }
+
+  .markdown-prose-assistant .code-block .hljs-deletion {
+    color: #ffd4cf !important;
+    background-color: rgba(103, 6, 12, 0.45) !important;
+  }
+}
