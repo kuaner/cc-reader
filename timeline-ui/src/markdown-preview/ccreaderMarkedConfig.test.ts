@@ -32,3 +32,4 @@ describe('ccreaderMarkedConfig', () => {
     expect(out).toContain('&lt;div&gt;');
   });
 });
+

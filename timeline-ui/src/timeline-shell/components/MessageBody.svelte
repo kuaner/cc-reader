@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { encodeBase64Utf8, escapeHTML } from "../lib/strings";
+  import MarkdownContent from "../../markdown-preview/MarkdownContent.svelte";
   import type {
     MessageBodyOptions,
     MarkdownTone,
-  } from "../lib/messageBodyOptions";
+  } from "../../lib/messageBodyOptions";
 
   let {
     content,
@@ -59,16 +59,6 @@
     ].join(" ");
   }
 
-  const fallbackHtml = $derived.by(() => {
-    if (!source || preserveLineBreaks || !renderMarkdown) return "";
-    return escapeHTML(source).replace(/\n/g, "<br>");
-  });
-
-  const encoded = $derived.by(() => {
-    if (!source || preserveLineBreaks || !renderMarkdown) return "";
-    return encodeBase64Utf8(source);
-  });
-
   const plainUserClass = $derived(
     tone === "user" ? "text-[color:var(--surface-user-text)]" : "",
   );
@@ -94,7 +84,7 @@
 {:else if preserveLineBreaks || !renderMarkdown}
   <div class={plainBlockClass}>{source}</div>
 {:else}
-  <div class={proseForTone(tone)} data-markdown-base64={encoded}>
-    <div class="whitespace-pre-wrap wrap-break-word">{@html fallbackHtml}</div>
+  <div class={proseForTone(tone)}>
+    <MarkdownContent content={source} fallbackClass={plainBlockClass} />
   </div>
 {/if}

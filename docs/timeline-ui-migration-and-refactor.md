@@ -10,8 +10,8 @@
 
 ### 1. 双产物构建
 
-- **时间线壳**：`npm run build` 第一步产出 `timeline-shell.js` + `timeline-shell.css`，由 [`src/timeline/main.ts`](../timeline-ui/src/timeline/main.ts) 入口打包（Svelte 5、Tailwind、marked、highlight.js、`src/bridge/*` 等）。
-- **Markdown 独立预览**：第二步使用 `vite.preview.config.ts` 产出 `markdown-preview.js` + `markdown-preview.css`，入口为 [`src/markdown/previewEntry.ts`](../timeline-ui/src/markdown/previewEntry.ts)（无 Svelte）。
+- **时间线壳**：`npm run build` 第一步产出 `timeline-shell.js` + `timeline-shell.css`，由 [`src/timeline-shell/main.ts`](../timeline-ui/src/timeline-shell/main.ts) 入口打包（Svelte 5、Tailwind、marked、highlight.js、`src/bridge/*` 等）。
+- **Markdown 独立预览**：第二步使用 `vite.config.ts` 的 `--mode markdown-preview` 产出 `markdown-preview.js` + `markdown-preview.css`，入口为 [`src/markdown-preview/main.ts`](../timeline-ui/src/markdown-preview/main.ts)（无 Svelte）。
 - **静态 HTML 模板**：`timeline-ui/public/` 下的 `timeline-shell.html`、`markdown-preview.html` 在构建时复制到 `CCReader/Resources/`，与上述静态资源同目录。
 
 ### 2. Swift 侧瘦身
@@ -29,14 +29,14 @@
 
 ### 4. Markdown 与代码高亮
 
-- **marked**：npm 依赖 + `src/markdown/ccreaderMarkedConfig.ts`（HTML 安全、图片、**围栏代码块 + chrome**）。
+- **marked**：npm 依赖 + `src/markdown-preview/ccreaderMarkedConfig.ts`（HTML 安全、图片、**围栏代码块 + chrome**）。
 - **时间线**：`main.ts` 引入 `timeline-app` + `markdown-shared` + `timeline`，打进 **`timeline-shell.css`**。
 - **Markdown 预览**：`markdown-preview.css`（`@import` tokens + `markdown-shared` + 本页 body/.markdown），打进 `markdown-preview.css`。
-- **Markdown 预览 fallback**：仅在 **`marked` 不可用或解析/增强流程抛错** 时，在 `previewEntry.ts` 中退回纯文本（`.plain-text`）；**不在** HTML 里先塞 fallback 再被覆盖。
+- **Markdown 预览 fallback**：仅在 **`marked` 不可用或解析/增强流程抛错** 时，在 `src/markdown-preview/main.ts` 中退回纯文本（`.plain-text`）；**不在** HTML 里先塞 fallback 再被覆盖。
 
 ### 5. 构建与资源安全
 
-- **`vite.config.ts` / `vite.preview.config.ts`** 通过 **`vite.build.shared.ts`** 共享 **`emptyOutDir: false`**、`outDir`、`rollupOptions.output.inlineDynamicImports` 等；避免清空整个 `CCReader/Resources`，误删 `Assets.xcassets`、`*.lproj` 等。
+- **`vite.config.ts`** 通过 **`vite.build.shared.ts`** 共享 **`emptyOutDir: false`**、`outDir`、`rollupOptions.output.inlineDynamicImports` 等，并用 `--mode timeline-shell|markdown-preview` 切换构建目标；避免清空整个 `CCReader/Resources`，误删 `Assets.xcassets`、`*.lproj` 等。
 - **`Package.swift` / Xcode**：将 `timeline-shell.*`、`markdown-preview.*`、对应 `.html` 等登记为资源；应用目标 **Resources** 与 SPM 一致。
 
 ### 6. 与旧文档的关系
@@ -115,9 +115,9 @@
 | 路径 | 说明 |
 |------|------|
 | `timeline-ui/` | 前端工程与 `public/*.html` 源模板 |
-| `timeline-ui/src/timeline/main.ts` | 时间线 shell 入口（Vite 主配置 `entry`） |
+| `timeline-ui/src/timeline-shell/main.ts` | 时间线 shell 入口（Vite 主配置 `entry`） |
 | `timeline-ui/src/bridge/` | `window.ccreader` 桥接（滚动、状态、WK 消息等） |
-| `timeline-ui/src/markdown/` | `marked` 配置、管线、`previewEntry`（markdown-preview 入口） |
+| `timeline-ui/src/markdown-preview/` | `marked` 配置、管线、`main.ts`（markdown-preview 入口） |
 | [`timeline-ui-color-tokens.md`](./timeline-ui-color-tokens.md) | 配色语义变量、修改方式、例外说明 |
 | `CCReader/Resources/` | 构建输出（含 `*.html`、`*-shell.js/css`、`markdown-preview.*`） |
 | `CCReader/Views/Timeline/WebRenderAssets.swift` | 资源读取与 `baseURL` |

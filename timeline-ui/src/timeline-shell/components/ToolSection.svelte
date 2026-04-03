@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ToolPayload } from "../types";
+  import type { ToolPayload } from "../../types";
   import MessageBody from "./MessageBody.svelte";
 
   let {

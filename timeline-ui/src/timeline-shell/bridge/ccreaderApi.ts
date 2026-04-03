@@ -1,4 +1,4 @@
-import type { MessagePayload, PrependOlderOpts, ReplaceTimelineOpts } from '../types';
+import type { MessagePayload, PrependOlderOpts, ReplaceTimelineOpts } from '../../types';
 import { commit, state } from './timelineState.svelte';
 import { isNearBottom, scrollBottomStable } from './scroll';
 

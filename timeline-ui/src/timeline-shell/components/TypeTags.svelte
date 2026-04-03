@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { MessagePayload } from '../types';
+  import type { MessagePayload } from '../../types';
 
   type Role = 'user' | 'assistant' | 'dispatch';
 

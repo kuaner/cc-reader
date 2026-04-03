@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { MessagePayload } from '../types';
+  import type { MessagePayload } from '../../types';
   import RawDataButton from './RawDataButton.svelte';
 
   const footerBase =

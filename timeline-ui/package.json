@@ -3,11 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && vite build --config vite.preview.config.ts",
-    "dev": "vite build --watch",
-    "dev:shell": "vite build --watch",
-    "dev:preview": "vite build --watch --config vite.preview.config.ts",
-    "dev:all": "concurrently -n shell,preview -c blue,magenta \"npm run dev:shell\" \"npm run dev:preview\"",
+    "build": "vite build --mode timeline-shell && vite build --mode markdown-preview",
+    "dev": "vite build --watch --mode timeline-shell",
+    "dev:shell": "vite build --watch --mode timeline-shell",
+    "dev:preview": "vite build --watch --mode markdown-preview",
+    "dev:all": "concurrently -n timeline-shell,markdown-preview -c blue,magenta \"npm run dev:shell\" \"npm run dev:preview\"",
     "test": "vitest run",
     "test:watch": "vitest"
   },

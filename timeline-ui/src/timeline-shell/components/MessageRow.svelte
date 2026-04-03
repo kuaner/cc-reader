@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { looksLikeMarkdown } from "../lib/strings";
-  import type { MessageBodyOptions } from "../lib/messageBodyOptions";
-  import type { MessagePayload } from "../types";
+  import { looksLikeMarkdown } from "../../lib/strings";
+  import type { MessageBodyOptions } from "../../lib/messageBodyOptions";
+  import type { MessagePayload } from "../../types";
   import BubbleFooter from "./BubbleFooter.svelte";
   import ErrorTag from "./ErrorTag.svelte";
   import MessageBody from "./MessageBody.svelte";

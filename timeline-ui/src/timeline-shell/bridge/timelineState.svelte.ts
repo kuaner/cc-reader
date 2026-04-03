@@ -1,8 +1,7 @@
 import { mount, tick } from 'svelte';
 import TimelineView from '../components/TimelineView.svelte';
-import { enhanceSubtree } from '../markdown/markdown';
 import { getTimeline } from './scroll';
-import type { MessagePayload } from '../types';
+import type { MessagePayload } from '../../types';
 
 export const state = $state({
   messages: [] as MessagePayload[],
@@ -15,7 +14,7 @@ let instance: ReturnType<typeof mount> | null = null;
 
 /**
  * Waits for Svelte to flush `$state` into the DOM (Preact `render` was synchronous).
- * Without `tick()`, `enhanceSubtree` and follow-up scroll can run against stale layout —
+ * Without `tick()`, follow-up scroll logic can run against stale layout —
  * long timelines look like a mid-page pause then a snap to the bottom.
  */
 export async function commit(): Promise<void> {
@@ -26,5 +25,4 @@ export async function commit(): Promise<void> {
     instance = mount(TimelineView, { target: el, props: { state } });
   }
   await tick();
-  enhanceSubtree(el);
 }

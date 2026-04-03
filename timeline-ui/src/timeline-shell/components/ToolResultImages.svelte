@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { escapeHTML } from "../lib/strings";
-  import type { MessagePayload } from "../types";
+  import { escapeHTML } from "../../lib/strings";
+  import type { MessagePayload } from "../../types";
 
   let { payload }: { payload: MessagePayload } = $props();
 
