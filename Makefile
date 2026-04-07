@@ -33,7 +33,7 @@ VOLNAME ?= CC Reader
 
 .DEFAULT_GOAL := help
 
-.PHONY: help gen web-install web-build web dmg-bundle archive-bundle open-xcode build debug release run app-path archive dmg version release-tag clean
+.PHONY: help gen web-install web-build web dmg-bundle archive-bundle open-xcode build debug release run app-path archive dmg release-tag clean
 
 help:
 	@printf "cc-reader build helpers\n\n"
@@ -50,8 +50,7 @@ help:
 	@printf "  make archive-bundle  Xcode archive only (no web; use after web-build)\n"
 	@printf "  make dmg           Run web, then dmg-bundle ($(DMG_PATH))\n"
 	@printf "  make dmg-bundle    Release app + DMG only (no web; use after web-build)\n"
-	@printf "  make version     Update MARKETING_VERSION (and optional build number)\n"
-	@printf "  make release-tag Update version, commit, tag, and push to remote\n"
+	@printf "  make release-tag Update version, run gen, commit, tag, and push to remote\n"
 	@printf "  make clean       Remove the local build directory\n\n"
 	@printf "Note: make debug/release/build do not run the web build; run make web first if timeline-ui changed.\n"
 	@printf "Optional overrides:\n"
@@ -60,7 +59,6 @@ help:
 	@printf "  make archive ARCHIVE_PATH=build/custom.xcarchive\n"
 	@printf "  make dmg DMG_NAME=cc-reader-beta.dmg\n"
 	@printf "  make build ARCHS='arm64 x86_64'\n"
-	@printf "  make version VERSION=0.2.0 BUILD_NUMBER=2\n"
 	@printf "  make release-tag VERSION=0.2.0 BUILD_NUMBER=2\n"
 
 gen:
@@ -139,27 +137,21 @@ dmg-bundle:
 		"$(DMG_PATH)"
 	@printf "Created %s\n" "$(DMG_PATH)"
 
-version:
-	@test -n "$(VERSION)" || { echo "VERSION is required. Example: make version VERSION=0.2.0 BUILD_NUMBER=2"; exit 1; }
-	@perl -0pi -e 's/MARKETING_VERSION: .*/MARKETING_VERSION: $(VERSION)/' "$(PROJECT_YML)"
-	@if [ -n "$(BUILD_NUMBER)" ]; then \
-		perl -0pi -e 's/CURRENT_PROJECT_VERSION: .*/CURRENT_PROJECT_VERSION: $(BUILD_NUMBER)/' "$(PROJECT_YML)"; \
-	fi
-	@printf "Updated %s to MARKETING_VERSION=%s" "$(PROJECT_YML)" "$(VERSION)"
-	@if [ -n "$(BUILD_NUMBER)" ]; then printf ", CURRENT_PROJECT_VERSION=%s" "$(BUILD_NUMBER)"; fi
-	@printf "\n"
-
 release-tag:
 	@test -n "$(VERSION)" || { echo "VERSION is required. Example: make release-tag VERSION=0.2.0 BUILD_NUMBER=2"; exit 1; }
 	@test -z "$$($(GIT) status --porcelain)" || { echo "Git working tree must be clean before release-tag"; exit 1; }
 	@$(GIT) rev-parse "$(TAG_PREFIX)$(VERSION)" >/dev/null 2>&1 && { echo "Tag $(TAG_PREFIX)$(VERSION) already exists"; exit 1; } || true
-	$(MAKE) version VERSION=$(VERSION) BUILD_NUMBER=$(BUILD_NUMBER)
-	@$(GIT) add "$(PROJECT_YML)"
+	@perl -0pi -e 's/MARKETING_VERSION: .*/MARKETING_VERSION: $(VERSION)/' "$(PROJECT_YML)"
+	@if [ -n "$(BUILD_NUMBER)" ]; then \
+		perl -0pi -e 's/CURRENT_PROJECT_VERSION: .*/CURRENT_PROJECT_VERSION: $(BUILD_NUMBER)/' "$(PROJECT_YML)"; \
+	fi
+	$(MAKE) gen
+	@$(GIT) add "$(PROJECT_YML)" "$(PROJECT)/project.pbxproj"
 	@$(GIT) commit -m "Release $(TAG_PREFIX)$(VERSION)"
 	@$(GIT) tag "$(TAG_PREFIX)$(VERSION)"
 	$(GIT) push $(REMOTE) HEAD
 	$(GIT) push $(REMOTE) "$(TAG_PREFIX)$(VERSION)"
-	@printf "Released %s (commit + tag + pushed)\n" "$(TAG_PREFIX)$(VERSION)"
+	@printf "Released %s (version updated + gen + commit + tag + pushed)\n" "$(TAG_PREFIX)$(VERSION)"
 
 clean:
 	rm -rf build
