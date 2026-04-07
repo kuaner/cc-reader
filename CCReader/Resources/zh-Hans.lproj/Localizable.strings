@@ -60,6 +60,7 @@
 "timeline.message.copied" = "已复制";
 "timeline.message.rawdata" = "原数据";
 "timeline.noMessages" = "暂无消息";
+"timeline.empty.hint" = "会话加载后，将在此显示轮次、工具调用与思考块。";
 "timeline.rewind.confirmMessage" = "将删除此消息之后的所有内容。此操作无法撤销。";
 "timeline.rewind.confirmTitle" = "确认回滚";
 "timeline.rewind.execute" = "回滚";
@@ -93,5 +94,6 @@
 "sidebar.hide" = "隐藏侧边栏";
 "sidebar.show" = "显示侧边栏";
 "sidebar.toggle" = "切换侧边栏";
+"menu.theme" = "主题";
 "初回同期中..." = "首次同步中...";
 "読み込み中..." = "加载中...";

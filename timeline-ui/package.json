@@ -1,0 +1,32 @@
+{
+  "name": "ccreader-timeline-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync-themes": "node scripts/sync-themes.mjs",
+    "prebuild": "npm run sync-themes",
+    "build": "vite build --mode timeline-shell && vite build --mode markdown-preview",
+    "dev": "vite build --watch --mode timeline-shell",
+    "dev:shell": "vite build --watch --mode timeline-shell",
+    "dev:preview": "vite build --watch --mode markdown-preview",
+    "dev:all": "concurrently -n timeline-shell,markdown-preview -c blue,magenta \"npm run dev:shell\" \"npm run dev:preview\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "marked": "^17.0.5",
+    "svelte": "^5.55.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/node": "^25.5.0",
+    "concurrently": "^9.2.1",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.7.2",
+    "vite": "^8.0.3",
+    "vitest": "^4.1.2"
+  }
+}

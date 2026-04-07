@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct SessionPickerView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let onSelect: (Session) -> Void
     let onCancel: () -> Void
 
@@ -64,6 +66,13 @@ struct SessionPickerView: View {
                             .tag(session.sessionId)
                             .id(session.sessionId)
                             .listRowSeparator(.hidden)
+                            .listRowBackground(
+                                selectedSessionId == session.sessionId && !alreadyOpen
+                                    ? RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(Color.sessionLedgerSidebarSelection(for: colorScheme))
+                                        .padding(.horizontal, 4)
+                                    : nil
+                            )
                             .opacity(alreadyOpen ? 0.35 : 1)
                             .contentShape(Rectangle())
                             .onHover { hovering in

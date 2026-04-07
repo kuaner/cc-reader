@@ -8,8 +8,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
     let snapshot: TimelineRenderSnapshot
 
     static func == (lhs: TimelineHostView, rhs: TimelineHostView) -> Bool {
-        lhs.sessionId == rhs.sessionId &&
-        lhs.snapshot.generation == rhs.snapshot.generation
+        lhs.sessionId == rhs.sessionId && lhs.snapshot.generation == rhs.snapshot.generation
     }
 
     func makeCoordinator() -> Coordinator {
@@ -18,6 +17,11 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        let labels = TimelineWebLabels.localized()
+        let bootSource = Coordinator.ccreaderTimelineBootScriptSource(labels: labels)
+        let bootScript = WKUserScript(
+            source: bootSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        config.userContentController.addUserScript(bootScript)
         config.userContentController.add(context.coordinator, name: "ccreader")
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
@@ -46,19 +50,23 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         /// (Scroll distance to the top bar is unrelated — that bar appears when there are older rows not yet in the window.)
         private static let renderBatchSize = TimelineRenderTuning.renderBatchSize
         private static let followBottomThreshold = TimelineRenderTuning.followBottomThreshold
-        private static let progressiveReplaceThreshold = TimelineRenderTuning.progressiveReplaceThreshold
-        private static let progressiveInitialLatestCount = TimelineRenderTuning.progressiveInitialLatestCount
-        private static let progressivePrependChunkSize = TimelineRenderTuning.progressivePrependChunkSize
+        private static let progressiveReplaceThreshold = TimelineRenderTuning
+            .progressiveReplaceThreshold
+        private static let progressiveInitialLatestCount = TimelineRenderTuning
+            .progressiveInitialLatestCount
+        private static let progressivePrependChunkSize = TimelineRenderTuning
+            .progressivePrependChunkSize
 
         private weak var webView: WKWebView?
+        private var themeObserver: NSObjectProtocol?
         private var currentSessionId = ""
         private var snapshot = TimelineRenderSnapshot()
 
         // Incremental state — tracks exactly what the DOM contains.
         private enum ShellState { case notLoaded, loading, loaded }
         private var shellState: ShellState = .notLoaded
-        private var renderedMessageUUIDs: [String] = []       // Ordered list of UUIDs in DOM
-        private var renderedMessageSet: Set<String> = []       // Fast lookup
+        private var renderedMessageUUIDs: [String] = []  // Ordered list of UUIDs in DOM
+        private var renderedMessageSet: Set<String> = []  // Fast lookup
         private var renderedFingerprints: [String: Int] = [:]  // UUID → rawFingerprint for change detection
         private var hasWaitingIndicator = false
         private var hasOlderIndicator = false
@@ -75,11 +83,32 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         func attach(to webView: WKWebView) {
             self.webView = webView
+            if themeObserver == nil {
+                themeObserver = NotificationCenter.default.addObserver(
+                    forName: .ccReaderWebThemeDidChange,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] note in
+                    guard let raw = note.userInfo?["themeId"] as? String,
+                        let theme = WebColorTheme(rawValue: raw),
+                        let wv = self?.webView
+                    else { return }
+                    WebColorTheme.apply(theme, to: wv)
+                }
+            }
+        }
+
+        deinit {
+            if let themeObserver {
+                NotificationCenter.default.removeObserver(themeObserver)
+            }
         }
 
         // MARK: - WKScriptMessageHandler
 
-        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        func userContentController(
+            _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
+        ) {
             guard let body = message.body as? [String: Any] else { return }
             let action = body["action"] as? String ?? ""
 
@@ -139,24 +168,23 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             guard let webView else { return }
 
             let messages = currentRenderedMessages()
-            let labels = TimelineWebLabels.localized()
 
             // Track initial state (DOM filled in `didFinish` via payload → JS, same path as session replace).
             renderedMessageUUIDs = messages.map(\.uuid)
             renderedMessageSet = Set(renderedMessageUUIDs)
-            renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
+            renderedFingerprints = Dictionary(
+                uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
             hasWaitingIndicator = snapshot.visibleMessages.last?.type == .user
             hasOlderIndicator = renderedMessageRange.lowerBound > 0
 
             let document = makeShellHTML(
                 messageHTML: "",
                 loadOlderHTML: "",
-                waitingHTML: "",
-                labels: labels
+                waitingHTML: ""
             )
 
             shellState = .loading
-            webView.loadHTMLString(document, baseURL: nil)
+            webView.loadHTMLString(document, baseURL: WebRenderResourceLoader.resourceDirectoryURL)
         }
 
         // MARK: - Incremental update (no page reload!)
@@ -225,7 +253,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             // Handle waiting indicator changes.
             if waitingChanged {
                 if shouldShowWaiting {
-                    commands.append(.setWaitingIndicator(htmlOrEmpty: waitingIndicatorHTML(labels: labels)))
+                    commands.append(
+                        .setWaitingIndicator(htmlOrEmpty: waitingIndicatorHTML(labels: labels)))
                 } else {
                     commands.append(.setWaitingIndicator(htmlOrEmpty: ""))
                 }
@@ -269,23 +298,27 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
                 "loadOlderBarHTML": loadOlderHTML,
                 "waitingHTML": waitingHTML,
                 "initialLatestCount": Self.progressiveInitialLatestCount,
-                "prependChunkSize": Self.progressivePrependChunkSize
+                "prependChunkSize": Self.progressivePrependChunkSize,
             ]
             guard let payloadJSON = toJSONString(envelope) else { return }
 
             if updatingCoordinatorState {
                 renderedMessageUUIDs = messages.map(\.uuid)
                 renderedMessageSet = Set(renderedMessageUUIDs)
-                renderedFingerprints = Dictionary(uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
+                renderedFingerprints = Dictionary(
+                    uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
                 hasWaitingIndicator = waiting
                 hasOlderIndicator = hasOlder
                 isFollowingBottom = true
             }
 
-            let replaceCommand: TimelineJSCommand = messages.count >= Self.progressiveReplaceThreshold
+            let replaceCommand: TimelineJSCommand =
+                messages.count >= Self.progressiveReplaceThreshold
                 ? .replaceTimelineFromPayloadsProgressive(json: payloadJSON)
                 : .replaceTimelineFromPayloads(json: payloadJSON)
-            evaluate(commands: [replaceCommand], errorPrefix: "[TimelineHostView] replaceTimelineFromPayloads JS error")
+            evaluate(
+                commands: [replaceCommand],
+                errorPrefix: "[TimelineHostView] replaceTimelineFromPayloads JS error")
         }
 
         // MARK: - Load older (prepend with scroll preservation)
@@ -307,10 +340,10 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             let envelope: [String: Any] = [
                 "messages": olderMessages.map { payloadBuilder.messagePayload(for: $0) },
-                "removeOlderBar": shouldRemoveOlderBar
+                "removeOlderBar": shouldRemoveOlderBar,
             ]
             guard let payloadJSON = toJSONString(envelope) else { return }
-            
+
             if shouldRemoveOlderBar {
                 hasOlderIndicator = false
             }
@@ -326,13 +359,16 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
             previousVisibleMessageCount = snapshot.visibleMessages.count
 
-            evaluate(commands: [.prependOlderFromPayloads(json: payloadJSON)], errorPrefix: "[TimelineHostView] prepend JS error")
+            evaluate(
+                commands: [.prependOlderFromPayloads(json: payloadJSON)],
+                errorPrefix: "[TimelineHostView] prepend JS error")
         }
 
         private func toJSONString(_ value: Any) -> String? {
             guard JSONSerialization.isValidJSONObject(value),
-                  let data = try? JSONSerialization.data(withJSONObject: value, options: []),
-                  let json = String(data: data, encoding: .utf8) else {
+                let data = try? JSONSerialization.data(withJSONObject: value, options: []),
+                let json = String(data: data, encoding: .utf8)
+            else {
                 return nil
             }
             return json
@@ -348,7 +384,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         private func evaluate(commands: [TimelineJSCommand], errorPrefix: String) {
             guard !commands.isEmpty, let webView else { return }
-            let commandScript = commands
+            let commandScript =
+                commands
                 .map { $0.script(escapingWith: escapeForJS) }
                 .joined(separator: "\n")
             let js = "(function(){\n\(commandScript)\n})();"
@@ -366,9 +403,13 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             replaceTimelineContentViaPayloads(updatingCoordinatorState: false)
             // Pick up any snapshot drift while the shell was loading.
             incrementalUpdate()
+            WebColorTheme.apply(WebColorTheme.stored, to: webView)
         }
 
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        func webView(
+            _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
             guard let url = navigationAction.request.url else {
                 decisionHandler(.allow)
                 return
@@ -428,7 +469,8 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
 
             if totalCount > previousVisibleMessageCount,
-               renderedMessageRange.upperBound == previousVisibleMessageCount {
+                renderedMessageRange.upperBound == previousVisibleMessageCount
+            {
                 // New messages appended — expand window to include them.
                 renderedMessageRange = renderedMessageRange.lowerBound..<totalCount
                 previousVisibleMessageCount = totalCount
@@ -436,8 +478,9 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
 
             if renderedMessageRange.upperBound <= totalCount,
-               renderedMessageRange.lowerBound >= 0,
-               renderedMessageRange.lowerBound < renderedMessageRange.upperBound {
+                renderedMessageRange.lowerBound >= 0,
+                renderedMessageRange.lowerBound < renderedMessageRange.upperBound
+            {
                 previousVisibleMessageCount = totalCount
                 return
             }
@@ -474,51 +517,51 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         }
 
         private func isBootstrapSnapshot(_ snapshot: TimelineRenderSnapshot) -> Bool {
-            snapshot.generation == 0 &&
-            snapshot.visibleMessages.isEmpty &&
-            snapshot.prevTimestampMap.isEmpty
+            snapshot.generation == 0 && snapshot.visibleMessages.isEmpty
+                && snapshot.prevTimestampMap.isEmpty
         }
 
         // MARK: - Shell HTML (loaded once per session)
 
-        private func makeShellHTML(messageHTML: String, loadOlderHTML: String, waitingHTML: String, labels: TimelineWebLabels) -> String {
-            let highlightStyles = HighlightThemeLoader.stylesheet
-            let codeBlockStyles = WebRenderChrome.codeBlockStylesheet
-            let messageActionStyles = WebRenderChrome.messageActionStylesheet
-            let markedJS = MarkedJavaScriptLoader.script
-            let highlightJS = HighlightJavaScriptLoader.script
-            let codeBlockScript = WebRenderChrome.codeBlockEnhancementScript(copyLabel: labels.copy, copiedLabel: labels.copied)
-            let messageCopyScript = WebRenderChrome.messageCopyEnhancementScript(copiedLabel: labels.copied)
-            let shellCSS = WebRenderResourceLoader.text(named: "timeline-shell", extension: "css")
-            let shellJS = WebRenderResourceLoader.text(named: "timeline-shell", extension: "js")
-                .replacingOccurrences(of: "__FOLLOW_BOTTOM_THRESHOLD__", with: "\(Int(Self.followBottomThreshold))")
+        private func makeShellHTML(messageHTML: String, loadOlderHTML: String, waitingHTML: String)
+            -> String
+        {
+            var template = WebRenderResourceLoader.text(named: "timeline-shell", extension: "html")
+            let body = "\(loadOlderHTML)\(messageHTML)\(waitingHTML)"
+            template = template.replacingOccurrences(
+                of: "<!-- CCREADER_TIMELINE_BODY -->", with: body)
+            return template
+        }
 
+        /// Injected at `documentStart` so `timeline-shell.js` runs after globals exist (no boot in HTML).
+        static func ccreaderTimelineBootScriptSource(labels: TimelineWebLabels) -> String {
+            struct Boot: Encodable {
+                let copy: String
+                let copied: String
+                let emptyTitle: String
+                let emptyHint: String
+            }
+
+            let boot = Boot(
+                copy: labels.copy,
+                copied: labels.copied,
+                emptyTitle: labels.emptyTitle,
+                emptyHint: labels.emptyHint
+            )
+            let json: String
+            if let data = try? JSONEncoder().encode(boot),
+                let s = String(data: data, encoding: .utf8)
+            {
+                json = s
+            } else {
+                json =
+                    #"{"copy":"Copy","copied":"Copied","emptyTitle":"No messages","emptyHint":""}"#
+            }
+            let threshold = Int(Self.followBottomThreshold)
             return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <style>
-                \(shellCSS)
-                \(codeBlockStyles)
-                \(messageActionStyles)
-                \(highlightStyles)
-              </style>
-            </head>
-            <body>
-              <div class="timeline">\(loadOlderHTML)\(messageHTML)\(waitingHTML)</div>
-              <script>
-                \(markedJS)
-                \(highlightJS)
-                \(codeBlockScript)
-                \(messageCopyScript)
-
-                \(shellJS)
-              </script>
-            </body>
-            </html>
-            """
+                window.__CCREADER_I18N__=\(json);
+                window.__FOLLOW_BOTTOM_THRESHOLD__=\(threshold);
+                """
         }
 
         private func escapeHTML(_ text: String) -> String {
@@ -554,6 +597,8 @@ struct TimelineWebLabels {
     let copy: String
     let rawData: String
     let copied: String
+    let emptyTitle: String
+    let emptyHint: String
     let legendUser: String
     let legendAssistant: String
     let legendSummary: String
@@ -570,6 +615,8 @@ struct TimelineWebLabels {
             copy: L("timeline.message.copy"),
             rawData: L("timeline.message.rawdata"),
             copied: L("timeline.message.copied"),
+            emptyTitle: L("timeline.noMessages"),
+            emptyHint: L("timeline.empty.hint"),
             legendUser: L("timeline.legend.user"),
             legendAssistant: L("timeline.legend.assistant"),
             legendSummary: L("timeline.legend.summary")

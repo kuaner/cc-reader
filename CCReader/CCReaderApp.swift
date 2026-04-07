@@ -81,6 +81,10 @@ struct CCReaderApp: App {
                 .keyboardShortcut("b", modifiers: .command)
             }
 
+            CommandGroup(after: .sidebar) {
+                ThemeMenuCommands()
+            }
+
             CommandGroup(replacing: .help) {
                 Button(L("menu.github")) {
                     if let url = URL(string: "https://github.com/kuaner/cc-reader") {
@@ -88,6 +92,36 @@ struct CCReaderApp: App {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Theme menu（与 UserDefaults 同步，显示当前选中）
+
+private struct ThemeMenuCommands: View {
+    @AppStorage(WebColorTheme.storageKey) private var themeIdRaw: String = WebColorTheme.everforest.rawValue
+
+    private var selectedTheme: Binding<WebColorTheme> {
+        Binding(
+            get: { WebColorTheme(rawValue: themeIdRaw) ?? .everforest },
+            set: { $0.broadcast() }
+        )
+    }
+
+    var body: some View {
+        Menu {
+            // 必须用 Picker：AppKit 菜单会忽略 Button 里 Image 的 opacity，导致所有 ✓ 都画出来。
+            Picker(selection: selectedTheme) {
+                ForEach(WebColorTheme.allCases, id: \.self) { theme in
+                    Text(theme.menuTitleEnglish).tag(theme)
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } label: {
+            Label(L("menu.theme"), systemImage: "paintpalette.fill")
         }
     }
 }

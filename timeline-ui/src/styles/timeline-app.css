@@ -1,0 +1,415 @@
+@import './design-tokens.css';
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --max-width-timeline: min(100%, clamp(560px, 82vw, 1080px));
+}
+
+/*
+ * Custom Typography color themes — official pattern (@utility + --tw-prose-*).
+ * https://github.com/tailwindlabs/tailwindcss-typography#adding-custom-color-themes
+ * Use: class="markdown prose prose-ccreader-assistant" (or -user).
+ */
+@utility prose-ccreader-assistant {
+  --tw-prose-body: var(--text);
+  --tw-prose-headings: var(--text);
+  --tw-prose-lead: var(--text);
+  --tw-prose-links: var(--accent-link);
+  --tw-prose-bold: var(--text);
+  --tw-prose-counters: var(--muted);
+  --tw-prose-bullets: var(--muted);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--muted);
+  --tw-prose-quote-borders: var(--border);
+  --tw-prose-captions: var(--muted);
+  --tw-prose-kbd: var(--text);
+  --tw-prose-kbd-shadows: rgba(0, 0, 0, 0.08);
+  --tw-prose-code: var(--text);
+  --tw-prose-pre-code: var(--text);
+  --tw-prose-pre-bg: transparent;
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
+  --tw-prose-invert-body: var(--text);
+  --tw-prose-invert-headings: var(--text);
+  --tw-prose-invert-lead: var(--text);
+  --tw-prose-invert-links: var(--accent-link);
+  --tw-prose-invert-bold: var(--text);
+  --tw-prose-invert-counters: var(--muted);
+  --tw-prose-invert-bullets: var(--muted);
+  --tw-prose-invert-hr: var(--border);
+  --tw-prose-invert-quotes: var(--muted);
+  --tw-prose-invert-quote-borders: var(--border);
+  --tw-prose-invert-captions: var(--muted);
+  --tw-prose-invert-code: var(--text);
+  --tw-prose-invert-pre-code: var(--text);
+  --tw-prose-invert-pre-bg: transparent;
+  --tw-prose-invert-th-borders: var(--border);
+  --tw-prose-invert-td-borders: var(--border);
+}
+
+@utility prose-ccreader-user {
+  --tw-prose-body: var(--surface-user-text);
+  --tw-prose-headings: var(--surface-user-text);
+  --tw-prose-lead: var(--surface-user-text);
+  --tw-prose-links: var(--bubble-user-link);
+  --tw-prose-bold: var(--surface-user-text);
+  --tw-prose-counters: var(--surface-user-text);
+  --tw-prose-bullets: var(--surface-user-text);
+  --tw-prose-hr: var(--bubble-user-blockquote-border);
+  --tw-prose-quotes: var(--surface-user-text);
+  --tw-prose-quote-borders: var(--bubble-user-blockquote-border);
+  --tw-prose-captions: var(--surface-user-text);
+  --tw-prose-kbd: var(--surface-user-text);
+  --tw-prose-kbd-shadows: rgba(0, 0, 0, 0.12);
+  --tw-prose-code: var(--bubble-user-inline-code-fg);
+  --tw-prose-pre-code: var(--bubble-user-inline-code-fg);
+  --tw-prose-pre-bg: transparent;
+  --tw-prose-th-borders: var(--bubble-user-blockquote-border);
+  --tw-prose-td-borders: var(--bubble-user-blockquote-border);
+  --tw-prose-invert-body: var(--surface-user-text);
+  --tw-prose-invert-headings: var(--surface-user-text);
+  --tw-prose-invert-lead: var(--surface-user-text);
+  --tw-prose-invert-links: var(--bubble-user-link);
+  --tw-prose-invert-bold: var(--surface-user-text);
+  --tw-prose-invert-counters: var(--surface-user-text);
+  --tw-prose-invert-bullets: var(--surface-user-text);
+  --tw-prose-invert-hr: var(--bubble-user-blockquote-border);
+  --tw-prose-invert-quotes: var(--surface-user-text);
+  --tw-prose-invert-quote-borders: var(--bubble-user-blockquote-border);
+  --tw-prose-invert-captions: var(--surface-user-text);
+  --tw-prose-invert-code: var(--bubble-user-inline-code-fg);
+  --tw-prose-invert-pre-code: var(--bubble-user-inline-code-fg);
+  --tw-prose-invert-pre-bg: transparent;
+  --tw-prose-invert-th-borders: var(--bubble-user-blockquote-border);
+  --tw-prose-invert-td-borders: var(--bubble-user-blockquote-border);
+}
+
+/*
+ * 时间线 WKWebView 整页入口：design-tokens + Tailwind + 布局与组件 prose。
+ * Markdown 代码外观：`markdown-shared.css` + `timeline.css`（main.ts）。See /.impeccable.md.
+ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    @apply m-0 overflow-x-hidden bg-transparent;
+    font-family: var(--font-ui);
+    font-size: var(--cc-type-root);
+    line-height: var(--cc-type-root-leading);
+    color: var(--text);
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  body {
+    @apply px-3 pb-6 pt-4 sm:px-4;
+  }
+
+  ::selection {
+    background: var(--selection-assistant);
+    color: inherit;
+  }
+
+  .bubble.user ::selection {
+    background: var(--selection-user);
+    color: var(--surface-user-text);
+  }
+}
+
+/* Swift-injected “load older” / links share these hooks */
+@layer components {
+  .timeline {
+    @apply flex flex-col gap-5;
+  }
+
+  /* Shell wrapper for injected HTML — must be a real box (see ChromeSlot comment). */
+  .ccreader-chrome-slot {
+    @apply block w-full min-w-0;
+  }
+
+  /* Load-older strip: full row width, pill centered (Swift: `#load-older-bar.topbar` + `.pill`) */
+  .topbar {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    font-size: var(--cc-type-chrome-caps);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--cc-track-topbar);
+    color: var(--muted);
+  }
+
+  #load-older-bar.topbar {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .pill {
+    display: inline-flex;
+    min-height: var(--cc-size-pill-min-height);
+    max-width: 100%;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    padding: var(--cc-size-pill-pad-y) var(--cc-size-pill-pad-x);
+    font-size: var(--cc-type-pill);
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    background: var(--button);
+    color: inherit;
+    transition:
+      background 0.18s ease,
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .pill:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  .pill:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .pill:hover {
+      filter: brightness(0.97);
+    }
+    .bubble.user .pill:hover {
+      filter: brightness(1.08);
+    }
+  }
+
+  .pill.special {
+    border: 1px solid var(--pill-special-border);
+    background: var(--pill-special-bg);
+    color: var(--pill-special-text);
+  }
+
+  /* Chat bubbles: subtle lift on desktop pointer; no hover flash on touch */
+  @media (hover: hover) and (pointer: fine) {
+    .bubble.assistant-card {
+      transition:
+        box-shadow 0.22s ease,
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+    }
+
+    /* Small lift + border highlight (not large ambient shadow) */
+    .bubble.assistant-card.tone-assistant:hover {
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+      border-color: var(--bubble-assistant-hover-border);
+    }
+
+    .bubble.assistant-card.tone-dispatch:hover {
+      box-shadow:
+        inset 0 0 0 1px var(--bubble-dispatch-inset),
+        0 1px 4px rgba(0, 0, 0, 0.08);
+      border-color: var(--bubble-dispatch-hover-border);
+    }
+
+    .bubble.user:not(.summary) {
+      transition:
+        filter 0.2s ease,
+        box-shadow 0.22s ease,
+        border-color 0.2s ease;
+    }
+
+    .bubble.user:not(.summary):hover {
+      filter: brightness(1.02);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      border-color: var(--bubble-user-rim-hover);
+      border-left-color: var(--bubble-user-accent-hover);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pill,
+    .bubble.assistant-card,
+    .bubble.user {
+      transition: none !important;
+    }
+
+    .pill:active {
+      transform: none;
+    }
+  }
+
+  /* Swift `waitingIndicatorHTML` / load-older chrome (class names fixed in TimelineHostView) */
+  .row {
+    @apply flex w-full;
+  }
+  .row.assistant {
+    @apply justify-start;
+  }
+  .row.user {
+    @apply justify-end;
+  }
+  .stack {
+    @apply flex w-full max-w-timeline flex-col gap-2.5;
+  }
+
+  @keyframes timeline-empty-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 4px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Empty session (Swift injects copy via window.__CCREADER_I18N__)
+     Inset matches assistant bubble horizontal padding (px-4) for column alignment. */
+  .timeline-empty {
+    @apply flex w-full max-w-timeline flex-col gap-2 px-4 py-3;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .timeline-empty {
+      animation: timeline-empty-in 0.22s ease-out both;
+    }
+  }
+
+  .timeline-empty-title {
+    margin: 0;
+    font-size: var(--cc-type-empty-title);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .timeline-empty-hint {
+    margin: 0;
+    max-width: 65ch;
+    font-size: var(--cc-type-empty-hint);
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  /*
+   * Assistant masthead: label + model chip share one row height (fixes baseline vs global .pill min-height).
+   */
+  .assistant-header {
+    @apply flex flex-wrap items-center gap-x-2 gap-y-1.5;
+  }
+
+  .assistant-header .pill {
+    box-sizing: border-box;
+    display: inline-flex;
+    height: var(--cc-size-pill-compact-height);
+    min-height: var(--cc-size-pill-compact-height);
+    max-height: var(--cc-size-pill-compact-height);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--cc-type-pill-compact);
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  /* Long URLs / CJK: avoid overflow without ugly breaks in chat width */
+  .bubble .markdown {
+    overflow-wrap: anywhere;
+    font-family: var(--font-read);
+    font-size: clamp(
+      var(--cc-type-md-min),
+      calc(var(--cc-type-md-vw) + var(--cc-type-md-pref)),
+      var(--cc-type-md-max)
+    );
+    line-height: var(--cc-type-md-leading);
+  }
+
+  .bubble .markdown code,
+  .bubble .markdown pre,
+  .bubble .markdown kbd,
+  .bubble .markdown samp {
+    font-family: var(--font-mono);
+    font-size: var(--cc-type-md-code-em);
+  }
+
+  .bubble .markdown a:focus-visible {
+    outline: none;
+    border-radius: 0.2rem;
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  .bubble.user .markdown a:focus-visible {
+    box-shadow: 0 0 0 3px var(--bubble-user-focus-ring);
+  }
+
+  /*
+   * Typography theme tokens: @utility prose-ccreader-assistant | prose-ccreader-user (see file top).
+   * Link/heading/strong colors come from --tw-prose-* there.
+   */
+
+  /* Compact scan mode: headings still distinct but closer to body */
+  .bubble .markdown.prose-ccreader-assistant.prose h1,
+  .bubble .markdown.prose-ccreader-user.prose h1 {
+    font-size: var(--cc-type-prose-h1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .bubble .markdown.prose-ccreader-assistant.prose h2,
+  .bubble .markdown.prose-ccreader-user.prose h2 {
+    font-size: var(--cc-type-prose-h2);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.28;
+  }
+
+  .bubble .markdown.prose-ccreader-assistant.prose h3,
+  .bubble .markdown.prose-ccreader-user.prose h3 {
+    font-size: var(--cc-type-prose-h3);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /*
+   * thead th shares --tw-prose-headings with h1–h4; split header vs body row labels.
+   */
+  .bubble .markdown.prose-ccreader-assistant.prose table thead th {
+    color: var(--muted);
+  }
+
+  .bubble .markdown.prose-ccreader-assistant.prose table tbody th {
+    color: var(--text);
+  }
+
+  /* Waiting row: `.bubble.assistant` without `.assistant-card` */
+  .bubble.assistant:not(.assistant-card) {
+    border-radius: 1rem;
+    padding: 0.75rem;
+    font-size: var(--cc-type-secondary);
+    line-height: var(--cc-type-secondary-leading);
+    color: var(--muted);
+    background: var(--surface-assistant);
+    border: 1px solid var(--bubble-assistant-border);
+  }
+}

@@ -8,6 +8,9 @@ DESTINATION := generic/platform=macOS
 ARCHS ?= arm64 x86_64
 ONLY_ACTIVE_ARCH ?= NO
 
+TIMELINE_UI_DIR := timeline-ui
+NPM ?= npm
+
 XCODEGEN ?= xcodegen
 XCODEBUILD ?= xcodebuild
 OPEN ?= open
@@ -30,21 +33,27 @@ VOLNAME ?= CC Reader
 
 .DEFAULT_GOAL := help
 
-.PHONY: help gen open-xcode build debug release run app-path archive dmg version release-tag clean
+.PHONY: help gen web-install web-build web dmg-bundle archive-bundle open-xcode build debug release run app-path archive dmg version release-tag clean
 
 help:
 	@printf "cc-reader build helpers\n\n"
+	@printf "  make web-install Install timeline-ui deps (npm ci)\n"
+	@printf "  make web-build   Build timeline-ui into CCReader/Resources (npm run build; needs web-install first)\n"
+	@printf "  make web         web-install + web-build\n"
 	@printf "  make gen         Generate $(PROJECT) from project.yml\n"
 	@printf "  make open-xcode  Open $(PROJECT)\n"
 	@printf "  make debug       Build a Debug app into $(BUILD_PRODUCTS)/Debug\n"
 	@printf "  make release     Build a Release app into $(BUILD_PRODUCTS)/Release\n"
 	@printf "  make run         Build with CONFIG=<Debug|Release> and open the app\n"
 	@printf "  make app-path    Print the expected app bundle path for CONFIG\n"
-	@printf "  make archive     Create an xcarchive at $(ARCHIVE_PATH)\n"
-	@printf "  make dmg         Build Release and package $(DMG_PATH)\n"
+	@printf "  make archive     Run web, then archive-bundle (xcarchive at $(ARCHIVE_PATH))\n"
+	@printf "  make archive-bundle  Xcode archive only (no web; use after web-build)\n"
+	@printf "  make dmg           Run web, then dmg-bundle ($(DMG_PATH))\n"
+	@printf "  make dmg-bundle    Release app + DMG only (no web; use after web-build)\n"
 	@printf "  make version     Update MARKETING_VERSION (and optional build number)\n"
 	@printf "  make release-tag Update version, commit, tag, and push to remote\n"
 	@printf "  make clean       Remove the local build directory\n\n"
+	@printf "Note: make debug/release/build do not run the web build; run make web first if timeline-ui changed.\n"
 	@printf "Optional overrides:\n"
 	@printf "  make build CONFIG=Release\n"
 	@printf "  make run CONFIG=Release\n"
@@ -57,6 +66,18 @@ help:
 gen:
 	@command -v $(XCODEGEN) >/dev/null || { echo "xcodegen not found. Install it with: brew install xcodegen"; exit 1; }
 	$(XCODEGEN) generate
+
+web-install:
+	@command -v $(NPM) >/dev/null || { echo "npm not found. Install Node.js (https://nodejs.org/) or use nvm/fnm."; exit 1; }
+	$(NPM) --prefix $(TIMELINE_UI_DIR) ci
+
+web-build:
+	@command -v $(NPM) >/dev/null || { echo "npm not found. Install Node.js (https://nodejs.org/) or use nvm/fnm."; exit 1; }
+	$(NPM) --prefix $(TIMELINE_UI_DIR) run build
+
+web:
+	$(MAKE) web-install
+	$(MAKE) web-build
 
 open-xcode: gen
 	$(OPEN) $(PROJECT)
@@ -85,7 +106,10 @@ run: build
 app-path:
 	@printf "%s\n" "$(APP_PATH)"
 
-archive: gen
+archive: web
+	$(MAKE) archive-bundle
+
+archive-bundle: gen
 	$(XCODEBUILD) \
 		-project $(PROJECT) \
 		-scheme $(SCHEME) \
@@ -97,7 +121,10 @@ archive: gen
 		ONLY_ACTIVE_ARCH=$(ONLY_ACTIVE_ARCH) \
 		archive
 
-dmg:
+dmg: web
+	$(MAKE) dmg-bundle
+
+dmg-bundle:
 	$(MAKE) release CONFIG=Release
 	@command -v $(HDIUTIL) >/dev/null || { echo "hdiutil not found"; exit 1; }
 	@rm -rf "$(DMG_STAGING_DIR)" "$(DMG_PATH)"

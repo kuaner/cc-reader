@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      (function () {
+        try {
+          var k = 'ccreader.themeId';
+          var s = localStorage.getItem(k);
+          var ok = {
+            catppuccin: 1,
+            dracula: 1,
+            everforest: 1,
+            gruvbox: 1,
+            ledger: 1,
+            nord: 1,
+            'one-dark': 1,
+            'rose-pine': 1,
+            slate: 1,
+            solarized: 1,
+            'tokyo-night': 1,
+          };
+          var v = ok[s] ? s : 'everforest';
+          document.documentElement.setAttribute('data-cc-theme', v);
+        } catch (e) {
+          document.documentElement.setAttribute('data-cc-theme', 'everforest');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="timeline-shell.css" />
+  </head>
+  <body>
+    <div class="timeline">
+      <!-- CCREADER_TIMELINE_BODY -->
+    </div>
+    <script src="timeline-shell.js"></script>
+  </body>
+</html>

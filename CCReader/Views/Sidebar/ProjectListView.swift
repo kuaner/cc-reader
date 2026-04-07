@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ProjectListView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
     @Binding var selectedSession: Session?
 
@@ -15,7 +16,7 @@ struct ProjectListView: View {
                     .listRowBackground(
                         selectedSessionId == session.sessionId
                             ? RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(Color(nsColor: .selectedContentBackgroundColor).opacity(0.5))
+                                .fill(Color.sessionLedgerSidebarSelection(for: colorScheme))
                                 .padding(.horizontal, 4)
                             : nil
                     )
@@ -105,8 +106,8 @@ struct SessionRow: View {
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .foregroundStyle(.indigo)
-                    .background(.indigo.opacity(0.15))
+                    .foregroundStyle(Color.sessionLedgerBadgeRust)
+                    .background(Color.sessionLedgerBadgeRust.opacity(0.15))
                     .clipShape(Capsule())
                 }
 
@@ -153,8 +154,8 @@ struct SessionRow: View {
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .foregroundStyle(Color.accentColor)
-                    .background(Color.accentColor.opacity(0.2))
+                    .foregroundStyle(Color.sessionLedgerBadgeAmber)
+                    .background(Color.sessionLedgerBadgeAmber.opacity(0.18))
                     .clipShape(Capsule())
                 }
 
@@ -198,6 +199,31 @@ struct SessionRow: View {
     }
 }
 
+// MARK: - Session Ledger chrome (warm palette aligned with timeline web UI)
+
+extension Color {
+    /// Sidebar / picker row selection — umber tint, not system accent blue.
+    static func sessionLedgerSidebarSelection(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.42, green: 0.30, blue: 0.22).opacity(0.62)
+        case .light:
+            return Color(red: 0.82, green: 0.72, blue: 0.58).opacity(0.45)
+        @unknown default:
+            return Color(red: 0.42, green: 0.30, blue: 0.22).opacity(0.62)
+        }
+    }
+
+    /// PR / link badges — warm rust (replaces indigo).
+    static var sessionLedgerBadgeRust: Color {
+        Color(red: 0.72, green: 0.42, blue: 0.28)
+    }
+
+    /// Subagent / secondary warm badges — amber (replaces system accent).
+    static var sessionLedgerBadgeAmber: Color {
+        Color(red: 0.78, green: 0.52, blue: 0.18)
+    }
+}
 
 #Preview {
     ProjectListView(selectedSession: .constant(nil))

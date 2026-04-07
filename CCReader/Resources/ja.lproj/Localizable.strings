@@ -60,6 +60,7 @@
 "timeline.message.copied" = "コピー済み";
 "timeline.message.rawdata" = "Raw";
 "timeline.noMessages" = "メッセージなし";
+"timeline.empty.hint" = "読み込み後、ターン・ツール呼び出し・思考ブロックがここに表示されます。";
 "timeline.rewind.confirmMessage" = "このメッセージ以降を全て削除します。この操作は取り消せません。";
 "timeline.rewind.confirmTitle" = "巻き戻し確認";
 "timeline.rewind.execute" = "巻き戻す";
@@ -93,5 +94,6 @@
 "sidebar.hide" = "サイドバーを隠す";
 "sidebar.show" = "サイドバーを表示";
 "sidebar.toggle" = "サイドバーを切り替え";
+"menu.theme" = "テーマ";
 "初回同期中..." = "初回同期中...";
 "読み込み中..." = "読み込み中...";

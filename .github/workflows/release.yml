@@ -22,6 +22,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: timeline-ui/package-lock.json
+
+      - name: timeline-ui (install, test, build)
+        run: |
+          make web-install
+          npm test --prefix timeline-ui
+          make web-build
+
       - name: Select Xcode 26.3
         run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
@@ -29,7 +42,7 @@ jobs:
         run: brew install xcodegen
 
       - name: Build DMG
-        run: make dmg
+        run: make dmg-bundle
 
       - name: Generate checksum
         run: shasum -a 256 build/cc-reader.dmg > build/cc-reader.dmg.sha256
@@ -47,6 +60,7 @@ jobs:
           - Version tag: ${{ github.ref_name }}
           - Platform: macOS universal (arm64 + x86_64)
           - Package: DMG
+          - Web assets: `make web-install` → `npm test` → `make web-build` (single `npm ci`), then `make dmg-bundle`
 
           ## Verification
 

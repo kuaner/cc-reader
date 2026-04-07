@@ -1,0 +1,128 @@
+@import './design-tokens.css';
+@import './markdown-shared.css';
+
+/* Markdown 独立预览（markdown-preview bundle）：仅本页的 body / .markdown；共用见 markdown-shared。 */
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--cc-type-root);
+  line-height: var(--cc-type-root-leading);
+  padding: 12px;
+  margin: 0;
+  color: var(--text);
+  background: transparent;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+@media (min-width: 640px) {
+  body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+.markdown {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: min(100%, 65ch);
+  font-family: var(--font-read);
+  font-size: clamp(
+    var(--cc-type-md-min),
+    calc(var(--cc-type-preview-md-vw) + var(--cc-type-md-pref)),
+    var(--cc-type-md-max)
+  );
+  line-height: var(--cc-type-md-leading);
+}
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown blockquote,
+.markdown table,
+.markdown hr {
+  margin: 0.75em 0;
+}
+.markdown ul,
+.markdown ol {
+  padding-left: 1.4em;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  line-height: 1.25;
+  margin: 0.9em 0 0.45em;
+}
+.markdown h1 {
+  font-size: var(--cc-type-preview-h1);
+}
+.markdown h2 {
+  font-size: var(--cc-type-preview-h2);
+}
+.markdown h3 {
+  font-size: var(--cc-type-preview-h3);
+}
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: var(--cc-type-md-code-em);
+  background: var(--code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+}
+.markdown pre {
+  background: var(--code-bg);
+  padding: 12px;
+  border-radius: 14px;
+  overflow-x: auto;
+}
+.markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+.markdown blockquote {
+  border-left: 3px solid var(--border);
+  margin-left: 0;
+  padding-left: 12px;
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+}
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown img {
+  max-width: 100%;
+}
+.markdown a[href] {
+  color: var(--accent-link) !important;
+  -webkit-text-fill-color: var(--accent-link) !important;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-link) 35%, transparent);
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+
+.markdown a:focus-visible {
+  outline: none;
+  border-radius: 0.2rem;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.plain-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

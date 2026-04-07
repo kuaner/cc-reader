@@ -60,6 +60,7 @@
 "timeline.message.copied" = "Copied";
 "timeline.message.rawdata" = "Raw";
 "timeline.noMessages" = "No messages";
+"timeline.empty.hint" = "Agent turns, tool calls, and thinking blocks appear here once the session is loaded.";
 "timeline.rewind.confirmMessage" = "All messages after this one will be deleted. This action cannot be undone.";
 "timeline.rewind.confirmTitle" = "Confirm Rewind";
 "timeline.rewind.execute" = "Rewind";
@@ -93,5 +94,6 @@
 "sidebar.hide" = "Hide Sidebar";
 "sidebar.show" = "Show Sidebar";
 "sidebar.toggle" = "Toggle Sidebar";
+"menu.theme" = "Theme";
 "初回同期中..." = "Running initial sync...";
 "読み込み中..." = "Loading...";
