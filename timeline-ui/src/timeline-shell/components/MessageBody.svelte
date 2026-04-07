@@ -75,14 +75,19 @@
       .filter(Boolean)
       .join(" "),
   );
+
+  // Use a single token read here (instead of clamp/calc composition) to keep
+  // WKWebView behavior deterministic while remaining theme/token configurable.
+  const markdownBodyStyle =
+    "font-size: var(--cc-type-md-max); line-height: var(--cc-type-md-leading);";
 </script>
 
 {#if !source}
   <div class={emptyClass}></div>
 {:else if preserveLineBreaks || !renderMarkdown}
-  <div class={plainBlockClass}>{source}</div>
+  <div class={plainBlockClass} style={markdownBodyStyle}>{source}</div>
 {:else}
-  <div class={proseForTone(tone)}>
+  <div class={proseForTone(tone)} style={markdownBodyStyle}>
     <MarkdownContent content={source} fallbackClass={plainBlockClass} />
   </div>
 {/if}

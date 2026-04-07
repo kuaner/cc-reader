@@ -4,7 +4,7 @@
   import RawDataButton from "./RawDataButton.svelte";
 
   const footerBase =
-    "bubble-footer cc-typo-foot mt-2 flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5 border-t pt-2 font-medium";
+    "bubble-footer cc-typo-foot mt-2 flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5 border-t pt-2";
 
   let {
     timestamp,

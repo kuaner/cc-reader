@@ -20,12 +20,12 @@
   --cc-type-root-leading: 1.5;
 
   /*
-   * 气泡内 Markdown 正文：与 macOS SwiftUI `.font(.body)` 一致（约 13pt；0.8125×16px 根字号）。
-   * 不再用 vw 放大，避免比侧栏源码（SessionMessagesView 等 `.system(.body, design: .monospaced)`）更显眼。
+   * 气泡内 Markdown 正文：舒适紧凑档（11.5px = 0.71875×16px 根字号）。
+   * 不再用 vw 放大，避免时间线文本压过旁侧代码阅读体验。
    */
-  --cc-type-md-min: 0.8125rem;
-  --cc-type-md-max: 0.8125rem;
-  --cc-type-md-pref: 0.8125rem;
+  --cc-type-md-min: 0.71875rem;
+  --cc-type-md-max: 0.71875rem;
+  --cc-type-md-pref: 0.71875rem;
   --cc-type-md-vw: 0;
   --cc-type-md-leading: 1.5;
   --cc-type-md-code-em: 0.92em;
@@ -36,11 +36,11 @@
   /* 气泡内纯文本（非 Markdown） */
   --cc-type-plain: var(--cc-type-md-max);
   --cc-type-plain-leading: 1.5;
-  --cc-type-plain-mono: 0.8125rem;
+  --cc-type-plain-mono: 0.71875rem;
   --cc-type-plain-mono-leading: 1.55;
 
   /* 次级 UI：脚注、chip、等待行等 */
-  --cc-type-secondary: 0.875rem;
+  --cc-type-secondary: 0.6875rem;
   --cc-type-secondary-leading: 1.4;
 
   /* 小标题 / 全大写标签行 */
@@ -60,10 +60,10 @@
   --cc-type-code-lang: 0.6875rem;
 
   /* Raw data 按钮 */
-  --cc-type-raw-btn: 0.8125rem;
+  --cc-type-raw-btn: 0.6875rem;
   --cc-type-raw-btn-leading: 1.25;
   --cc-size-raw-btn-min-height: 2rem;
-  --cc-type-raw-btn-touch: 0.875rem;
+  --cc-type-raw-btn-touch: 0.75rem;
   --cc-type-raw-btn-touch-leading: 1.3;
 
   /* 全局 .pill（加载更多等） */
@@ -115,9 +115,9 @@
 
 .cc-typo-caption {
   font-size: var(--cc-type-caption);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
-  letter-spacing: var(--cc-track-caption);
+  letter-spacing: 0.02em;
 }
 
 .cc-typo-overline {
