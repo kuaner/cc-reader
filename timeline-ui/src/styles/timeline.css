@@ -13,7 +13,7 @@
   line-height: var(--cc-type-raw-btn-leading);
   border-radius: 999px;
   min-height: var(--cc-size-raw-btn-min-height);
-  padding: 5px 11px;
+  padding: 3px 10px;
   cursor: pointer;
   transition:
     background 0.18s ease,

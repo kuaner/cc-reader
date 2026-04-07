@@ -5,6 +5,7 @@
   import BubbleFooter from "./BubbleFooter.svelte";
   import ErrorTag from "./ErrorTag.svelte";
   import MessageBody from "./MessageBody.svelte";
+import Pill from "./Pill.svelte";
   import SummaryTag from "./SummaryTag.svelte";
   import ToolResultImages from "./ToolResultImages.svelte";
   import ToolSection from "./ToolSection.svelte";
@@ -144,12 +145,11 @@
               role="user"
             />
             {#if payload.specialTag}
-              <span
-                class="pill agent-id cc-typo-chip inline-block cursor-pointer rounded-full bg-(--button) px-2.5 py-1"
-                data-cc-session-id={payload.specialTag}
-              >
-                {payload.specialTag}
-              </span>
+              <Pill
+                label={payload.specialTag}
+                class="pill agent-id cc-typo-chip cursor-pointer rounded-full bg-(--button) px-2.5 border-transparent"
+                dataSessionId={payload.specialTag}
+              />
             {/if}
           </BubbleFooter>
         </div>

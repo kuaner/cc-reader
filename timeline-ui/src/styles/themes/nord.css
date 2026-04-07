@@ -88,10 +88,10 @@
     --muted: #d8dee9;
     --border: rgba(216, 222, 233, 0.14);
     --button: rgba(216, 222, 233, 0.08);
-    --surface-user: #4c566a;
+    --surface-user: #3a4f69;
     --surface-user-text: #eceff4;
-    --bubble-user-accent: #88c0d0;
-    --bubble-user-rim: rgba(129, 161, 193, 0.35);
+    --bubble-user-accent: #81a1c1;
+    --bubble-user-rim: rgba(136, 192, 208, 0.46);
     --bubble-user-link: #8fbcbb;
     --bubble-user-blockquote-border: rgba(255, 255, 255, 0.14);
     --bubble-user-inline-code-bg: rgba(0, 0, 0, 0.28);
@@ -115,11 +115,11 @@
     --usage-token-bg: rgba(208, 135, 112, 0.22);
     --usage-token-text: #ebcb8b;
     --bubble-user-footer-border: rgba(255, 255, 255, 0.12);
-    --bubble-user-footer-muted: rgba(236, 239, 244, 0.55);
+    --bubble-user-footer-muted: rgba(236, 239, 244, 0.64);
     --bubble-user-control-fg: #eceff4;
-    --bubble-user-control-bg: rgba(0, 0, 0, 0.2);
-    --bubble-user-control-hover-bg: rgba(0, 0, 0, 0.32);
-    --bubble-user-control-border: rgba(255, 255, 255, 0.12);
+    --bubble-user-control-bg: rgba(0, 0, 0, 0.18);
+    --bubble-user-control-hover-bg: rgba(0, 0, 0, 0.3);
+    --bubble-user-control-border: rgba(236, 239, 244, 0.2);
     --bubble-user-focus-ring: rgba(136, 192, 208, 0.45);
     --attachment-bg: rgba(0, 0, 0, 0.22);
     --tag-tool-use-bg: rgba(94, 129, 172, 0.22);
@@ -128,7 +128,7 @@
     --tag-tool-result-bg: rgba(163, 190, 140, 0.18);
     --tag-tool-result-border: rgba(163, 190, 140, 0.35);
     --tag-tool-result-text: #a3be8c;
-    --tag-user-bg: rgba(255, 255, 255, 0.1);
+    --tag-user-bg: rgba(136, 192, 208, 0.2);
     --tag-user-text: #eceff4;
     --tag-dispatch-bg: rgba(94, 129, 172, 0.22);
     --tag-dispatch-border: rgba(129, 161, 193, 0.3);
@@ -155,7 +155,7 @@
     --ring: rgba(129, 161, 193, 0.45);
     --bubble-assistant-hover-border: rgba(129, 161, 193, 0.35);
     --bubble-dispatch-hover-border: rgba(136, 192, 208, 0.35);
-    --bubble-user-rim-hover: rgba(129, 161, 193, 0.45);
+    --bubble-user-rim-hover: rgba(129, 161, 193, 0.54);
     --bubble-user-accent-hover: #81a1c1;
     --selection-assistant: rgba(129, 161, 193, 0.22);
     --selection-user: rgba(255, 255, 255, 0.12);

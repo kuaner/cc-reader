@@ -1,12 +1,10 @@
 <script lang="ts">
-  const base =
-    "cc-typo-caption inline-block rounded px-1.5 py-px leading-snug border";
+  import Pill from "./Pill.svelte";
 
   let { label }: { label: string } = $props();
 </script>
 
-<span
-  class={`${base} border-transparent bg-(--tag-error-bg) text-(--tag-error-text)`}
->
+<Pill
   {label}
-</span>
+  class="border-transparent bg-(--tag-error-bg) text-(--tag-error-text)"
+/>

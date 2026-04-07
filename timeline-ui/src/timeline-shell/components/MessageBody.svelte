@@ -20,7 +20,7 @@
 
   function proseForTone(t: MarkdownTone): string {
     const readability = [
-      "max-w-[min(100%,65ch)]",
+      "max-w-none w-full",
       "cc-typo-md-leading",
       "break-words",
       "[&_p]:my-[0.45em] [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
@@ -63,8 +63,8 @@
 
   const plainBlockClass = $derived(
     preserveLineBreaks
-      ? `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words cc-typo-plain-mono ${plainUserClass}`
-      : `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words cc-typo-plain ${plainUserClass}`,
+      ? `w-full whitespace-pre-wrap break-words cc-typo-plain-mono ${plainUserClass}`
+      : `w-full whitespace-pre-wrap break-words cc-typo-plain ${plainUserClass}`,
   );
 
   const emptyClass = $derived(
