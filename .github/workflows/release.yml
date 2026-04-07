@@ -47,9 +47,11 @@ jobs:
       - name: Generate checksum
         run: shasum -a 256 build/cc-reader.dmg > build/cc-reader.dmg.sha256
 
+      # Use <<'EOF' so the shell does NOT treat Markdown backticks as command substitution
+      # (<<EOF alone caused npm/xcodebuild logs to be injected into the release body).
       - name: Prepare release notes
         run: |
-          cat > build/release-notes.md <<EOF
+          cat > build/release-notes.md <<'EOF'
           ## Downloads
 
           - cc-reader.dmg
@@ -60,7 +62,7 @@ jobs:
           - Version tag: ${{ github.ref_name }}
           - Platform: macOS universal (arm64 + x86_64)
           - Package: DMG
-          - Web assets: `make web-install` → `npm test` → `make web-build` (single `npm ci`), then `make dmg-bundle`
+          - Web assets: make web-install → npm test (in timeline-ui) → make web-build → make dmg-bundle (single npm ci via make web-install)
 
           ## Verification
 
