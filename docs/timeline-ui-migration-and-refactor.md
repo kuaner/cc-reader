@@ -36,7 +36,7 @@
 
 ### 5. 构建与资源安全
 
-- **`vite.config.ts`** 通过 **`vite.build.shared.ts`** 共享 **`emptyOutDir: false`**、`outDir`、`rollupOptions.output.inlineDynamicImports` 等，并用 `--mode timeline-shell|markdown-preview` 切换构建目标；避免清空整个 `CCReader/Resources`，误删 `Assets.xcassets`、`*.lproj` 等。
+- **`vite.config.ts`** 内用 `mergeConfig` 固定 **`emptyOutDir: false`**、`outDir: CCReader/Resources`、`cssCodeSplit: false`，并以 **`--mode timeline-shell|markdown-preview`** 切换 library 入口；避免清空整个 `CCReader/Resources`，误删 `Assets.xcassets`、`*.lproj` 等。
 - **`Package.swift` / Xcode**：将 `timeline-shell.*`、`markdown-preview.*`、对应 `.html` 等登记为资源；应用目标 **Resources** 与 SPM 一致。
 
 ### 6. 与旧文档的关系
@@ -69,7 +69,7 @@
    - **已做**：统一为 [`src/lib/decodeUtf8Base64.ts`](../timeline-ui/src/lib/decodeUtf8Base64.ts)，并有 Vitest 覆盖。
 
 3. **Vite 配置重复**  
-   - **已做**：[`vite.build.shared.ts`](../timeline-ui/vite.build.shared.ts) + `mergeConfig`。
+   - **已做**：单文件 [`vite.config.ts`](../timeline-ui/vite.config.ts) 内 `mergeConfig` 合并共享 `build` 与按 `mode` 切换的入口。
 
 ### B. 结构与可维护性
 

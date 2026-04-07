@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vite.preview.config.ts", "vite.build.shared.ts", "vitest.config.ts", "svelte.config.js"]
+  "include": ["vite.config.ts", "vitest.config.ts", "svelte.config.js"]
 }

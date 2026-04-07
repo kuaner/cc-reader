@@ -71,7 +71,7 @@
 | **测试** | 为纯函数与 renderer 扩展现有 Vitest；DOM 行为再议 `jsdom` | CI 可跑 |
 | **文档** | `timeline-ui-color-tokens.md` 开篇增加一句 **Inspector 定位**（与阅读器区分） | 与 `.impeccable.md` 不矛盾 |
 
-**主要触点**：`hljs-shared-base.css`、`hljs-runtime-themes.css`、`markdownHljs.css`、`vite.build.shared.ts`、文档。
+**主要触点**：`hljs-shared-base.css`、`hljs-runtime-themes.css`、`markdown-preview.css` / `markdown-shared.css`、`vite.config.ts`、文档。
 
 ---
 
