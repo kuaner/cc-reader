@@ -204,7 +204,7 @@
   border-bottom: 1px solid var(--code-header-border);
 }
 .code-block-language {
-  font-size: 10px;
+  font-size: var(--cc-type-code-lang);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;

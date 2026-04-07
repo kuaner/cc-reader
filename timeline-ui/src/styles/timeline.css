@@ -9,11 +9,11 @@
   background: var(--message-button-bg);
   color: inherit;
   font: inherit;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--cc-type-raw-btn);
+  line-height: var(--cc-type-raw-btn-leading);
   border-radius: 999px;
-  min-height: 28px;
-  padding: 4px 9px;
+  min-height: var(--cc-size-raw-btn-min-height);
+  padding: 5px 11px;
   cursor: pointer;
   transition:
     background 0.18s ease,
@@ -150,8 +150,8 @@
     min-height: 44px;
     min-width: 44px;
     padding: 8px 12px;
-    font-size: 11px;
-    line-height: 1.25;
+    font-size: var(--cc-type-raw-btn-touch);
+    line-height: var(--cc-type-raw-btn-touch-leading);
     touch-action: manipulation;
   }
 

@@ -1,0 +1,18 @@
+/**
+ * CCReader 颜色主题入口：每个主题单独文件，见 `themes/`。
+ * 灵感来自各开源配色方案（Nord、Dracula、Catppuccin 等），已映射到本项目的语义 token。
+ *
+ * 下方 @import 由 scripts/sync-themes.mjs 根据 themes/*.css 生成，请勿手改列表。
+ */
+
+@import './themes/catppuccin.css';
+@import './themes/dracula.css';
+@import './themes/everforest.css';
+@import './themes/gruvbox.css';
+@import './themes/ledger.css';
+@import './themes/nord.css';
+@import './themes/one-dark.css';
+@import './themes/rose-pine.css';
+@import './themes/slate.css';
+@import './themes/solarized.css';
+@import './themes/tokyo-night.css';

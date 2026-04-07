@@ -58,6 +58,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             .progressivePrependChunkSize
 
         private weak var webView: WKWebView?
+        private var themeObserver: NSObjectProtocol?
         private var currentSessionId = ""
         private var snapshot = TimelineRenderSnapshot()
 
@@ -82,6 +83,25 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         func attach(to webView: WKWebView) {
             self.webView = webView
+            if themeObserver == nil {
+                themeObserver = NotificationCenter.default.addObserver(
+                    forName: .ccReaderWebThemeDidChange,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] note in
+                    guard let raw = note.userInfo?["themeId"] as? String,
+                        let theme = WebColorTheme(rawValue: raw),
+                        let wv = self?.webView
+                    else { return }
+                    WebColorTheme.apply(theme, to: wv)
+                }
+            }
+        }
+
+        deinit {
+            if let themeObserver {
+                NotificationCenter.default.removeObserver(themeObserver)
+            }
         }
 
         // MARK: - WKScriptMessageHandler
@@ -383,6 +403,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             replaceTimelineContentViaPayloads(updatingCoordinatorState: false)
             // Pick up any snapshot drift while the shell was loading.
             incrementalUpdate()
+            WebColorTheme.apply(WebColorTheme.stored, to: webView)
         }
 
         func webView(

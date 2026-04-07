@@ -13,6 +13,7 @@ struct MarkdownRenderView: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.navigationDelegate = context.coordinator
         context.coordinator.render(markdown, into: webView)
         return webView
     }
@@ -22,15 +23,41 @@ struct MarkdownRenderView: NSViewRepresentable {
         context.coordinator.render(markdown, into: webView)
     }
 
-    final class Coordinator {
+    final class Coordinator: NSObject, WKNavigationDelegate {
         fileprivate var lastMarkdown: String?
+        private weak var webView: WKWebView?
+        private var themeObserver: NSObjectProtocol?
 
         func render(_ markdown: String, into webView: WKWebView) {
             lastMarkdown = markdown
+            self.webView = webView
+            if themeObserver == nil {
+                themeObserver = NotificationCenter.default.addObserver(
+                    forName: .ccReaderWebThemeDidChange,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] note in
+                    guard let raw = note.userInfo?["themeId"] as? String,
+                        let theme = WebColorTheme(rawValue: raw),
+                        let wv = self?.webView
+                    else { return }
+                    WebColorTheme.apply(theme, to: wv)
+                }
+            }
             var template = WebRenderResourceLoader.text(named: "markdown-preview", extension: "html")
             let encodedMarkdown = Data(markdown.utf8).base64EncodedString()
             template = template.replacingOccurrences(of: "__CCREADER_MD_B64__", with: encodedMarkdown)
             webView.loadHTMLString(template, baseURL: WebRenderResourceLoader.resourceDirectoryURL)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            WebColorTheme.apply(WebColorTheme.stored, to: webView)
+        }
+
+        deinit {
+            if let themeObserver {
+                NotificationCenter.default.removeObserver(themeObserver)
+            }
         }
     }
 }

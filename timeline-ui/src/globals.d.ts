@@ -1,3 +1,4 @@
+import type { CcThemeId } from './lib/ccTheme';
 import type { MessagePayload, PrependOlderOpts, ReplaceTimelineOpts } from './types';
 
 export {};
@@ -20,6 +21,10 @@ declare global {
       replaceMessagesFromPayload?: (payloads: MessagePayload[]) => void;
       setWaitingIndicator?: (htmlOrEmpty: string) => void;
       setLoadOlderBar?: (htmlOrEmpty: string) => void;
+      getTheme?: () => CcThemeId;
+      setTheme?: (id: string) => void;
+      cycleTheme?: () => CcThemeId;
+      listThemes?: () => readonly CcThemeId[];
     };
   }
 }

@@ -1,7 +1,10 @@
 /**
  * MarkdownRenderView bundle: `marked` + hljs + page CSS (code-block 无复制按钮).
  */
+import { initCcTheme } from '../lib/ccTheme';
 import '../styles/markdown-preview.css';
+
+initCcTheme();
 import { decodeUtf8Base64 } from '../lib/decodeUtf8Base64';
 import { highlightCodeBlocksIn, renderMarkdownToHtml } from './markdown';
 

@@ -5,8 +5,8 @@
 
 body {
   font-family: var(--font-ui);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: var(--cc-type-root);
+  line-height: var(--cc-type-root-leading);
   padding: 12px;
   margin: 0;
   color: var(--text);
@@ -29,8 +29,12 @@ body {
   word-break: break-word;
   max-width: min(100%, 65ch);
   font-family: var(--font-read);
-  font-size: clamp(12px, 0.3vw + 11.5px, 14px);
-  line-height: 1.45;
+  font-size: clamp(
+    var(--cc-type-md-min),
+    calc(var(--cc-type-preview-md-vw) + var(--cc-type-md-pref)),
+    var(--cc-type-md-max)
+  );
+  line-height: var(--cc-type-md-leading);
 }
 .markdown > :first-child {
   margin-top: 0;
@@ -59,17 +63,17 @@ body {
   margin: 0.9em 0 0.45em;
 }
 .markdown h1 {
-  font-size: 1.45em;
+  font-size: var(--cc-type-preview-h1);
 }
 .markdown h2 {
-  font-size: 1.2em;
+  font-size: var(--cc-type-preview-h2);
 }
 .markdown h3 {
-  font-size: 1.05em;
+  font-size: var(--cc-type-preview-h3);
 }
 .markdown code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.92em;
+  font-family: var(--font-mono);
+  font-size: var(--cc-type-md-code-em);
   background: var(--code-bg);
   padding: 0.15em 0.4em;
   border-radius: 6px;

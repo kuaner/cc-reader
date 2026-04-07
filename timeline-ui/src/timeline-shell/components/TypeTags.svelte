@@ -4,7 +4,7 @@
   type Role = 'user' | 'assistant' | 'dispatch';
 
   const base =
-    'inline-block rounded px-1.5 py-px text-[9px] font-bold tracking-wide leading-snug border';
+    'cc-typo-caption inline-block rounded px-1.5 py-px leading-snug border';
 
   let {
     payload,

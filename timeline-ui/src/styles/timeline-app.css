@@ -9,7 +9,7 @@
 /*
  * Custom Typography color themes — official pattern (@utility + --tw-prose-*).
  * https://github.com/tailwindlabs/tailwindcss-typography#adding-custom-color-themes
- * Use: class="markdown prose prose-sm prose-ccreader-assistant" (or -user).
+ * Use: class="markdown prose prose-ccreader-assistant" (or -user).
  */
 @utility prose-ccreader-assistant {
   --tw-prose-body: var(--text);
@@ -99,8 +99,8 @@
   body {
     @apply m-0 overflow-x-hidden bg-transparent;
     font-family: var(--font-ui);
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: var(--cc-type-root);
+    line-height: var(--cc-type-root-leading);
     color: var(--text);
     text-rendering: optimizeLegibility;
     font-feature-settings: 'kern' 1, 'liga' 1;
@@ -134,9 +134,19 @@
 
   /* Load-older strip: full row width, pill centered (Swift: `#load-older-bar.topbar` + `.pill`) */
   .topbar {
-    @apply flex w-full max-w-none flex-row items-center justify-center text-center text-[10px] font-semibold uppercase tracking-[0.18em];
-    color: var(--muted);
+    display: flex;
+    width: 100%;
+    max-width: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     box-sizing: border-box;
+    font-size: var(--cc-type-chrome-caps);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--cc-track-topbar);
+    color: var(--muted);
   }
 
   #load-older-bar.topbar {
@@ -148,7 +158,18 @@
   }
 
   .pill {
-    @apply inline-flex min-h-8 max-w-full cursor-pointer items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none no-underline;
+    display: inline-flex;
+    min-height: var(--cc-size-pill-min-height);
+    max-width: 100%;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    padding: var(--cc-size-pill-pad-y) var(--cc-size-pill-pad-x);
+    font-size: var(--cc-type-pill);
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
     background: var(--button);
     color: inherit;
     transition:
@@ -269,19 +290,21 @@
   }
 
   .timeline-empty-title {
-    @apply m-0 text-sm font-semibold leading-snug tracking-tight;
+    margin: 0;
+    font-size: var(--cc-type-empty-title);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
     color: var(--text);
   }
 
   .timeline-empty-hint {
-    @apply m-0 max-w-prose text-xs font-normal leading-relaxed;
+    margin: 0;
+    max-width: 65ch;
+    font-size: var(--cc-type-empty-hint);
+    font-weight: 400;
+    line-height: 1.6;
     color: var(--muted);
-  }
-
-  @media (max-width: 560px), (pointer: coarse) {
-    .timeline-empty-hint {
-      @apply text-sm leading-normal;
-    }
   }
 
   /*
@@ -292,23 +315,41 @@
   }
 
   .assistant-header .pill {
-    @apply box-border inline-flex h-6 min-h-6 max-h-6 shrink-0 items-center justify-center px-2 py-0 text-[10px] font-medium leading-none;
+    box-sizing: border-box;
+    display: inline-flex;
+    height: var(--cc-size-pill-compact-height);
+    min-height: var(--cc-size-pill-compact-height);
+    max-height: var(--cc-size-pill-compact-height);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--cc-type-pill-compact);
+    font-weight: 500;
+    line-height: 1;
   }
 
   /* Long URLs / CJK: avoid overflow without ugly breaks in chat width */
   .bubble .markdown {
     overflow-wrap: anywhere;
     font-family: var(--font-read);
-    font-size: clamp(12px, 0.35vw + 11.5px, 14px);
-    line-height: 1.45;
+    font-size: clamp(
+      var(--cc-type-md-min),
+      calc(var(--cc-type-md-vw) + var(--cc-type-md-pref)),
+      var(--cc-type-md-max)
+    );
+    line-height: var(--cc-type-md-leading);
   }
 
   .bubble .markdown code,
   .bubble .markdown pre,
   .bubble .markdown kbd,
   .bubble .markdown samp {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.92em;
+    font-family: var(--font-mono);
+    font-size: var(--cc-type-md-code-em);
   }
 
   .bubble .markdown a:focus-visible {
@@ -329,7 +370,7 @@
   /* Compact scan mode: headings still distinct but closer to body */
   .bubble .markdown.prose-ccreader-assistant.prose h1,
   .bubble .markdown.prose-ccreader-user.prose h1 {
-    font-size: 1.28em;
+    font-size: var(--cc-type-prose-h1);
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.25;
@@ -337,7 +378,7 @@
 
   .bubble .markdown.prose-ccreader-assistant.prose h2,
   .bubble .markdown.prose-ccreader-user.prose h2 {
-    font-size: 1.14em;
+    font-size: var(--cc-type-prose-h2);
     font-weight: 600;
     letter-spacing: -0.015em;
     line-height: 1.28;
@@ -345,7 +386,7 @@
 
   .bubble .markdown.prose-ccreader-assistant.prose h3,
   .bubble .markdown.prose-ccreader-user.prose h3 {
-    font-size: 1.05em;
+    font-size: var(--cc-type-prose-h3);
     font-weight: 600;
     letter-spacing: -0.01em;
   }
@@ -363,7 +404,10 @@
 
   /* Waiting row: `.bubble.assistant` without `.assistant-card` */
   .bubble.assistant:not(.assistant-card) {
-    @apply rounded-2xl p-3 text-sm;
+    border-radius: 1rem;
+    padding: 0.75rem;
+    font-size: var(--cc-type-secondary);
+    line-height: var(--cc-type-secondary-leading);
     color: var(--muted);
     background: var(--surface-assistant);
     border: 1px solid var(--bubble-assistant-border);

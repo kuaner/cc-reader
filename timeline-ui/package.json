@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync-themes": "node scripts/sync-themes.mjs",
+    "prebuild": "npm run sync-themes",
     "build": "vite build --mode timeline-shell && vite build --mode markdown-preview",
     "dev": "vite build --watch --mode timeline-shell",
     "dev:shell": "vite build --watch --mode timeline-shell",

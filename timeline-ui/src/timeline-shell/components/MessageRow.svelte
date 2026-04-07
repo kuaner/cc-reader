@@ -78,9 +78,7 @@
         <div class="flex gap-2.5 align-top">
           <div class="mt-0.5 shrink-0 text-base opacity-60">&#x21BB;</div>
           <div class="min-w-0 flex-1">
-            <div
-              class="mb-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-(--accent-summary-fg)"
-            >
+            <div class="cc-typo-label mb-0.5 text-(--accent-summary-fg)">
               {payload.summaryLabel || "Conversation summarized"}
             </div>
             <MessageBody
@@ -117,9 +115,7 @@
         <div
           class="bubble summary w-fit max-w-[min(100%,52rem)] rounded-2xl border border-(--border-summary) bg-(--surface-summary) px-4 py-3"
         >
-          <div
-            class="summary-title mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-(--accent-summary-fg)"
-          >
+          <div class="summary-title cc-typo-label mb-1 text-(--accent-summary-fg)">
             {payload.summaryLabel || "Summary"}
           </div>
           <MessageBody
@@ -149,7 +145,7 @@
             />
             {#if payload.specialTag}
               <span
-                class="pill agent-id inline-block cursor-pointer rounded-full bg-(--button) px-2.5 py-1 text-xs"
+                class="pill agent-id cc-typo-chip inline-block cursor-pointer rounded-full bg-(--button) px-2.5 py-1"
                 data-cc-session-id={payload.specialTag}
               >
                 {payload.specialTag}
@@ -173,9 +169,7 @@
               : "border-(--border)"
           }`}
         >
-          <span
-            class="inline-flex h-6 shrink-0 items-center text-[10px] font-bold uppercase leading-none tracking-[0.16em] text-(--muted)"
-          >
+          <span class="cc-typo-masthead inline-flex h-7 shrink-0 items-center text-(--muted)">
             {payload.assistantLabel || "Assistant"}
           </span>
           {#if !isAgentDispatch && payload.specialTag}
@@ -191,9 +185,7 @@
         </div>
         {#if payload.thinking}
           <div class="rounded-lg bg-(--surface-thinking) px-2.5 py-2">
-            <div
-              class="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-(--muted)"
-            >
+            <div class="cc-typo-label mb-1.5 text-(--muted)">
               {payload.thinkingTitle || "Thinking"}
             </div>
             <MessageBody
@@ -225,7 +217,7 @@
           />
           {#if showUsage}
             <span
-              class="inline-block min-w-0 max-w-full wrap-break-word rounded px-1.5 py-px text-[9px] font-bold leading-snug tracking-wide bg-(--usage-token-bg) text-(--usage-token-text)"
+              class="cc-typo-caption inline-block min-w-0 max-w-full wrap-break-word rounded bg-(--usage-token-bg) px-1.5 py-px text-(--usage-token-text)"
             >
               {usageInPart}
             </span>

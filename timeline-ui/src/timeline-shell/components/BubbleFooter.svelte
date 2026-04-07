@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
-  import type { MessagePayload } from '../../types';
-  import RawDataButton from './RawDataButton.svelte';
+  import type { Snippet } from "svelte";
+  import type { MessagePayload } from "../../types";
+  import RawDataButton from "./RawDataButton.svelte";
 
   const footerBase =
-    'bubble-footer mt-2 flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1.5 border-t pt-2 text-[11px] font-medium';
+    "bubble-footer cc-typo-foot mt-2 flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5 border-t pt-2 font-medium";
 
   let {
     timestamp,
@@ -20,8 +20,8 @@
 
   const borderMuted = $derived(
     userStyle
-      ? 'border-[color:var(--bubble-user-footer-border)] text-[color:var(--bubble-user-footer-muted)]'
-      : 'border-[color:var(--border)] text-[color:var(--muted)]',
+      ? "border-[color:var(--bubble-user-footer-border)] text-[color:var(--bubble-user-footer-muted)]"
+      : "border-[color:var(--border)] text-[color:var(--muted)]",
   );
 </script>
 

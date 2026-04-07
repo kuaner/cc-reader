@@ -21,7 +21,7 @@
   function proseForTone(t: MarkdownTone): string {
     const readability = [
       "max-w-[min(100%,65ch)]",
-      "leading-[1.45]",
+      "cc-typo-md-leading",
       "break-words",
       "[&_p]:my-[0.45em] [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
       "[&_li]:my-0.5",
@@ -32,7 +32,6 @@
       return [
         "markdown",
         "prose",
-        "prose-sm",
         "prose-ccreader-user",
         "text-[color:var(--surface-user-text)]",
         readability,
@@ -47,7 +46,6 @@
     return [
       "markdown",
       "prose",
-      "prose-sm",
       "prose-ccreader-assistant",
       "text-[color:var(--text)]",
       readability,
@@ -65,8 +63,8 @@
 
   const plainBlockClass = $derived(
     preserveLineBreaks
-      ? `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.6] ${plainUserClass}`
-      : `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words text-[13px] leading-[1.45] ${plainUserClass}`,
+      ? `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words cc-typo-plain-mono ${plainUserClass}`
+      : `max-w-[min(100%,65ch)] whitespace-pre-wrap break-words cc-typo-plain ${plainUserClass}`,
   );
 
   const emptyClass = $derived(
