@@ -10,6 +10,7 @@ enum TimelineRenderTuning {
 
     // Host-side windowing / incremental DOM
     static let renderBatchSize = 100
+    static let batchYieldSize = 40  // Yield every N payload builds to keep main thread responsive.
     static let followBottomThreshold: CGFloat = 96
     static let progressiveReplaceThreshold = 30
     static let progressiveInitialLatestCount = 18

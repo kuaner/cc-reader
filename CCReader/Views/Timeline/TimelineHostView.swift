@@ -49,6 +49,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         /// Max logical messages in the WK slice: initially the **last N** of the session; each “load older” prepends up to **N** older rows.
         /// (Scroll distance to the top bar is unrelated — that bar appears when there are older rows not yet in the window.)
         private static let renderBatchSize = TimelineRenderTuning.renderBatchSize
+        private static let batchYieldSize = TimelineRenderTuning.batchYieldSize
         private static let followBottomThreshold = TimelineRenderTuning.followBottomThreshold
         private static let progressiveReplaceThreshold = TimelineRenderTuning
             .progressiveReplaceThreshold
@@ -279,13 +280,16 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         /// Replace the `.timeline` DOM in-place when the shell has already been loaded.
         /// This avoids a visible blank caused by reloading the whole WKWebView.
         private func replaceTimelineForSession() {
-            replaceTimelineContentViaPayloads(updatingCoordinatorState: true)
+            // Defer payload construction off the main thread to avoid blocking during session switches.
+            // For large sessions, payloads are built in batches with yields between them.
+            Task { @MainActor in
+                await replaceTimelineContentViaPayloads(updatingCoordinatorState: true)
+            }
         }
 
         /// Renders the current window from `messagePayload` + chrome HTML in JS. Used on first shell load (`didFinish`) and session switch.
-        private func replaceTimelineContentViaPayloads(updatingCoordinatorState: Bool) {
+        private func replaceTimelineContentViaPayloads(updatingCoordinatorState: Bool) async {
             let labels = TimelineWebLabels.localized()
-            let payloadBuilder = TimelinePayloadBuilder(snapshot: snapshot, labels: labels)
             let messages = currentRenderedMessages()
             let hasOlder = renderedMessageRange.lowerBound > 0
             let waiting = snapshot.visibleMessages.last?.type == .user
@@ -293,8 +297,20 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let loadOlderHTML = hasOlder ? loadOlderBarHTML(labels: labels) : ""
             let waitingHTML = waiting ? waitingIndicatorHTML(labels: labels) : ""
 
+            let payloadBuilder = TimelinePayloadBuilder(snapshot: snapshot, labels: labels)
+            let totalCount = messages.count
+            var allPayloads: [[String: Any]] = []
+            allPayloads.reserveCapacity(totalCount)
+
+            for (i, msg) in messages.enumerated() {
+                allPayloads.append(payloadBuilder.messagePayload(for: msg))
+                if i.isMultiple(of: Self.batchYieldSize) {
+                    await Task.yield()
+                }
+            }
+
             let envelope: [String: Any] = [
-                "messages": messages.map { payloadBuilder.messagePayload(for: $0) },
+                "messages": allPayloads,
                 "loadOlderBarHTML": loadOlderHTML,
                 "waitingHTML": waitingHTML,
                 "initialLatestCount": Self.progressiveInitialLatestCount,
@@ -313,7 +329,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
 
             let replaceCommand: TimelineJSCommand =
-                messages.count >= Self.progressiveReplaceThreshold
+                totalCount >= Self.progressiveReplaceThreshold
                 ? .replaceTimelineFromPayloadsProgressive(json: payloadJSON)
                 : .replaceTimelineFromPayloads(json: payloadJSON)
             evaluate(
@@ -400,9 +416,12 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             guard shellState == .loading else { return }
             shellState = .loaded
             // Shell HTML loads with an empty `.timeline`; fill it with the same payload path as session replace.
-            replaceTimelineContentViaPayloads(updatingCoordinatorState: false)
-            // Pick up any snapshot drift while the shell was loading.
-            incrementalUpdate()
+            // Defer to keep main thread responsive; incrementalUpdate runs after completion.
+            Task { @MainActor in
+                await replaceTimelineContentViaPayloads(updatingCoordinatorState: false)
+                // Pick up any snapshot drift while the shell was loading.
+                incrementalUpdate()
+            }
             WebColorTheme.apply(WebColorTheme.stored, to: webView)
         }
 

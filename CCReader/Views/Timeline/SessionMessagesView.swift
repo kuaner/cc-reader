@@ -52,10 +52,7 @@ struct SessionMessagesView: View {
         .onAppear {
             rebuildDerivedData()
         }
-        .onChange(of: messages.count) { _, _ in
-            rebuildDerivedData()
-        }
-        .onChange(of: messageFingerprints) { _, _ in
+        .onChange(of: messageFingerprintHash) { _, _ in
             rebuildDerivedData()
         }
     }
@@ -63,52 +60,68 @@ struct SessionMessagesView: View {
     // MARK: - Derived Data
 
     @State private var derivedDataGeneration = 0
-    @State private var lastProcessedMessageCount = 0
+    @State private var lastFingerprint = MessageFingerprint(count: 0, hash: 0)
     @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
     @State private var toolUseOwnerMap: [String: String] = [:]
 
-    private var messageFingerprints: [String] {
-        messages.map { "\($0.uuid):\($0.rawJson.hashValue)" }
+    /// Lightweight fingerprint hash — count + XOR accumulator of raw JSON hashes.
+    /// O(n) but only integer ops (no string allocation).
+    private struct MessageFingerprint: Equatable {
+        var count: Int
+        var hash: Int
+    }
+    private var messageFingerprintHash: MessageFingerprint {
+        var accumulator = 0
+        for msg in messages {
+            accumulator ^= msg.rawJson.hashValue
+        }
+        return MessageFingerprint(count: messages.count, hash: accumulator)
     }
 
     private func rebuildDerivedData() {
+        // Early return: skip if message set is identical to last processed state.
+        let fp = messageFingerprintHash
+        if fp == lastFingerprint {
+            return
+        }
+        let fpHash = fp.hash
+
         derivedDataGeneration += 1
         let gen = derivedDataGeneration
 
-        // Show user and assistant messages. Also show system api_error messages (retry indicators).
-        // Other system subtypes (turn_duration, microcompact_boundary, etc.) are isMeta and filtered.
-        let visible = messages.filter {
-            if $0.type == .system {
-                return $0.subtype == "api_error" && $0.level == "error"
+        Task { @MainActor in
+            await Task.yield()
+            guard gen == derivedDataGeneration else { return }
+
+            // Filter and timestamp map — moved off synchronous path.
+            let visible = messages.filter {
+                if $0.type == .system {
+                    return $0.subtype == "api_error" && $0.level == "error"
+                }
+                guard $0.type == .user || $0.type == .assistant else { return false }
+                if $0.isMeta && !$0.isCompactSummary { return false }
+                return true
             }
-            guard $0.type == .user || $0.type == .assistant else { return false }
-            if $0.isMeta && !$0.isCompactSummary { return false }
-            return true
-        }
-        let visibleCount = visible.count
-        let needsFullRebuild = visibleCount < lastProcessedMessageCount
-        let startIndex = needsFullRebuild ? 0 : lastProcessedMessageCount
+            let visibleCount = visible.count
+            let needsFullRebuild = visibleCount < lastFingerprint.count
+            let startIndex = needsFullRebuild ? 0 : lastFingerprint.count
 
-        var tsMap: [String: Date] = [:]
-        tsMap.reserveCapacity(visibleCount)
-        var lastUserTime: Date? = nil
-        for msg in visible {
-            if msg.type == .assistant, let t = lastUserTime {
-                tsMap[msg.uuid] = t
+            var tsMap: [String: Date] = [:]
+            tsMap.reserveCapacity(visibleCount)
+            var lastUserTime: Date? = nil
+            for msg in visible {
+                if msg.type == .assistant, let t = lastUserTime {
+                    tsMap[msg.uuid] = t
+                }
+                if msg.type == .user {
+                    lastUserTime = msg.timestamp
+                }
             }
-            if msg.type == .user {
-                lastUserTime = msg.timestamp
-            }
-        }
 
-        let firstPaintThreshold = TimelineRenderTuning.firstPaintThreshold
+            let firstPaintThreshold = TimelineRenderTuning.firstPaintThreshold
 
-        if visibleCount > firstPaintThreshold {
-            visibleMessageCount = visibleCount
-
-            Task { @MainActor in
-                await Task.yield()
-                guard gen == derivedDataGeneration else { return }
+            if visibleCount > firstPaintThreshold {
+                visibleMessageCount = visibleCount
 
                 let visibleRows = Array(visible)
 
@@ -117,6 +130,7 @@ struct SessionMessagesView: View {
 
                 await runPhase1Decode(
                     gen: genFinal,
+                    fpHash: fpHash,
                     visible: visible,
                     visibleCount: visibleCount,
                     startIndex: startIndex,
@@ -124,50 +138,44 @@ struct SessionMessagesView: View {
                     tsMap: tsMap,
                     visibleRows: visibleRows
                 )
+                return
             }
-            return
-        }
 
-        guard startIndex <= visibleCount else { return }
-        let deltaMessages = Array(visible[startIndex..<visibleCount])
+            guard startIndex <= visibleCount else { return }
+            let deltaMessages = Array(visible[startIndex..<visibleCount])
 
-        if deltaMessages.isEmpty {
-            let visibleRows = Array(visible)
+            if deltaMessages.isEmpty {
+                let visibleRows = Array(visible)
 
-            var immediateSnap = timeline
-            immediateSnap.visibleMessages = visibleRows
-            immediateSnap.prevTimestampMap = tsMap
-            immediateSnap.tailStartIndex = 0
-            immediateSnap.totalVisibleCount = 0
-            immediateSnap.generation = gen
-            timeline = immediateSnap
+                var immediateSnap = timeline
+                immediateSnap.visibleMessages = visibleRows
+                immediateSnap.prevTimestampMap = tsMap
+                immediateSnap.tailStartIndex = 0
+                immediateSnap.totalVisibleCount = 0
+                immediateSnap.generation = gen
+                timeline = immediateSnap
+                visibleMessageCount = visibleCount
+                lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
+                publishContextDeferred(contextMap: timeline.derivedContextMap, latestThinking: contextPanel.latestThinking)
+                return
+            }
+
             visibleMessageCount = visibleCount
-            publishContextDeferred(contextMap: timeline.derivedContextMap, latestThinking: contextPanel.latestThinking)
-            return
-        }
 
-        visibleMessageCount = visibleCount
-
-        var patchMap = needsFullRebuild ? [String: [StructuredPatchHunk]]() : timeline.derivedPatchMap
-        var toolUseMap = needsFullRebuild ? [String: ToolUseInfo]() : derivedToolUseMap
-        var ownerMap = needsFullRebuild ? [String: String]() : toolUseOwnerMap
-        var contextMap = needsFullRebuild ? [String: ContextItem]() : timeline.derivedContextMap
-        var latestThinking: String? = needsFullRebuild ? nil : contextPanel.latestThinking
-        var hasSummaryThinking = needsFullRebuild ? false : timeline.hasSummaryThinking
-        var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
-
-        Task { @MainActor in
-            await Task.yield()
-            guard gen == derivedDataGeneration else { return }
-
-            let visibleRows = Array(visible)
+            var patchMap = needsFullRebuild ? [String: [StructuredPatchHunk]]() : timeline.derivedPatchMap
+            var toolUseMap = needsFullRebuild ? [String: ToolUseInfo]() : derivedToolUseMap
+            var ownerMap = needsFullRebuild ? [String: String]() : toolUseOwnerMap
+            var contextMap = needsFullRebuild ? [String: ContextItem]() : timeline.derivedContextMap
+            var latestThinking: String? = needsFullRebuild ? nil : contextPanel.latestThinking
+            var hasSummaryThinking = needsFullRebuild ? false : timeline.hasSummaryThinking
+            var rowPatchesMap = needsFullRebuild ? [String: [String: [StructuredPatchHunk]]]() : timeline.rowPatchesMap
 
             derivedDataGeneration += 1
             let genRows = derivedDataGeneration
 
             var rowSnap = TimelineRenderSnapshot()
             rowSnap.generation = genRows
-            rowSnap.visibleMessages = visibleRows
+            rowSnap.visibleMessages = Array(visible)
             rowSnap.prevTimestampMap = tsMap
             rowSnap.tailStartIndex = 0
             rowSnap.totalVisibleCount = 0
@@ -194,13 +202,13 @@ struct SessionMessagesView: View {
             derivedDataGeneration += 1
             let genFinal = derivedDataGeneration
 
-            lastProcessedMessageCount = visibleCount
+            lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
             derivedToolUseMap = toolUseMap
             toolUseOwnerMap = ownerMap
 
             var snap = TimelineRenderSnapshot()
             snap.generation = genFinal
-            snap.visibleMessages = visibleRows
+            snap.visibleMessages = Array(visible)
             snap.prevTimestampMap = tsMap
             snap.tailStartIndex = 0
             snap.totalVisibleCount = 0
@@ -217,6 +225,7 @@ struct SessionMessagesView: View {
     /// Phase 1 for large sessions: full `visibleRows` + patch decode + single timeline write.
     private func runPhase1Decode(
         gen: Int,
+        fpHash: Int,
         visible: [Message],
         visibleCount: Int,
         startIndex: Int,
@@ -247,7 +256,7 @@ struct SessionMessagesView: View {
             }
             timeline = snap
             visibleMessageCount = visibleCount
-            lastProcessedMessageCount = visibleCount
+            lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
             publishContextDeferred(
                 contextMap: snap.derivedContextMap,
                 latestThinking: needsFullRebuild ? nil : contextPanel.latestThinking
@@ -289,7 +298,7 @@ struct SessionMessagesView: View {
         )
 
         guard gen == derivedDataGeneration else { return }
-        lastProcessedMessageCount = visibleCount
+        lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
         derivedToolUseMap = toolUseMap
         toolUseOwnerMap = ownerMap
 
