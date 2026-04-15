@@ -14,6 +14,10 @@ enum WebRenderResourceLoader {
         resourceBundle.resourceURL
     }
 
+    static func url(named name: String, extension ext: String) -> URL? {
+        resourceBundle.url(forResource: name, withExtension: ext)
+    }
+
     static func text(named name: String, extension ext: String) -> String {
         guard let url = resourceBundle.url(forResource: name, withExtension: ext),
             let text = try? String(contentsOf: url, encoding: .utf8)

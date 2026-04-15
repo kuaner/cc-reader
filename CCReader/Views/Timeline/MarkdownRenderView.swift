@@ -47,6 +47,29 @@ struct MarkdownRenderView: NSViewRepresentable {
             var template = WebRenderResourceLoader.text(named: "markdown-preview", extension: "html")
             let encodedMarkdown = Data(markdown.utf8).base64EncodedString()
             template = template.replacingOccurrences(of: "__CCREADER_MD_B64__", with: encodedMarkdown)
+            if let resourceDirectoryURL = WebRenderResourceLoader.resourceDirectoryURL
+            {
+                do {
+                    let tempDirectoryURL = FileManager.default.temporaryDirectory
+                        .appendingPathComponent("cc-reader-markdown-preview-\(UUID().uuidString)", isDirectory: true)
+                    try FileManager.default.createDirectory(
+                        at: tempDirectoryURL, withIntermediateDirectories: true)
+
+                    for resourceName in ["markdown-preview.css", "markdown-preview.js"] {
+                        let sourceURL = resourceDirectoryURL.appendingPathComponent(resourceName)
+                        let destinationURL = tempDirectoryURL.appendingPathComponent(resourceName)
+                        try? FileManager.default.removeItem(at: destinationURL)
+                        try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+                    }
+
+                    let tempHTMLURL = tempDirectoryURL.appendingPathComponent("markdown-preview.html")
+                    try template.write(to: tempHTMLURL, atomically: true, encoding: .utf8)
+                    webView.loadFileURL(tempHTMLURL, allowingReadAccessTo: tempDirectoryURL)
+                    return
+                } catch {
+                    // Fall back to `loadHTMLString` if the temp staging area cannot be prepared.
+                }
+            }
             webView.loadHTMLString(template, baseURL: WebRenderResourceLoader.resourceDirectoryURL)
         }
 

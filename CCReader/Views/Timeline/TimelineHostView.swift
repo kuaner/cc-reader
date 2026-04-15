@@ -178,13 +178,19 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             hasWaitingIndicator = snapshot.visibleMessages.last?.type == .user
             hasOlderIndicator = renderedMessageRange.lowerBound > 0
 
+            shellState = .loading
+            if let shellURL = WebRenderResourceLoader.url(named: "timeline-shell", extension: "html"),
+                let resourceDirectoryURL = WebRenderResourceLoader.resourceDirectoryURL
+            {
+                webView.loadFileURL(shellURL, allowingReadAccessTo: resourceDirectoryURL)
+                return
+            }
+
             let document = makeShellHTML(
                 messageHTML: "",
                 loadOlderHTML: "",
                 waitingHTML: ""
             )
-
-            shellState = .loading
             webView.loadHTMLString(document, baseURL: WebRenderResourceLoader.resourceDirectoryURL)
         }
 
