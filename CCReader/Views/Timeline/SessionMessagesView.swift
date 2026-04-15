@@ -119,11 +119,19 @@ struct SessionMessagesView: View {
             }
 
             let firstPaintThreshold = TimelineRenderTuning.firstPaintThreshold
+            let firstPaintTailSize = TimelineRenderTuning.firstPaintTailSize
 
             if visibleCount > firstPaintThreshold {
                 visibleMessageCount = visibleCount
 
                 let visibleRows = Array(visible)
+                let shouldUseSuffixFirstPaint = timeline.generation == 0
+                let firstPaintTailStart =
+                    shouldUseSuffixFirstPaint
+                    ? max(0, visibleCount - firstPaintTailSize) : 0
+                let firstPaintRows =
+                    firstPaintTailStart > 0
+                    ? Array(visible[firstPaintTailStart..<visibleCount]) : visibleRows
 
                 derivedDataGeneration += 1
                 let genFinal = derivedDataGeneration
@@ -136,7 +144,9 @@ struct SessionMessagesView: View {
                     startIndex: startIndex,
                     needsFullRebuild: needsFullRebuild,
                     tsMap: tsMap,
-                    visibleRows: visibleRows
+                    visibleRows: visibleRows,
+                    firstPaintRows: firstPaintRows,
+                    firstPaintTailStart: firstPaintTailStart
                 )
                 return
             }
@@ -231,7 +241,9 @@ struct SessionMessagesView: View {
         startIndex: Int,
         needsFullRebuild: Bool,
         tsMap: [String: Date],
-        visibleRows: [Message]
+        visibleRows: [Message],
+        firstPaintRows: [Message],
+        firstPaintTailStart: Int
     ) async {
         guard startIndex <= visibleCount else { return }
         let deltaMessages = Array(visible[startIndex..<visibleCount])
@@ -274,10 +286,10 @@ struct SessionMessagesView: View {
 
         var rowSnap = TimelineRenderSnapshot()
         rowSnap.generation = gen
-        rowSnap.visibleMessages = visibleRows
+        rowSnap.visibleMessages = firstPaintRows
         rowSnap.prevTimestampMap = tsMap
-        rowSnap.tailStartIndex = 0
-        rowSnap.totalVisibleCount = 0
+        rowSnap.tailStartIndex = firstPaintTailStart
+        rowSnap.totalVisibleCount = firstPaintTailStart > 0 ? visibleCount : 0
         rowSnap.derivedPatchMap = patchMap
         rowSnap.derivedContextMap = contextMap
         rowSnap.hasSummaryThinking = hasSummaryThinking
