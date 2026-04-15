@@ -2,11 +2,10 @@ import SwiftUI
 import SwiftData
 
 struct SessionMessagesView: View {
+    @Environment(\.modelContext) private var modelContext
+
     let session: Session
     @Binding var visibleMessageCount: Int
-
-    @Query private var messages: [Message]
-
     @Binding var showContextPanel: Bool
 
     // Snapshot of the timeline render state.
@@ -14,17 +13,19 @@ struct SessionMessagesView: View {
 
     // Snapshot used by the context panel.
     @State private var contextPanel = ContextPanelSnapshot()
+    @State private var messages: [Message] = []
+    @State private var isLargeSessionMode = false
+    @State private var totalMessageCount = 0
+    @State private var loadedMessageCount = Self.largeSessionInitialMessageCount
+
+    private static let largeSessionThresholdBytes = 5 * 1024 * 1024
+    private static let largeSessionInitialMessageCount = 200
+    private static let largeSessionPageSize = 200
 
     init(session: Session, visibleMessageCount: Binding<Int>, showContextPanel: Binding<Bool>) {
         self.session = session
         self._visibleMessageCount = visibleMessageCount
         self._showContextPanel = showContextPanel
-        let sid = session.sessionId
-        _messages = Query(
-            filter: #Predicate<Message> { $0.session?.sessionId == sid },
-            sort: \Message.timestamp,
-            order: .forward
-        )
     }
 
     var body: some View {
@@ -34,9 +35,14 @@ struct SessionMessagesView: View {
                     CompactedSessionBanner(summary: summary)
                 }
 
+                if isLargeSessionMode {
+                    LargeSessionBanner(messageCount: messages.count)
+                }
+
                 TimelineHostView(
                     sessionId: session.sessionId,
-                    snapshot: timeline
+                    snapshot: timeline,
+                    onRequestOlderMessages: isLargeSessionMode ? loadOlderMessagesPage : nil
                 )
                 .equatable()
                 .clipped()
@@ -50,9 +56,17 @@ struct SessionMessagesView: View {
             }
         }
         .onAppear {
+            reloadMessages()
             rebuildDerivedData()
         }
-        .onChange(of: messageFingerprintHash) { _, _ in
+        .onChange(of: session.sessionId) { _, _ in
+            resetViewState()
+            reloadMessages()
+        }
+        .onChange(of: session.updatedAt) { _, _ in
+            reloadMessages()
+        }
+        .onChange(of: messageFingerprint) { _, _ in
             rebuildDerivedData()
         }
     }
@@ -61,8 +75,10 @@ struct SessionMessagesView: View {
 
     @State private var derivedDataGeneration = 0
     @State private var lastFingerprint = MessageFingerprint(count: 0, hash: 0)
+    @State private var lastVisibleMessageCount = 0
     @State private var derivedToolUseMap: [String: ToolUseInfo] = [:]
     @State private var toolUseOwnerMap: [String: String] = [:]
+    @State private var shouldForceFullRebuild = false
 
     /// Lightweight fingerprint hash — count + XOR accumulator of raw JSON hashes.
     /// O(n) but only integer ops (no string allocation).
@@ -70,7 +86,9 @@ struct SessionMessagesView: View {
         var count: Int
         var hash: Int
     }
-    private var messageFingerprintHash: MessageFingerprint {
+    @State private var messageFingerprint = MessageFingerprint(count: 0, hash: 0)
+
+    private func fingerprint(for messages: [Message]) -> MessageFingerprint {
         var accumulator = 0
         for msg in messages {
             accumulator ^= msg.rawJson.hashValue
@@ -78,9 +96,218 @@ struct SessionMessagesView: View {
         return MessageFingerprint(count: messages.count, hash: accumulator)
     }
 
+    private func resetViewState() {
+        messages = []
+        timeline = TimelineRenderSnapshot()
+        contextPanel = ContextPanelSnapshot()
+        visibleMessageCount = 0
+        totalMessageCount = 0
+        loadedMessageCount = Self.largeSessionInitialMessageCount
+        lastFingerprint = MessageFingerprint(count: 0, hash: 0)
+        lastVisibleMessageCount = 0
+        messageFingerprint = MessageFingerprint(count: 0, hash: 0)
+        derivedToolUseMap = [:]
+        toolUseOwnerMap = [:]
+        shouldForceFullRebuild = false
+        isLargeSessionMode = false
+    }
+
+    private func reloadMessages() {
+        let sid = session.sessionId
+        let predicate = #Predicate<Message> { $0.session?.sessionId == sid }
+        let largeMode = shouldUseLargeSessionMode()
+
+        do {
+            totalMessageCount = try modelContext.fetchCount(FetchDescriptor<Message>(predicate: predicate))
+        } catch {
+            totalMessageCount = 0
+        }
+
+        do {
+            if largeMode {
+                let fetched = try fetchMessages(
+                    sessionId: sid,
+                    limit: loadedMessageCount,
+                    offset: 0,
+                    descending: true
+                )
+                messages = Array(fetched.reversed())
+            } else {
+                messages = try fetchMessages(
+                    sessionId: sid,
+                    limit: 0,
+                    offset: 0,
+                    descending: false
+                )
+            }
+            messageFingerprint = fingerprint(for: messages)
+            shouldForceFullRebuild = false
+            isLargeSessionMode = largeMode
+        } catch {
+            messages = []
+            messageFingerprint = MessageFingerprint(count: 0, hash: 0)
+            shouldForceFullRebuild = false
+            isLargeSessionMode = false
+        }
+    }
+
+    private func loadOlderMessagesPage() {
+        guard isLargeSessionMode else { return }
+        guard messages.count < totalMessageCount else { return }
+        let sid = session.sessionId
+        let offset = messages.count
+        let pageSize = min(Self.largeSessionPageSize, totalMessageCount - offset)
+        guard pageSize > 0 else { return }
+
+        do {
+            let older = try fetchMessages(
+                sessionId: sid,
+                limit: pageSize,
+                offset: offset,
+                descending: true
+            )
+            guard !older.isEmpty else { return }
+            let olderAscending = Array(older.reversed())
+            messages = olderAscending + messages
+            loadedMessageCount += older.count
+            var updatedFingerprint = messageFingerprint
+            updatedFingerprint.count = messages.count
+            for msg in olderAscending {
+                updatedFingerprint.hash ^= msg.rawJson.hashValue
+            }
+            messageFingerprint = updatedFingerprint
+            shouldForceFullRebuild = true
+        } catch {
+            return
+        }
+    }
+
+    private func fetchMessages(
+        sessionId: String,
+        limit: Int,
+        offset: Int,
+        descending: Bool
+    ) throws -> [Message] {
+        let predicate = #Predicate<Message> { $0.session?.sessionId == sessionId }
+        var descriptor = FetchDescriptor<Message>(
+            predicate: predicate,
+            sortBy: [
+                SortDescriptor(
+                    \Message.timestamp,
+                    order: descending ? .reverse : .forward
+                )
+            ]
+        )
+        if limit > 0 {
+            descriptor.fetchLimit = limit
+        }
+        descriptor.fetchOffset = offset
+        return try modelContext.fetch(descriptor)
+    }
+
+    private func shouldUseLargeSessionMode() -> Bool {
+        guard let fileURL = session.jsonlFileURL else { return false }
+        guard let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey]),
+              let fileSize = values.fileSize else {
+            return false
+        }
+        return fileSize > Self.largeSessionThresholdBytes
+    }
+
+    private var hasMoreBeforeLoaded: Bool {
+        isLargeSessionMode && messages.count < totalMessageCount
+    }
+
+    private func buildPrevTimestampMap(
+        visible: [Message],
+        visibleCount: Int,
+        needsFullRebuild: Bool,
+        isPrependingHistory: Bool,
+        prependedCount: Int,
+        startIndex: Int
+    ) -> [String: Date] {
+        if needsFullRebuild || timeline.prevTimestampMap.isEmpty {
+            return rebuildPrevTimestampMapFully(for: visible)
+        }
+
+        if isPrependingHistory {
+            var tsMap = timeline.prevTimestampMap
+            var lastUserTime: Date? = nil
+
+            for msg in visible.prefix(prependedCount) {
+                if msg.type == .assistant {
+                    if let t = lastUserTime {
+                        tsMap[msg.uuid] = t
+                    } else {
+                        tsMap.removeValue(forKey: msg.uuid)
+                    }
+                }
+                if msg.type == .user {
+                    lastUserTime = msg.timestamp
+                }
+            }
+
+            if prependedCount < visibleCount {
+                for msg in visible[prependedCount..<visibleCount] {
+                    if msg.type == .assistant {
+                        if let t = lastUserTime {
+                            tsMap[msg.uuid] = t
+                        } else {
+                            tsMap.removeValue(forKey: msg.uuid)
+                        }
+                    }
+                    if msg.type == .user {
+                        break
+                    }
+                }
+            }
+
+            return tsMap
+        }
+
+        var tsMap = timeline.prevTimestampMap
+        var lastUserTime = latestUserTimestamp(in: visible, upTo: startIndex)
+        for msg in visible[startIndex..<visibleCount] {
+            if msg.type == .assistant {
+                if let t = lastUserTime {
+                    tsMap[msg.uuid] = t
+                } else {
+                    tsMap.removeValue(forKey: msg.uuid)
+                }
+            }
+            if msg.type == .user {
+                lastUserTime = msg.timestamp
+            }
+        }
+        return tsMap
+    }
+
+    private func rebuildPrevTimestampMapFully(for visible: [Message]) -> [String: Date] {
+        var tsMap: [String: Date] = [:]
+        tsMap.reserveCapacity(visible.count)
+        var lastUserTime: Date? = nil
+        for msg in visible {
+            if msg.type == .assistant, let t = lastUserTime {
+                tsMap[msg.uuid] = t
+            }
+            if msg.type == .user {
+                lastUserTime = msg.timestamp
+            }
+        }
+        return tsMap
+    }
+
+    private func latestUserTimestamp(in visible: [Message], upTo endIndex: Int) -> Date? {
+        guard endIndex > 0 else { return nil }
+        for msg in visible[..<endIndex].reversed() where msg.type == .user {
+            return msg.timestamp
+        }
+        return nil
+    }
+
     private func rebuildDerivedData() {
         // Early return: skip if message set is identical to last processed state.
-        let fp = messageFingerprintHash
+        let fp = messageFingerprint
         if fp == lastFingerprint {
             return
         }
@@ -103,20 +330,22 @@ struct SessionMessagesView: View {
                 return true
             }
             let visibleCount = visible.count
-            let needsFullRebuild = visibleCount < lastFingerprint.count
-            let startIndex = needsFullRebuild ? 0 : lastFingerprint.count
-
-            var tsMap: [String: Date] = [:]
-            tsMap.reserveCapacity(visibleCount)
-            var lastUserTime: Date? = nil
-            for msg in visible {
-                if msg.type == .assistant, let t = lastUserTime {
-                    tsMap[msg.uuid] = t
-                }
-                if msg.type == .user {
-                    lastUserTime = msg.timestamp
-                }
-            }
+            let prependedCount = max(0, visibleCount - lastVisibleMessageCount)
+            let isPrependingHistory = shouldForceFullRebuild && lastVisibleMessageCount > 0 && prependedCount > 0
+            let hasInPlaceVisibleMutation =
+                !shouldForceFullRebuild &&
+                visibleCount == lastVisibleMessageCount &&
+                fp != lastFingerprint
+            let needsFullRebuild = visibleCount < lastVisibleMessageCount || hasInPlaceVisibleMutation
+            let startIndex = needsFullRebuild ? 0 : min(lastVisibleMessageCount, visibleCount)
+            let tsMap = buildPrevTimestampMap(
+                visible: visible,
+                visibleCount: visibleCount,
+                needsFullRebuild: needsFullRebuild,
+                isPrependingHistory: isPrependingHistory,
+                prependedCount: prependedCount,
+                startIndex: startIndex
+            )
 
             let firstPaintThreshold = TimelineRenderTuning.firstPaintThreshold
             let firstPaintTailSize = TimelineRenderTuning.firstPaintTailSize
@@ -142,7 +371,9 @@ struct SessionMessagesView: View {
                     visible: visible,
                     visibleCount: visibleCount,
                     startIndex: startIndex,
+                    prependedCount: prependedCount,
                     needsFullRebuild: needsFullRebuild,
+                    isPrependingHistory: isPrependingHistory,
                     tsMap: tsMap,
                     visibleRows: visibleRows,
                     firstPaintRows: firstPaintRows,
@@ -152,13 +383,15 @@ struct SessionMessagesView: View {
             }
 
             guard startIndex <= visibleCount else { return }
-            let deltaMessages = Array(visible[startIndex..<visibleCount])
+            let deltaMessages: [Message] =
+                isPrependingHistory ? Array(visible.prefix(prependedCount)) : Array(visible[startIndex..<visibleCount])
 
             if deltaMessages.isEmpty {
                 let visibleRows = Array(visible)
 
                 var immediateSnap = timeline
                 immediateSnap.visibleMessages = visibleRows
+                immediateSnap.hasMoreBeforeLoaded = hasMoreBeforeLoaded
                 immediateSnap.prevTimestampMap = tsMap
                 immediateSnap.tailStartIndex = 0
                 immediateSnap.totalVisibleCount = 0
@@ -166,6 +399,8 @@ struct SessionMessagesView: View {
                 timeline = immediateSnap
                 visibleMessageCount = visibleCount
                 lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
+                lastVisibleMessageCount = visibleCount
+                shouldForceFullRebuild = false
                 publishContextDeferred(contextMap: timeline.derivedContextMap, latestThinking: contextPanel.latestThinking)
                 return
             }
@@ -186,6 +421,7 @@ struct SessionMessagesView: View {
             var rowSnap = TimelineRenderSnapshot()
             rowSnap.generation = genRows
             rowSnap.visibleMessages = Array(visible)
+            rowSnap.hasMoreBeforeLoaded = hasMoreBeforeLoaded
             rowSnap.prevTimestampMap = tsMap
             rowSnap.tailStartIndex = 0
             rowSnap.totalVisibleCount = 0
@@ -199,6 +435,7 @@ struct SessionMessagesView: View {
             await runPhase1DecodeLoop(
                 gen: genRows,
                 deltaMessages: deltaMessages,
+                isPrependingHistory: isPrependingHistory,
                 patchMap: &patchMap,
                 toolUseMap: &toolUseMap,
                 ownerMap: &ownerMap,
@@ -213,12 +450,15 @@ struct SessionMessagesView: View {
             let genFinal = derivedDataGeneration
 
             lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
+            lastVisibleMessageCount = visibleCount
             derivedToolUseMap = toolUseMap
             toolUseOwnerMap = ownerMap
+            shouldForceFullRebuild = false
 
             var snap = TimelineRenderSnapshot()
             snap.generation = genFinal
             snap.visibleMessages = Array(visible)
+            snap.hasMoreBeforeLoaded = hasMoreBeforeLoaded
             snap.prevTimestampMap = tsMap
             snap.tailStartIndex = 0
             snap.totalVisibleCount = 0
@@ -239,19 +479,23 @@ struct SessionMessagesView: View {
         visible: [Message],
         visibleCount: Int,
         startIndex: Int,
+        prependedCount: Int,
         needsFullRebuild: Bool,
+        isPrependingHistory: Bool,
         tsMap: [String: Date],
         visibleRows: [Message],
         firstPaintRows: [Message],
         firstPaintTailStart: Int
     ) async {
         guard startIndex <= visibleCount else { return }
-        let deltaMessages = Array(visible[startIndex..<visibleCount])
+        let deltaMessages: [Message] =
+            isPrependingHistory ? Array(visible.prefix(prependedCount)) : Array(visible[startIndex..<visibleCount])
 
         if deltaMessages.isEmpty {
             var snap = TimelineRenderSnapshot()
             snap.generation = gen
             snap.visibleMessages = visibleRows
+            snap.hasMoreBeforeLoaded = hasMoreBeforeLoaded
             snap.prevTimestampMap = tsMap
             snap.tailStartIndex = 0
             snap.totalVisibleCount = 0
@@ -268,6 +512,8 @@ struct SessionMessagesView: View {
             }
             timeline = snap
             visibleMessageCount = visibleCount
+            lastVisibleMessageCount = visibleCount
+            shouldForceFullRebuild = false
             lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
             publishContextDeferred(
                 contextMap: snap.derivedContextMap,
@@ -287,6 +533,7 @@ struct SessionMessagesView: View {
         var rowSnap = TimelineRenderSnapshot()
         rowSnap.generation = gen
         rowSnap.visibleMessages = firstPaintRows
+        rowSnap.hasMoreBeforeLoaded = hasMoreBeforeLoaded
         rowSnap.prevTimestampMap = tsMap
         rowSnap.tailStartIndex = firstPaintTailStart
         rowSnap.totalVisibleCount = firstPaintTailStart > 0 ? visibleCount : 0
@@ -300,6 +547,7 @@ struct SessionMessagesView: View {
         await runPhase1DecodeLoop(
             gen: gen,
             deltaMessages: deltaMessages,
+            isPrependingHistory: isPrependingHistory,
             patchMap: &patchMap,
             toolUseMap: &toolUseMap,
             ownerMap: &ownerMap,
@@ -311,8 +559,10 @@ struct SessionMessagesView: View {
 
         guard gen == derivedDataGeneration else { return }
         lastFingerprint = MessageFingerprint(count: visibleCount, hash: fpHash)
+        lastVisibleMessageCount = visibleCount
         derivedToolUseMap = toolUseMap
         toolUseOwnerMap = ownerMap
+        shouldForceFullRebuild = false
 
         derivedDataGeneration += 1
         let genPatched = derivedDataGeneration
@@ -320,6 +570,7 @@ struct SessionMessagesView: View {
         var snap = TimelineRenderSnapshot()
         snap.generation = genPatched
         snap.visibleMessages = visibleRows
+        snap.hasMoreBeforeLoaded = hasMoreBeforeLoaded
         snap.prevTimestampMap = tsMap
         snap.tailStartIndex = 0
         snap.totalVisibleCount = 0
@@ -335,6 +586,7 @@ struct SessionMessagesView: View {
     private func runPhase1DecodeLoop(
         gen: Int,
         deltaMessages: [Message],
+        isPrependingHistory: Bool,
         patchMap: inout [String: [StructuredPatchHunk]],
         toolUseMap: inout [String: ToolUseInfo],
         ownerMap: inout [String: String],
@@ -369,7 +621,7 @@ struct SessionMessagesView: View {
                     }
                     if !rowMap.isEmpty { rowPatchesMap[msg.uuid] = rowMap }
                 }
-                if !hasSummaryThinking, let t = msg.thinking, !t.isEmpty {
+                if !isPrependingHistory, !hasSummaryThinking, let t = msg.thinking, !t.isEmpty {
                     latestThinking = t
                 }
             } else {
@@ -383,7 +635,7 @@ struct SessionMessagesView: View {
                         }
                     }
                 }
-                if let c = msg.content, c.contains("This session is being continued") {
+                if !isPrependingHistory, let c = msg.content, c.contains("This session is being continued") {
                     latestThinking = c
                     hasSummaryThinking = true
                 }
@@ -393,6 +645,9 @@ struct SessionMessagesView: View {
                               let toolUse = toolUseMap[toolUseId] else { continue }
                         let content = result.content ?? ""
                         let key = toolUse.filePath ?? toolUse.command ?? toolUseId
+                        if isPrependingHistory, contextMap[key] != nil {
+                            continue
+                        }
                         contextMap[key] = ContextItem(
                             id: key, toolName: toolUse.name,
                             filePath: toolUse.filePath, command: toolUse.command,
@@ -460,6 +715,27 @@ struct CompactedSessionBanner: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.3))
+    }
+}
+
+struct LargeSessionBanner: View {
+    let messageCount: Int
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "speedometer")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text("Large session mode: loaded \(messageCount) recent messages first. Use Load older to fetch more on demand.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

@@ -4,6 +4,8 @@ import SwiftUI
 struct TimelineRenderSnapshot {
     var generation = 0
     var visibleMessages: [Message] = []
+    /// True when earlier messages exist outside `visibleMessages` and must be fetched on demand.
+    var hasMoreBeforeLoaded = false
     /// When non-zero, `visibleMessages` is only `visible[tailStartIndex..<totalVisibleCount)` (suffix-first paint).
     var tailStartIndex = 0
     /// Total logical message count for windowing; 0 means use `visibleMessages.count`.

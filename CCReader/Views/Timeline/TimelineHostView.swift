@@ -6,6 +6,7 @@ import WebKit
 struct TimelineHostView: NSViewRepresentable, Equatable {
     let sessionId: String
     let snapshot: TimelineRenderSnapshot
+    let onRequestOlderMessages: (() -> Void)?
 
     static func == (lhs: TimelineHostView, rhs: TimelineHostView) -> Bool {
         lhs.sessionId == rhs.sessionId && lhs.snapshot.generation == rhs.snapshot.generation
@@ -35,6 +36,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.onRequestOlderMessages = onRequestOlderMessages
         context.coordinator.apply(sessionId: sessionId, snapshot: snapshot)
     }
 
@@ -59,6 +61,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             .progressivePrependChunkSize
 
         private weak var webView: WKWebView?
+        var onRequestOlderMessages: (() -> Void)?
         private var themeObserver: NSObjectProtocol?
         private var currentSessionId = ""
         private var snapshot = TimelineRenderSnapshot()
@@ -117,7 +120,11 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             case "scrollState":
                 isFollowingBottom = (body["following"] as? Bool) ?? true
             case "loadOlder":
-                loadOlderMessages()
+                if renderedMessageRange.lowerBound > 0 {
+                    loadOlderMessages()
+                } else if snapshot.hasMoreBeforeLoaded {
+                    onRequestOlderMessages?()
+                }
             case "navigateToSession":
                 if let sessionId = body["sessionId"] as? String {
                     NotificationCenter.default.post(name: .navigateToSession, object: sessionId)
@@ -131,6 +138,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
 
         func apply(sessionId: String, snapshot: TimelineRenderSnapshot) {
             let sessionChanged = currentSessionId != sessionId
+            let previousSnapshot = self.snapshot
             // New SessionMessagesView starts with an empty bootstrap snapshot.
             // If we switch DOM immediately, timeline flashes blank until query data arrives.
             if sessionChanged && isBootstrapSnapshot(snapshot) {
@@ -141,6 +149,14 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             }
 
             self.snapshot = snapshot
+            if !sessionChanged,
+                applyPrependedSnapshotUpdateIfNeeded(
+                    previous: previousSnapshot,
+                    current: snapshot
+                )
+            {
+                return
+            }
             updateRenderedRangeIfNeeded()
 
             switch shellState {
@@ -176,7 +192,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             renderedFingerprints = Dictionary(
                 uniqueKeysWithValues: messages.map { ($0.uuid, $0.rawJson.hashValue) })
             hasWaitingIndicator = snapshot.visibleMessages.last?.type == .user
-            hasOlderIndicator = renderedMessageRange.lowerBound > 0
+            hasOlderIndicator = renderedMessageRange.lowerBound > 0 || snapshot.hasMoreBeforeLoaded
 
             shellState = .loading
             if let shellURL = WebRenderResourceLoader.url(named: "timeline-shell", extension: "html"),
@@ -223,7 +239,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             let waitingChanged = shouldShowWaiting != hasWaitingIndicator
 
             // 4. Update "load older" indicator.
-            let shouldShowOlder = renderedMessageRange.lowerBound > 0
+            let shouldShowOlder = renderedMessageRange.lowerBound > 0 || snapshot.hasMoreBeforeLoaded
             let olderChanged = shouldShowOlder != hasOlderIndicator
 
             // No changes — skip.
@@ -297,7 +313,7 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
         private func replaceTimelineContentViaPayloads(updatingCoordinatorState: Bool) async {
             let labels = TimelineWebLabels.localized()
             let messages = currentRenderedMessages()
-            let hasOlder = renderedMessageRange.lowerBound > 0
+            let hasOlder = renderedMessageRange.lowerBound > 0 || snapshot.hasMoreBeforeLoaded
             let waiting = snapshot.visibleMessages.last?.type == .user
 
             let loadOlderHTML = hasOlder ? loadOlderBarHTML(labels: labels) : ""
@@ -384,6 +400,46 @@ struct TimelineHostView: NSViewRepresentable, Equatable {
             evaluate(
                 commands: [.prependOlderFromPayloads(json: payloadJSON)],
                 errorPrefix: "[TimelineHostView] prepend JS error")
+        }
+
+        private func applyPrependedSnapshotUpdateIfNeeded(
+            previous: TimelineRenderSnapshot,
+            current: TimelineRenderSnapshot
+        ) -> Bool {
+            guard shellState == .loaded else { return false }
+            let oldMessages = previous.visibleMessages
+            let newMessages = current.visibleMessages
+            guard !oldMessages.isEmpty, newMessages.count > oldMessages.count else { return false }
+
+            let delta = newMessages.count - oldMessages.count
+            guard Array(newMessages.suffix(oldMessages.count)).elementsEqual(oldMessages, by: { $0.uuid == $1.uuid }) else {
+                return false
+            }
+
+            let labels = TimelineWebLabels.localized()
+            let payloadBuilder = TimelinePayloadBuilder(snapshot: current, labels: labels)
+            let prepended = Array(newMessages.prefix(delta))
+            let envelope: [String: Any] = [
+                "messages": prepended.map { payloadBuilder.messagePayload(for: $0) },
+                "removeOlderBar": !current.hasMoreBeforeLoaded,
+            ]
+            guard let payloadJSON = toJSONString(envelope) else { return false }
+
+            renderedMessageRange = 0..<min(renderedMessageRange.upperBound + delta, newMessages.count)
+            previousVisibleMessageCount = newMessages.count
+            hasOlderIndicator = current.hasMoreBeforeLoaded
+
+            let prependedUUIDs = prepended.map(\.uuid)
+            renderedMessageUUIDs = prependedUUIDs + renderedMessageUUIDs
+            renderedMessageSet.formUnion(prependedUUIDs)
+            for msg in prepended {
+                renderedFingerprints[msg.uuid] = msg.rawJson.hashValue
+            }
+
+            evaluate(
+                commands: [.prependOlderFromPayloads(json: payloadJSON)],
+                errorPrefix: "[TimelineHostView] prepend snapshot JS error")
+            return true
         }
 
         private func toJSONString(_ value: Any) -> String? {
