@@ -2,23 +2,26 @@
 
 [English](README.md) | 日本語 | [简体中文](README.zh-Hans.md)
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) のセッション履歴を閲覧・管理するための macOS アプリ。
+Claude Code と Codex のセッション履歴を閲覧・管理するための macOS アプリ。
 
-`~/.claude/projects/` 配下の JSONL ファイルを監視し、会話タイムライン・思考プロセス・ツール使用状況をリッチな UI で表示します。
+`~/.claude/projects/` と `~/.codex/sessions/` 配下の JSONL ファイルを監視し、会話タイムライン・思考プロセス・ツール使用状況をリッチな UI で表示します。
 
 ![cc-reader demo](assets/screenshot.gif)
 
 > **⚠️ 注意**
-> これは**非公式**のサードパーティツールです。Claude Code の JSONL フォーマットは公開 API ではなく、予告なく変更される可能性があります。一部の管理操作はローカルのセッションファイルを変更する場合があります。バックアップを必ず保持してください。
+> これは**非公式**のサードパーティツールです。Claude Code と Codex のセッション形式は公開 API ではなく、予告なく変更される可能性があります。一部の管理操作はローカルのセッションファイルを変更する場合があります。バックアップを必ず保持してください。
 
 ## 機能
 
 - **セッションリーダー** — Markdown レンダリング・シンタックスハイライト・コードブロック操作・メッセージ単位コピー対応の WKWebView タイムライン
-- **リアルタイム同期** — FSEvents でファイル変更を検出、差分パースで即座に反映
+- **Claude + Codex ソース** — サイドバーとセッションピッカーで Claude / Codex を分け、同じタイムライン UI で表示
+- **高速セッション索引** — 初回起動は軽量な session 行のみ作成し、メタデータは新しい順にウォームアップ、メッセージは開いた時に解析
+- **リアルタイム同期** — FSEvents でファイル変更を検出し、変更ファイルを差分パース
 - **セッション管理** — サイドバーからセッション名変更や削除が可能
 - **マルチペイン** — 最大12ペインで複数セッションを同時監視
-- **コンテキストパネル** — Claude の理解状況、読み込み/編集済みファイルを一覧表示
+- **コンテキストパネル** — 読み込み/編集済みファイル、実行コマンド、検索、ツール履歴を一覧表示
 - **長大タイムライン最適化** — ウィンドウ化レンダリング + 上端付近での過去メッセージ自動ロード
+- **Resume コマンドコピー** — ペインのツールバーから `claude --resume <sessionId>` または `codex resume <sessionId>` をコピー
 
 ## 必要環境
 
@@ -152,7 +155,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             readerWindow?.title = "CC Reader"
 
             // 必須：NSToolbar + .unified スタイルにより、SwiftUI の toolbar items
-            //（パス、Resume、更新ボタン）がタイトルバーに表示されます。
+            //（ソース表示、パス、Resume、更新ボタン）がタイトルバーに表示されます。
             let toolbar = NSToolbar(identifier: "CCReaderToolbar")
             toolbar.displayMode = .iconOnly
             readerWindow?.toolbar = toolbar
@@ -189,11 +192,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 ## アーキテクチャ
 
 ```
-データソース: ~/.claude/projects/**/*.jsonl
+データソース:
+  - ~/.claude/projects/**/*.jsonl
+  - ~/.codex/sessions/**/*.jsonl
     ↓ FSEvents
-FileWatcherService → SyncService → JSONLParser（差分パース）
+FileWatcherService → SyncService → SessionTranscriptParserRegistry → JSONLParser
     ↓
 SwiftData ModelContext
+    ↓
+LayoutManager（タブごとのペインツリー、分割、フォーカス、割り当て）
     ↓
 SessionMessagesView（スナップショット構築）
     ↓
@@ -205,6 +212,10 @@ TimelineHostView（単一 WKWebView / ウィンドウ化レンダリング）
 ## ドキュメント
 
 - [Architecture & Specification](docs/SPEC.md)
+- [Layout System — Multi-Tab & Multi-Pane](docs/layout-system.md)
+- [Timeline Rendering Architecture](docs/timeline-rendering-architecture.md)
+- [Timeline Incremental DOM](docs/timeline-incremental-dom.md)
+- [Timeline Scroll Optimization](docs/timeline-scroll-optimization-notes.md)
 
 ## 謝辞
 

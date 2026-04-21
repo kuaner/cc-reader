@@ -249,6 +249,14 @@ public class Message {
                         ?? (input["content"] as? String)
                         ?? (input["text"] as? String)
                         ?? (input["pattern"] as? String)
+                    if inputSummary == nil,
+                       let repo = input["repo_full_name"] as? String {
+                        if let prNumber = input["pr_number"] {
+                            inputSummary = "\(repo)#\(prNumber)"
+                        } else {
+                            inputSummary = repo
+                        }
+                    }
                 }
                 let rawInput: String? = {
                     guard let input = block.input?.value as? [String: Any] else { return nil }
@@ -514,6 +522,28 @@ public struct RawMessageContent: Codable {
     public var contentString: String?
     public var usage: AnyCodable?    // Token usage (input_tokens, output_tokens, etc.)
 
+    public init(
+        type: String? = nil,
+        role: String,
+        id: String? = nil,
+        model: String? = nil,
+        stop_reason: String? = nil,
+        stop_sequence: String? = nil,
+        content: [ContentBlock]? = nil,
+        contentString: String? = nil,
+        usage: AnyCodable? = nil
+    ) {
+        self.type = type
+        self.role = role
+        self.id = id
+        self.model = model
+        self.stop_reason = stop_reason
+        self.stop_sequence = stop_sequence
+        self.content = content
+        self.contentString = contentString
+        self.usage = usage
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         type = try container.decodeIfPresent(String.self, forKey: .type)
@@ -565,6 +595,28 @@ public struct ContentBlock: Codable {
     public var tool_use_id: String?
     public var content: AnyCodable?
     public var is_error: Bool?
+
+    public init(
+        type: String,
+        text: String? = nil,
+        thinking: String? = nil,
+        id: String? = nil,
+        name: String? = nil,
+        input: AnyCodable? = nil,
+        tool_use_id: String? = nil,
+        content: AnyCodable? = nil,
+        is_error: Bool? = nil
+    ) {
+        self.type = type
+        self.text = text
+        self.thinking = thinking
+        self.id = id
+        self.name = name
+        self.input = input
+        self.tool_use_id = tool_use_id
+        self.content = content
+        self.is_error = is_error
+    }
 }
 
 public struct ToolResultData: Codable {

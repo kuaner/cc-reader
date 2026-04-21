@@ -2,24 +2,27 @@
 
 English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md)
 
-A macOS app for reading and managing [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session history.
+A macOS app for reading and managing Claude Code and Codex session history.
 
-Monitors JSONL files under `~/.claude/projects/` and displays conversation timelines, thinking processes, and tool usage in a rich native UI.
+Monitors JSONL files under `~/.claude/projects/` and `~/.codex/sessions/`, then displays conversation timelines, thinking processes, and tool usage in a rich native UI.
 
 ![cc-reader demo](assets/screenshot.avif)
 
 > **⚠️ Disclaimer**
-> This is an **unofficial** third-party tool. Claude Code's JSONL format is not a public API and may change without notice. Some management actions may modify local session files. Always keep backups.
+> This is an **unofficial** third-party tool. Claude Code and Codex session formats are not public APIs and may change without notice. Some management actions may modify local session files. Always keep backups.
 
 ## Features
 
 - **Multi-Tab & Multi-Pane Layout** — Native macOS tabbing with per-tab split layouts, like a terminal emulator. Compare sessions side by side.
+- **Claude + Codex Sources** — Keep Claude and Codex histories in separate sidebar/picker tabs while using the same timeline UI
 - **Timeline Viewer** — Native timeline with markdown rendering, syntax highlighting, and per-message actions
-- **Real-time Sync** — FSEvents monitoring plus incremental JSONL parsing
+- **Fast Session Indexing** — First launch creates lightweight session rows, then warms metadata and parses messages lazily when opened
+- **Real-time Sync** — FSEvents monitoring plus incremental JSONL parsing for changed files
 - **Session Operations** — Rename sessions and clean up session/message data when needed
-- **Context Panel** — Inspect Claude's context, including loaded and edited files (per-pane toggle)
+- **Context Panel** — Inspect assistant context, including loaded/edited files, executed commands, searches, and tool activity (per-pane toggle)
 - **Long Timeline Optimization** — Windowed rendering with progressive loading for large histories
 - **Session Picker** — Quick-searchable session picker with keyboard navigation
+- **Resume Command Copy** — Copy `claude --resume <sessionId>` or `codex resume <sessionId>` from the pane toolbar
 
 ## Keyboard Shortcuts
 
@@ -167,7 +170,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             readerWindow?.title = "CC Reader"
 
             // Required: NSToolbar + .unified style enables SwiftUI toolbar
-            // items (cwd path, Resume, refresh) to render in the title bar.
+            // items (source badge, cwd path, resume, refresh) to render in the title bar.
             let toolbar = NSToolbar(identifier: "CCReaderToolbar")
             toolbar.displayMode = .iconOnly
             readerWindow?.toolbar = toolbar
@@ -204,9 +207,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 ## Architecture
 
 ```
-Data Source: ~/.claude/projects/**/*.jsonl
+Data Sources:
+  - ~/.claude/projects/**/*.jsonl
+  - ~/.codex/sessions/**/*.jsonl
     ↓ FSEvents
-FileWatcherService → SyncService → JSONLParser (incremental)
+FileWatcherService → SyncService → SessionTranscriptParserRegistry → JSONLParser
     ↓
 SwiftData ModelContext
     ↓

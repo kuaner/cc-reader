@@ -12,11 +12,13 @@ struct SessionPickerView: View {
     @State private var searchText = ""
     @State private var selectedSessionId: String?
     @State private var scrollTarget: String?
+    @State private var sourceFilter: SessionSourceFilter = .claude
     @FocusState private var isSearchFocused: Bool
 
     private var filteredSessions: [Session] {
-        if searchText.isEmpty { return Array(sessions) }
-        return sessions.filter { session in
+        let sourceSessions = sessions.filter(sourceFilter.contains)
+        if searchText.isEmpty { return Array(sourceSessions) }
+        return sourceSessions.filter { session in
             session.displayTitle.localizedCaseInsensitiveContains(searchText)
             || (session.gitBranch?.localizedCaseInsensitiveContains(searchText) ?? false)
             || (session.sessionTag?.localizedCaseInsensitiveContains(searchText) ?? false)
@@ -52,6 +54,11 @@ struct SessionPickerView: View {
                 }
             }
             .padding(12)
+            .background(Color(nsColor: .controlBackgroundColor))
+
+            SessionSourceScopeBar(selection: $sourceFilter, sessions: sessions)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
             .background(Color(nsColor: .controlBackgroundColor))
 
             Divider()
@@ -106,6 +113,9 @@ struct SessionPickerView: View {
             if selectedSessionId == nil || !filteredSessions.contains(where: { $0.sessionId == selectedSessionId }) {
                 selectedSessionId = selectableSessions.first?.sessionId
             }
+        }
+        .onChange(of: sourceFilter) { _, _ in
+            selectedSessionId = selectableSessions.first?.sessionId
         }
         .onKeyPress(.upArrow) {
             navigate(offset: -1)

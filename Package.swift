@@ -33,5 +33,9 @@ let package = Package(
                 .process("Resources/zh-Hans.lproj"),
             ]
         ),
+        .testTarget(
+            name: "CCReaderKitTests",
+            dependencies: ["CCReaderKit"]
+        ),
     ]
 )

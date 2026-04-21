@@ -2,9 +2,9 @@
 
 ## Overview
 
-**cc-reader** is a macOS desktop app for reading and managing Claude Code session history. It monitors and parses JSONL files under `~/.claude/projects/`, displaying conversation timelines, tool usage, thinking/context information, and session metadata in a native UI optimized for long sessions.
+**cc-reader** is a macOS desktop app for reading and managing Claude Code and Codex session history. It monitors and parses JSONL files under `~/.claude/projects/` and `~/.codex/sessions/`, displaying conversation timelines, tool usage, thinking/context information, and session metadata in a native UI optimized for long sessions.
 
-Key capabilities: multi-tab & multi-pane session monitoring, real-time incremental sync, sidebar-based session management, and a single-WKWebView timeline tuned for large histories.
+Key capabilities: multi-tab & multi-pane session monitoring, source-separated Claude/Codex session lists, lightweight first-launch indexing, real-time incremental sync, sidebar-based session management, and a single-WKWebView timeline tuned for large histories.
 
 ---
 
@@ -49,7 +49,8 @@ Key capabilities: multi-tab & multi-pane session monitoring, real-time increment
 │  ┌────────────────────┴───────────────────────────────┐  │
 │  │             Services Layer                          │  │
 │  │  AppCoordinator / SyncService / LayoutManager      │  │
-│  │  FileWatcherService / JSONLParser / JSONLWriter     │  │
+│  │  FileWatcherService / SessionTranscriptParser       │  │
+│  │  JSONLParser / JSONLWriter                          │  │
 │  │  TokenEstimator / ConfirmationDetector             │  │
 │  │  IgnoredSessionManager                             │  │
 │  └────────────────────┬───────────────────────────────┘  │
@@ -61,7 +62,8 @@ Key capabilities: multi-tab & multi-pane session monitoring, real-time increment
 │                       │                                  │
 │  ┌────────────────────┴───────────────────────────────┐  │
 │  │             Data Source                             │  │
-│  │  ~/.claude/projects/**/*.jsonl (FSEvents)          │  │
+│  │  ~/.claude/projects/**/*.jsonl                      │  │
+│  │  ~/.codex/sessions/**/*.jsonl      (FSEvents)       │  │
 │  └────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -72,7 +74,7 @@ Key capabilities: multi-tab & multi-pane session monitoring, real-time increment
 
 ### Project
 
-Represents a project directory under `~/.claude/projects/`.
+Represents a logical project/workspace. For Claude sessions this is derived from the directory under `~/.claude/projects/`; for Codex sessions it is derived from parsed metadata when available, falling back to the transcript location.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -84,7 +86,7 @@ Represents a project directory under `~/.claude/projects/`.
 
 ### Session
 
-Represents a single Claude Code session (one JSONL file).
+Represents a single assistant session (one JSONL file).
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -101,9 +103,11 @@ Represents a single Claude Code session (one JSONL file).
 | `cachedTurnCount` | `Int` | User turn count cache |
 | `cachedTitle` | `String?` | Session title cache |
 | `cachedUnacknowledgedCount` | `Int` | Cached unread assistant count |
+| `source` | `String?` | Transcript provider, for example `claude` or `codex` |
+| `transcriptPath` | `String?` | Absolute JSONL path; needed because sources are not all derivable from project + id |
 
 **Computed:**
-- `displayTitle` — Priority: slug > cachedTitle > timestamp
+- `displayTitle` — Priority: custom title > slug > cached title > AI title > timestamp/session id
 - `jsonlFileURL` — Path to the corresponding JSONL file
 - `unacknowledgedCount` — UI-facing unread assistant count
 
@@ -123,7 +127,7 @@ Represents a single line in the JSONL file. Stores the original JSON in `rawJson
 - `thinking` — Assistant's thinking process
 - `content` — Text body
 - `model` — Model name
-- `toolUses` — Tool calls (name, filePath, command, oldString, newString)
+- `toolUses` — Tool calls (name, filePath, command, oldString, newString, inputSummary)
 - `toolResults` — Tool execution results
 - `toolUseResultsWithPatch` — Structured patches for Edit diffs
 
@@ -148,6 +152,7 @@ Recursive tree structure for multi-pane layout. Persisted per-tab via `@SceneSto
 
 ```
 ~/.claude/projects/**/*.jsonl
+~/.codex/sessions/**/*.jsonl
     │
     │ FSEvents
     ▼
@@ -157,26 +162,34 @@ FileWatcherService
     ▼
 AppCoordinator
     │
-    ├── fullSync()          ← First launch imports only sessions not yet in SwiftData
-    └── incrementalSync()   ← File watcher / manual refresh path
+    ├── initialSync()             ← First launch creates lightweight session rows only
+    ├── warmupSessionMetadata()   ← Background metadata warmup, newest files first
+    └── incrementalSync()         ← File watcher / manual refresh path
     ▼
 SyncService
     │
-    ├── JSONLParser.parseFile()      ← Initial import path
-    ├── JSONLParser.parseNewLines()  ← Read delta from file offset
+    ├── SessionTranscriptParserRegistry
+    │   ├── ClaudeTranscriptParser
+    │   └── CodexTranscriptParser
+    │
+    ├── ensureSessionIndex()         ← Create/update lightweight rows from paths + cheap metadata
+    ├── rebuildSessionIndex()        ← Parse one changed/opened file to refresh metadata caches
+    ├── JSONLParser.parseFile()      ← Uses the registered parser for each transcript source
     │
     ├── getOrCreateProject()         ← SwiftData upsert
-    ├── getOrCreateSession()         ← Merge by matching slug
-    └── addMessageWithoutCheck()     ← Create Message + update caches
+    ├── getOrCreateSession()         ← Merge Claude sessions by matching slug where applicable
+    └── updateSessionCaches()        ← Refresh title/turn/unread/context metadata
         │
         ▼
     SwiftData ModelContext (drives @Query updates)
 ```
 
 Notes:
-- Full sync intentionally imports only sessions that do not already exist in the local database.
-- Incremental sync relies on per-file offsets stored in `JSONLParser`.
-- Session merges are based on matching `slug` within the same project path.
+- First launch does not parse every message from every transcript. It indexes session rows from file paths and cheap metadata so the sidebar can appear quickly.
+- Metadata warmup is intentionally ordered by file modification time descending so recent/visible sessions become useful first.
+- Message rows are parsed for a session when the timeline needs them, or when a changed file must refresh its index.
+- Transcript source handling is centralized through `SessionTranscriptParserRegistry`; Codex-specific parsing should live in `CodexTranscriptParser`, not as scattered conditionals in UI or sync code.
+- Session merges are based on matching `slug` within the same project path for Claude-style sessions.
 
 ### Timeline Render Flow
 
@@ -199,7 +212,10 @@ ContextPanel
     ├── Latest thinking summary
     ├── Read files
     ├── Edited files
-    └── Written files
+    ├── Written files
+    ├── Executed commands
+    ├── Searches
+    └── Other tools
 ```
 
 ### Local File Mutation Flow
@@ -229,7 +245,9 @@ cc-reader/
 │   ├── Services/
 │   │   ├── AppCoordinator.swift        # App lifecycle management
 │   │   ├── SyncService.swift           # JSONL sync service
-│   │   ├── JSONLParser.swift           # Incremental JSONL parser
+│   │   ├── SessionTranscriptParser.swift # Source parser protocol, registry, Claude parser
+│   │   ├── CodexTranscriptParser.swift # Codex JSONL adapter/parser
+│   │   ├── JSONLParser.swift           # Source-aware JSONL parser
 │   │   ├── JSONLWriter.swift           # JSONL writer utilities
 │   │   ├── FileWatcherService.swift    # FSEvents file watcher
 │   │   ├── LayoutManager.swift         # Per-window pane tree + split/focus/assign
@@ -277,9 +295,19 @@ cc-reader/
 ### Raw JSON Preservation
 
 Messages store the original JSON as `Data` in SwiftData, decoded on demand via computed properties. Rationale:
-- JSONL structure may change across Claude Code versions
+- JSONL structure may change across Claude Code or Codex versions
 - Local file editing features require faithful editing and restoration of original data
 - In-memory caching mitigates repeated decoding cost
+
+### Transcript Source Abstraction
+
+Claude and Codex use different JSONL shapes and directory layouts. Source-specific logic is isolated behind `SessionTranscriptParser`:
+
+- `ClaudeTranscriptParser` handles `~/.claude/projects/**/*.jsonl`.
+- `CodexTranscriptParser` handles `~/.codex/sessions/**/*.jsonl`.
+- `SessionTranscriptParserRegistry` provides root paths for file watching and picks the parser for a URL.
+
+This keeps sync, timeline rendering, and sidebar UI working with normalized `Session` / `Message` models instead of branching on transcript provider throughout the codebase.
 
 ### Session Merging
 
@@ -310,6 +338,12 @@ This keeps `WKWebView` updates and SwiftUI updates driven by plain values instea
 
 Uses a simple heuristic (4 bytes ≈ 1 token). A tokenizer equivalent to Anthropic's production behavior would be costly to maintain in Swift, and the approximation is sufficient for relative comparisons in the UI.
 
+### Lightweight Indexing
+
+The sidebar should not require a full transcript import. `initialSync()` creates or updates lightweight `Session` rows from file paths and cheap metadata. `warmupSessionMetadata()` then refreshes richer metadata in newest-first order, and timeline parsing happens on demand.
+
+This avoids first-launch stalls when hundreds of sessions exist locally while still allowing the visible/recent list to become informative quickly.
+
 ### JSONL Format (Unofficial)
 
-Claude Code's JSONL format is not a public API. The parser handles known structures and gracefully skips unknown fields. See `JSONLParser.swift` and `Message.swift` for the current parsing logic.
+Claude Code and Codex JSONL formats are not public APIs. Parsers handle known structures and gracefully skip unknown fields. See `SessionTranscriptParser.swift`, `CodexTranscriptParser.swift`, `JSONLParser.swift`, and `Message.swift` for the current parsing logic.

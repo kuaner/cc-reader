@@ -53,7 +53,7 @@ public class AppCoordinator: ObservableObject {
             }
         }
         fileWatcher = watcher
-        watcher.startWatching(path: FileWatcherService.claudeProjectsPath)
+        watcher.startWatching(paths: FileWatcherService.transcriptRootPaths)
     }
 
     /// Schedule a sync pass with debounce.

@@ -1,36 +1,132 @@
 import SwiftUI
 import SwiftData
 
+enum SessionSourceFilter: String, CaseIterable, Identifiable {
+    case claude
+    case codex
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        }
+    }
+
+    func contains(_ session: Session) -> Bool {
+        switch self {
+        case .claude:
+            return session.source != "codex"
+        case .codex:
+            return session.source == "codex"
+        }
+    }
+
+    static func filter(for session: Session?) -> SessionSourceFilter {
+        session?.source == "codex" ? .codex : .claude
+    }
+}
+
+struct SessionSourceScopeBar: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    @Binding var selection: SessionSourceFilter
+    let sessions: [Session]
+
+    private func count(for filter: SessionSourceFilter) -> Int {
+        sessions.lazy.filter(filter.contains).count
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(SessionSourceFilter.allCases) { filter in
+                let isSelected = selection == filter
+                Button {
+                    withAnimation(.easeInOut(duration: 0.16)) {
+                        selection = filter
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(filter.title)
+                            .font(.caption)
+                            .fontWeight(isSelected ? .semibold : .medium)
+                        Text("\(count(for: filter))")
+                            .font(.caption2)
+                            .monospacedDigit()
+                            .foregroundStyle(isSelected ? Color.white.opacity(0.76) : Color.secondary.opacity(0.78))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(isSelected ? Color.white : Color.secondary.opacity(0.9))
+                .background {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(Color.sessionSourceScopeSelection(for: colorScheme))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .stroke(Color.sessionSourceScopeSelectionStroke(for: colorScheme), lineWidth: 0.7)
+                            }
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.08), radius: 2, y: 1)
+                    }
+                }
+            }
+        }
+        .padding(3)
+        .background(Color.sessionSourceScopeBackground(for: colorScheme))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .stroke(Color.sessionSourceScopeBorder(for: colorScheme), lineWidth: 0.7)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+}
+
 struct ProjectListView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
     @Binding var selectedSession: Session?
 
     @State private var selectedSessionId: String?
+    @State private var sourceFilter: SessionSourceFilter = .claude
+
+    private var filteredSessions: [Session] {
+        sessions.filter(sourceFilter.contains)
+    }
 
     var body: some View {
-        List {
-            ForEach(sessions) { session in
-                SessionRow(session: session, isSelected: selectedSessionId == session.sessionId)
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(
-                        selectedSessionId == session.sessionId
-                            ? RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(Color.sessionLedgerSidebarSelection(for: colorScheme))
-                                .padding(.horizontal, 4)
-                            : nil
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedSessionId = session.sessionId
-                    }
+        VStack(spacing: 0) {
+            SessionSourceScopeBar(selection: $sourceFilter, sessions: sessions)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            List {
+                ForEach(filteredSessions) { session in
+                    SessionRow(session: session, isSelected: selectedSessionId == session.sessionId)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(
+                            selectedSessionId == session.sessionId
+                                ? RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(Color.sessionLedgerSidebarSelection(for: colorScheme))
+                                    .padding(.horizontal, 4)
+                                : nil
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedSessionId = session.sessionId
+                        }
+                }
             }
+            .listStyle(.sidebar)
         }
-        .listStyle(.sidebar)
         .onChange(of: selectedSessionId) { _, newValue in
             selectedSession = sessions.first { $0.sessionId == newValue }
         }
         .onChange(of: selectedSession?.sessionId) { _, newValue in
+            sourceFilter = SessionSourceFilter.filter(for: selectedSession)
             if selectedSessionId != newValue {
                 selectedSessionId = newValue
             }
@@ -222,6 +318,50 @@ extension Color {
     /// Subagent / secondary warm badges — amber (replaces system accent).
     static var sessionLedgerBadgeAmber: Color {
         Color(red: 0.78, green: 0.52, blue: 0.18)
+    }
+
+    static func sessionSourceScopeBackground(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.18, green: 0.16, blue: 0.14).opacity(0.62)
+        case .light:
+            return Color(red: 0.91, green: 0.86, blue: 0.78).opacity(0.58)
+        @unknown default:
+            return Color(red: 0.18, green: 0.16, blue: 0.14).opacity(0.62)
+        }
+    }
+
+    static func sessionSourceScopeSelection(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.49, green: 0.35, blue: 0.25).opacity(0.92)
+        case .light:
+            return Color(red: 0.64, green: 0.46, blue: 0.31).opacity(0.86)
+        @unknown default:
+            return Color(red: 0.49, green: 0.35, blue: 0.25).opacity(0.92)
+        }
+    }
+
+    static func sessionSourceScopeSelectionStroke(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.88, green: 0.68, blue: 0.44).opacity(0.32)
+        case .light:
+            return Color(red: 0.43, green: 0.29, blue: 0.19).opacity(0.24)
+        @unknown default:
+            return Color(red: 0.88, green: 0.68, blue: 0.44).opacity(0.32)
+        }
+    }
+
+    static func sessionSourceScopeBorder(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.07)
+        case .light:
+            return Color.black.opacity(0.08)
+        @unknown default:
+            return Color.white.opacity(0.07)
+        }
     }
 }
 

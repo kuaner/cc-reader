@@ -2,23 +2,26 @@
 
 [English](README.md) | [日本語](README.ja.md) | 简体中文
 
-一个用于阅读和管理 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 会话历史的 macOS 应用。
+一个用于阅读和管理 Claude Code 与 Codex 会话历史的 macOS 应用。
 
-它会监控 `~/.claude/projects/` 下的 JSONL 文件，并以原生 UI 展示会话时间线、思考过程和工具使用记录。
+它会监控 `~/.claude/projects/` 与 `~/.codex/sessions/` 下的 JSONL 文件，并以原生 UI 展示会话时间线、思考过程和工具使用记录。
 
 ![cc-reader demo](assets/screenshot.gif)
 
 > **⚠️ 免责声明**
-> 这是一个**非官方**第三方工具。Claude Code 的 JSONL 格式并非公开 API，可能在无通知的情况下变化。部分管理操作可能会修改本地会话文件，请务必保留备份。
+> 这是一个**非官方**第三方工具。Claude Code 与 Codex 的会话格式并非公开 API，可能在无通知的情况下变化。部分管理操作可能会修改本地会话文件，请务必保留备份。
 
 ## 功能
 
 - **会话阅读器** — 基于 WKWebView 的时间线，支持 Markdown 渲染、语法高亮、代码块操作和单条消息复制
-- **实时同步** — 使用 FSEvents 监听文件变化，增量解析 JSONL
+- **Claude + Codex 数据源** — 侧边栏和会话选择器按 Claude / Codex 分开显示，时间线复用同一套 UI
+- **快速会话索引** — 首次启动只创建轻量 session 列表，随后按时间倒序预热元数据，打开会话时再解析消息
+- **实时同步** — 使用 FSEvents 监听文件变化，对变更文件增量解析 JSONL
 - **会话管理** — 支持在侧边栏中重命名或删除会话
 - **多窗格布局** — 最多 12 个窗格同时监控多个会话
-- **上下文面板** — 一眼查看 Claude 的理解状态以及已读/已编辑文件
+- **上下文面板** — 一眼查看助手上下文，包括已读/已编辑文件、已执行命令、搜索和工具记录
 - **长时间线优化** — 窗口化渲染 + 接近顶部自动加载更早消息
+- **Resume 命令复制** — 在窗格工具栏复制 `claude --resume <sessionId>` 或 `codex resume <sessionId>`
 
 ## 环境要求
 
@@ -152,7 +155,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             readerWindow?.title = "CC Reader"
 
             // 必须：NSToolbar + .unified 样式，SwiftUI 的 toolbar items
-            //（路径、Resume、刷新按钮）才能渲染到标题栏。
+            //（来源标识、路径、Resume、刷新按钮）才能渲染到标题栏。
             let toolbar = NSToolbar(identifier: "CCReaderToolbar")
             toolbar.displayMode = .iconOnly
             readerWindow?.toolbar = toolbar
@@ -189,11 +192,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 ## 架构
 
 ```
-数据源: ~/.claude/projects/**/*.jsonl
+数据源:
+  - ~/.claude/projects/**/*.jsonl
+  - ~/.codex/sessions/**/*.jsonl
     ↓ FSEvents
-FileWatcherService → SyncService → JSONLParser (增量解析)
+FileWatcherService → SyncService → SessionTranscriptParserRegistry → JSONLParser
     ↓
 SwiftData ModelContext
+    ↓
+LayoutManager（每个窗口标签页的窗格树、分割、聚焦与会话分配）
     ↓
 SessionMessagesView（快照构建）
     ↓
@@ -205,6 +212,10 @@ TimelineHostView（单一 WKWebView，窗口化渲染）
 ## 文档
 
 - [架构与规格说明](docs/SPEC.md)
+- [布局系统 — 多标签页与多窗格](docs/layout-system.md)
+- [Timeline 渲染架构](docs/timeline-rendering-architecture.md)
+- [Timeline Incremental DOM](docs/timeline-incremental-dom.md)
+- [Timeline 滚动优化](docs/timeline-scroll-optimization-notes.md)
 
 ## 致谢
 

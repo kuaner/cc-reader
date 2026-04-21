@@ -14,10 +14,13 @@
 "context.empty" = "コンテキストなし";
 "context.expand.help" = "拡大表示";
 "context.section.created" = "作成済み";
+"context.section.commands" = "実行済み";
 "context.section.edited" = "編集済み";
 "context.section.read" = "読み込み済み";
+"context.section.searches" = "検索済み";
+"context.section.tools" = "ツール";
 "context.showFull" = "全文を表示…";
-"context.understanding.title" = "Claudeの理解";
+"context.understanding.title" = "Assistantの理解";
 "error.backup.notFound" = "バックアップファイルが見つかりません";
 "error.delete.failed" = "削除に失敗しました: %@";
 "error.file.read.failed" = "ファイルを読み込めませんでした: %@";
@@ -35,7 +38,7 @@
 "layout.recentSessions" = "最近のセッション";
 "layout.split.horizontal" = "横に分割";
 "layout.split.vertical" = "縦に分割";
-"session.resume.copied" = "コピー済み: claude --resume <sessionId>";
+"session.resume.copied" = "resumeコマンドをコピー済み";
 "session.resume.help" = "resumeコマンドをクリップボードにコピー";
 "sidebar.deleteAndDontAsk" = "削除（今後確認しない）";
 "sidebar.deleteMany.confirm" = "%d件のセッションを削除しますか？JSONLファイルも削除されます。";
@@ -45,7 +48,7 @@
 "sidebar.selection.count" = "%d件選択中";
 "sidebar.sessionName.placeholder" = "セッション名";
 "status.messageCount" = "%d msgs";
-"timeline.claude.label" = "Claude";
+"timeline.claude.label" = "Assistant";
 "timeline.context.help" = "コンテキストを表示";
 "timeline.context.label" = "Context";
 "timeline.deleteMessage.body" = "このメッセージを削除します。";

@@ -29,6 +29,7 @@ final class JSONLParser: @unchecked Sendable {
     // Track file offsets for incremental parsing.
     private var fileOffsets: [URL: UInt64] = [:]
     private let lock = NSLock()
+    private let transcriptParsers: SessionTranscriptParserRegistry
 
     private static let sharedEncoder = JSONEncoder()
     private static let timestampFormatter: ISO8601DateFormatter = {
@@ -37,10 +38,14 @@ final class JSONLParser: @unchecked Sendable {
         return f
     }()
 
+    init(transcriptParsers: SessionTranscriptParserRegistry = .shared) {
+        self.transcriptParsers = transcriptParsers
+    }
+
     // Parse a whole file from the beginning.
     func parseFile(url: URL) throws -> [RawMessageData] {
         let data = try Data(contentsOf: url)
-        return parseData(data)
+        return parseData(data, sourceURL: url)
     }
 
     // Parse only the newly appended data.
@@ -66,7 +71,7 @@ final class JSONLParser: @unchecked Sendable {
         fileOffsets[url] = fileSize
         lock.unlock()
 
-        return parseData(newData)
+        return parseData(newData, sourceURL: url)
     }
 
     func parseTimelineMessages(url: URL) throws -> [TimelineFileMessage] {
@@ -82,7 +87,7 @@ final class JSONLParser: @unchecked Sendable {
         let startOffset = min(afterOffset, fileSize)
         try handle.seek(toOffset: startOffset)
         let newData = handle.readDataToEndOfFile()
-        return (buildTimelineMessages(from: parseData(newData)), fileSize)
+        return (buildTimelineMessages(from: parseData(newData, sourceURL: url)), fileSize)
     }
 
     func parseTimelinePage(url: URL, beforeOffset: UInt64? = nil, limit: Int) throws -> TimelineFilePage {
@@ -118,7 +123,7 @@ final class JSONLParser: @unchecked Sendable {
             leadingPartial = split.leadingPartial
 
             for line in split.lines.reversed() {
-                guard let raw = decodeLine(line.data),
+                guard let raw = decodeLine(line.data, sourceURL: url),
                       let message = Self.makeTimelineMessage(from: raw) else {
                     continue
                 }
@@ -134,7 +139,7 @@ final class JSONLParser: @unchecked Sendable {
         if cursor == 0,
            !leadingPartial.isEmpty,
            selected.count < limit,
-           let raw = decodeLine(leadingPartial),
+           let raw = decodeLine(leadingPartial, sourceURL: url),
            let message = Self.makeTimelineMessage(from: raw),
            seenUuids.insert(message.uuid).inserted {
             selected.append((0, message))
@@ -181,13 +186,13 @@ final class JSONLParser: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func parseData(_ data: Data) -> [RawMessageData] {
+    private func parseData(_ data: Data, sourceURL: URL) -> [RawMessageData] {
         var messages: [RawMessageData] = []
         let newline = UInt8(ascii: "\n")
 
         for lineSlice in data.split(separator: newline, omittingEmptySubsequences: true) {
             let lineData = Data(lineSlice)
-            if let message = decodeLine(lineData) {
+            if let message = decodeLine(lineData, sourceURL: sourceURL) {
                 messages.append(message)
             }
         }
@@ -195,20 +200,8 @@ final class JSONLParser: @unchecked Sendable {
         return messages
     }
 
-    private func decodeLine(_ lineData: Data) -> RawMessageData? {
-        let decoder = JSONDecoder()
-        do {
-            var message = try decoder.decode(RawMessageData.self, from: lineData)
-            message.originalLineData = lineData
-            return message
-        } catch {
-            if ProcessInfo.processInfo.environment["CCREADER_DEBUG_JSONL_DECODE"] == "1",
-               let lineStr = String(data: lineData, encoding: .utf8) {
-                let preview = lineStr.prefix(200)
-                print("[cc-reader][JSONLParser] Skipped line (decode failed): \(preview)…")
-            }
-            return nil
-        }
+    private func decodeLine(_ lineData: Data, sourceURL: URL) -> RawMessageData? {
+        transcriptParsers.parser(for: sourceURL)?.parseLine(lineData, sourceURL: sourceURL)
     }
 
     private func buildTimelineMessages(from rawMessages: [RawMessageData]) -> [TimelineFileMessage] {
@@ -328,8 +321,10 @@ extension JSONLParser {
 
     // Extract the sessionId from the file name (including agent-*.jsonl subagent transcripts).
     static func sessionId(from url: URL) -> String? {
-        let filename = url.deletingPathExtension().lastPathComponent
-        guard !filename.isEmpty else { return nil }
-        return filename
+        SessionTranscriptParserRegistry.shared.parser(for: url)?.sessionId(from: url)
+    }
+
+    static func projectPath(fromCwd cwd: String) -> String {
+        cwd.replacingOccurrences(of: "/", with: "-")
     }
 }
