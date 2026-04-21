@@ -282,6 +282,7 @@ cc-reader/
 ├── project.yml                         # XcodeGen config
 └── docs/
     ├── SPEC.md                         # This document
+    ├── adding-transcript-parser.md     # How to add a new transcript source/parser
     ├── layout-system.md                # Multi-tab/pane layout system design
     ├── timeline-incremental-dom.md     # Incremental DOM update strategy
     ├── timeline-rendering-architecture.md

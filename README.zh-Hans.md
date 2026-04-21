@@ -212,6 +212,7 @@ TimelineHostView（单一 WKWebView，窗口化渲染）
 ## 文档
 
 - [架构与规格说明](docs/SPEC.md)
+- [新增 Transcript Parser 指南](docs/adding-transcript-parser.md)
 - [布局系统 — 多标签页与多窗格](docs/layout-system.md)
 - [Timeline 渲染架构](docs/timeline-rendering-architecture.md)
 - [Timeline Incremental DOM](docs/timeline-incremental-dom.md)

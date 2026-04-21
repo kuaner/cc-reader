@@ -212,6 +212,7 @@ TimelineHostView（単一 WKWebView / ウィンドウ化レンダリング）
 ## ドキュメント
 
 - [Architecture & Specification](docs/SPEC.md)
+- [Adding a Transcript Parser](docs/adding-transcript-parser.md)
 - [Layout System — Multi-Tab & Multi-Pane](docs/layout-system.md)
 - [Timeline Rendering Architecture](docs/timeline-rendering-architecture.md)
 - [Timeline Incremental DOM](docs/timeline-incremental-dom.md)
