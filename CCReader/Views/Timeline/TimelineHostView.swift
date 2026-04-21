@@ -707,4 +707,5 @@ struct TimelineWebLabels {
 
 extension Notification.Name {
     static let navigateToSession = Notification.Name("navigateToSession")
+    static let sessionDidSync = Notification.Name("sessionDidSync")
 }

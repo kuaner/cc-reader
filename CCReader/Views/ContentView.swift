@@ -28,9 +28,6 @@ public struct ContentView: View {
         .onChange(of: selectedSession) { _, newSession in
             guard let session = newSession else { return }
             layoutManager.focusOrAssignSession(session.sessionId)
-            Task(priority: .utility) {
-                await coordinator.syncSession(session)
-            }
         }
         .environmentObject(layoutManager)
         .environmentObject(coordinator)
@@ -77,9 +74,6 @@ public struct ContentView: View {
                 }
             )
             .environmentObject(layoutManager)
-        }
-        .overlay {
-            SyncOverlayView(coordinator: coordinator)
         }
         .task {
             if let layoutData {
@@ -159,49 +153,6 @@ class WindowConfigView: NSView {
         window.titleVisibility = .hidden
         window.styleMask.insert(.fullSizeContentView)
         layoutManager?.registerWindow(window)
-    }
-}
-
-// MARK: - Sync Overlay
-
-private struct SyncOverlayView: View {
-    @ObservedObject var coordinator: AppCoordinator
-    @State private var showOverlay = false
-
-    var body: some View {
-        if showOverlay && coordinator.isSyncing && !coordinator.syncProgress.isEmpty {
-            VStack(spacing: 12) {
-                ProgressView()
-                Text(coordinator.syncProgress)
-                    .font(.headline)
-                Text(L("content.initialSyncing"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(24)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        }
-        // Only show the overlay if syncing takes longer than 0.5s to avoid a brief flash.
-        if coordinator.isSyncing {
-            Color.clear
-                .task(id: coordinator.isSyncing) {
-                    showOverlay = false
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                    if coordinator.isSyncing {
-                        withAnimation(.easeIn(duration: 0.15)) {
-                            showOverlay = true
-                        }
-                    }
-                }
-        } else if showOverlay {
-            Color.clear
-                .onAppear {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        showOverlay = false
-                    }
-                }
-        }
     }
 }
 

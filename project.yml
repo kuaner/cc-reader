@@ -1,6 +1,6 @@
 name: CCReader
 options:
-  bundleIdPrefix: com.kuaner
+  bundleIdPrefix: top.kuaner
   developmentLanguage: en
   deploymentTarget:
     macOS: "14.0"
@@ -21,7 +21,7 @@ targets:
           - "**/.DS_Store"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kuaner.ccreader
+        PRODUCT_BUNDLE_IDENTIFIER: top.kuaner.ccreader
         PRODUCT_NAME: "CC Reader"
         INFOPLIST_GENERATION_MODE: GeneratedFile
         GENERATE_INFOPLIST_FILE: YES
