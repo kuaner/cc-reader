@@ -4,8 +4,6 @@ import SwiftData
 @MainActor
 public class AppCoordinator: ObservableObject {
     @Published public private(set) var isInitialized = false
-    @Published public private(set) var isSyncing = false
-    @Published public private(set) var syncProgress: String = ""
 
     private var syncService: SyncService?
     private var fileWatcher: FileWatcherService?
@@ -13,6 +11,7 @@ public class AppCoordinator: ObservableObject {
 
     // Debounce file watcher bursts into a single sync pass.
     private var debounceTask: Task<Void, Never>?
+    private var metadataWarmupTask: Task<Void, Never>?
     private var pendingFiles: Set<URL> = []
     private let debounceInterval: UInt64 = 500_000_000 // 0.5 seconds
 
@@ -26,21 +25,24 @@ public class AppCoordinator: ObservableObject {
         // Initialize SyncService with the container so it creates its own background contexts.
         let sync = SyncService(modelContainer: modelContainer)
 
-        // Wire up state callbacks from the background actor to MainActor properties.
-        await sync.setStateCallback { [weak self] syncing, progress in
-            self?.isSyncing = syncing
-            self?.syncProgress = progress
-        }
-
         syncService = sync
 
-        // Run the initial full sync.
-        await sync.fullSync()
+        // Run the initial lightweight session index sync.
+        await sync.initialSync()
 
         // Start real-time file watching.
         startFileWatching()
+        startMetadataWarmup()
 
         isInitialized = true
+    }
+
+    private func startMetadataWarmup() {
+        metadataWarmupTask?.cancel()
+        metadataWarmupTask = Task { [weak self] in
+            guard let self else { return }
+            await self.syncService?.warmupSessionMetadata()
+        }
     }
 
     private func startFileWatching() {
@@ -78,6 +80,10 @@ public class AppCoordinator: ObservableObject {
 
             for file in files {
                 await self.syncService?.incrementalSync(fileURL: file)
+                NotificationCenter.default.post(
+                    name: .sessionDidSync,
+                    object: JSONLParser.sessionId(from: file)
+                )
             }
         }
     }
@@ -86,11 +92,14 @@ public class AppCoordinator: ObservableObject {
     public func syncSession(_ session: Session) async {
         guard let fileURL = session.jsonlFileURL else { return }
         await syncService?.incrementalSync(fileURL: fileURL)
+        NotificationCenter.default.post(name: .sessionDidSync, object: session.sessionId)
     }
 
     public func stop() {
         debounceTask?.cancel()
+        metadataWarmupTask?.cancel()
         debounceTask = nil
+        metadataWarmupTask = nil
         pendingFiles.removeAll()
         fileWatcher?.stopWatching()
         fileWatcher = nil

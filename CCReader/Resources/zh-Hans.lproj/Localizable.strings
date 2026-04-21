@@ -8,7 +8,6 @@
 "common.collapse" = "收起";
 "common.expand" = "展开更多";
 "common.save" = "保存";
-"content.initialSyncing" = "首次同步中...";
 "content.refresh.help" = "刷新消息";
 "content.selectSession" = "选择会话";
 "content.syncing" = "同步中";
@@ -46,8 +45,6 @@
 "sidebar.selection.count" = "已选择 %d 项";
 "sidebar.sessionName.placeholder" = "会话名称";
 "status.messageCount" = "%d 条";
-"sync.progress.indexed" = "同步中 %d/%d";
-"sync.searchingFiles" = "正在搜索文件...";
 "timeline.claude.label" = "Claude";
 "timeline.context.help" = "显示上下文";
 "timeline.context.label" = "上下文";

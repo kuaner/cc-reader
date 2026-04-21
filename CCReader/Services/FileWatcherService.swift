@@ -12,7 +12,7 @@ class FileWatcherService: ObservableObject {
 
     private var stream: FSEventStreamRef?
     private let callback: (URL) -> Void
-    private let eventQueue = DispatchQueue(label: "com.kuaner.ccreader.filewatcher", qos: .userInitiated)
+    private let eventQueue = DispatchQueue(label: "top.kuaner.ccreader.filewatcher", qos: .userInitiated)
     private var watchPath: String?
 
     init(callback: @escaping (URL) -> Void) {

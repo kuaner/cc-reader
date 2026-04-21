@@ -110,7 +110,6 @@ struct PaneHeaderView: View {
                         .font(.caption)
                 }
                 .buttonStyle(.plain)
-                .disabled(coordinator.isSyncing)
                 .help(L("content.refresh.help"))
             }
 

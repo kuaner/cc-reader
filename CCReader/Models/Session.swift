@@ -89,11 +89,19 @@ public class Session {
         if let aiTitle = aiGeneratedTitle, !aiTitle.isEmpty {
             return aiTitle
         }
-        return Self.shortDateFormatter.string(from: startedAt)
+        return fallbackDisplayTitle
     }
 
     /// Number of unacknowledged assistant messages.
     public var unacknowledgedCount: Int {
         cachedUnacknowledgedCount
+    }
+
+    private var fallbackDisplayTitle: String {
+        let raw = sessionId.hasPrefix("agent-")
+            ? String(sessionId.dropFirst("agent-".count))
+            : sessionId
+        let compact = raw.count > 8 ? String(raw.prefix(8)) : raw
+        return compact.isEmpty ? Self.shortDateFormatter.string(from: startedAt) : compact
     }
 }

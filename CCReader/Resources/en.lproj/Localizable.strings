@@ -8,7 +8,6 @@
 "common.collapse" = "Collapse";
 "common.expand" = "Show More";
 "common.save" = "Save";
-"content.initialSyncing" = "Running initial sync...";
 "content.refresh.help" = "Refresh Messages";
 "content.selectSession" = "Select a Session";
 "content.syncing" = "Syncing";
@@ -46,8 +45,6 @@
 "sidebar.selection.count" = "%d selected";
 "sidebar.sessionName.placeholder" = "Session Name";
 "status.messageCount" = "%d msgs";
-"sync.progress.indexed" = "Syncing %d/%d";
-"sync.searchingFiles" = "Searching files...";
 "timeline.claude.label" = "Claude";
 "timeline.context.help" = "Show Context";
 "timeline.context.label" = "Context";

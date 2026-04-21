@@ -80,7 +80,7 @@ public enum JSONLEntryType: String, Codable, CaseIterable {
 }
 
 /// Message types persisted to SwiftData. Expanded from official transcript types.
-public enum MessageType: String, Codable {
+public enum MessageType: String, Codable, Sendable {
     case user
     case assistant
     case system

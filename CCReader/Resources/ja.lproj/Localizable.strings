@@ -8,7 +8,6 @@
 "common.collapse" = "折りたたむ";
 "common.expand" = "もっと見る";
 "common.save" = "保存";
-"content.initialSyncing" = "初回同期中...";
 "content.refresh.help" = "メッセージを更新";
 "content.selectSession" = "セッションを選択";
 "content.syncing" = "同期中";
@@ -46,8 +45,6 @@
 "sidebar.selection.count" = "%d件選択中";
 "sidebar.sessionName.placeholder" = "セッション名";
 "status.messageCount" = "%d msgs";
-"sync.progress.indexed" = "同期中 %d/%d";
-"sync.searchingFiles" = "ファイルを検索中...";
 "timeline.claude.label" = "Claude";
 "timeline.context.help" = "コンテキストを表示";
 "timeline.context.label" = "Context";

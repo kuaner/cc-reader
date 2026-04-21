@@ -2,8 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct SessionMessagesView: View {
-    @Environment(\.modelContext) private var modelContext
-
     let session: Session
     @Binding var visibleMessageCount: Int
     @Binding var showContextPanel: Bool
@@ -15,8 +13,10 @@ struct SessionMessagesView: View {
     @State private var contextPanel = ContextPanelSnapshot()
     @State private var messages: [Message] = []
     @State private var isLargeSessionMode = false
-    @State private var totalMessageCount = 0
+    @State private var hasMoreOlderMessages = false
     @State private var loadedMessageCount = Self.largeSessionInitialMessageCount
+    @State private var timelineLoadGeneration = 0
+    @State private var timelineLoader = SessionFileTimelineLoader()
 
     private static let largeSessionThresholdBytes = 5 * 1024 * 1024
     private static let largeSessionInitialMessageCount = 200
@@ -56,14 +56,14 @@ struct SessionMessagesView: View {
             }
         }
         .onAppear {
-            reloadMessages()
-            rebuildDerivedData()
+            reloadMessages(forceReload: true)
         }
         .onChange(of: session.sessionId) { _, _ in
             resetViewState()
-            reloadMessages()
+            reloadMessages(forceReload: true)
         }
-        .onChange(of: session.updatedAt) { _, _ in
+        .onReceive(NotificationCenter.default.publisher(for: .sessionDidSync)) { notification in
+            guard notification.object as? String == session.sessionId else { return }
             reloadMessages()
         }
         .onChange(of: messageFingerprint) { _, _ in
@@ -101,7 +101,7 @@ struct SessionMessagesView: View {
         timeline = TimelineRenderSnapshot()
         contextPanel = ContextPanelSnapshot()
         visibleMessageCount = 0
-        totalMessageCount = 0
+        hasMoreOlderMessages = false
         loadedMessageCount = Self.largeSessionInitialMessageCount
         lastFingerprint = MessageFingerprint(count: 0, hash: 0)
         lastVisibleMessageCount = 0
@@ -112,97 +112,45 @@ struct SessionMessagesView: View {
         isLargeSessionMode = false
     }
 
-    private func reloadMessages() {
-        let sid = session.sessionId
-        let predicate = #Predicate<Message> { $0.session?.sessionId == sid }
+    private func reloadMessages(forceReload: Bool = false) {
         let largeMode = shouldUseLargeSessionMode()
+        timelineLoadGeneration += 1
+        let generation = timelineLoadGeneration
 
-        do {
-            totalMessageCount = try modelContext.fetchCount(FetchDescriptor<Message>(predicate: predicate))
-        } catch {
-            totalMessageCount = 0
-        }
+        Task {
+            let state = await timelineLoader.load(
+                sessionId: session.sessionId,
+                fileURL: session.jsonlFileURL,
+                largeMode: largeMode,
+                initialMessageCount: Self.largeSessionInitialMessageCount,
+                forceReload: forceReload
+            )
 
-        do {
-            if largeMode {
-                let fetched = try fetchMessages(
-                    sessionId: sid,
-                    limit: loadedMessageCount,
-                    offset: 0,
-                    descending: true
-                )
-                messages = Array(fetched.reversed())
-            } else {
-                messages = try fetchMessages(
-                    sessionId: sid,
-                    limit: 0,
-                    offset: 0,
-                    descending: false
-                )
-            }
-            messageFingerprint = fingerprint(for: messages)
+            guard generation == timelineLoadGeneration else { return }
+
+            let mappedMessages = state.messages.map { $0.makeMessage() }
+            messages = mappedMessages
+            loadedMessageCount = mappedMessages.count
+            hasMoreOlderMessages = state.hasMoreBefore
+            messageFingerprint = fingerprint(for: mappedMessages)
             shouldForceFullRebuild = false
             isLargeSessionMode = largeMode
-        } catch {
-            messages = []
-            messageFingerprint = MessageFingerprint(count: 0, hash: 0)
-            shouldForceFullRebuild = false
-            isLargeSessionMode = false
         }
     }
 
     private func loadOlderMessagesPage() {
         guard isLargeSessionMode else { return }
-        guard messages.count < totalMessageCount else { return }
-        let sid = session.sessionId
-        let offset = messages.count
-        let pageSize = min(Self.largeSessionPageSize, totalMessageCount - offset)
-        guard pageSize > 0 else { return }
+        guard hasMoreOlderMessages else { return }
 
-        do {
-            let older = try fetchMessages(
-                sessionId: sid,
-                limit: pageSize,
-                offset: offset,
-                descending: true
-            )
-            guard !older.isEmpty else { return }
-            let olderAscending = Array(older.reversed())
-            messages = olderAscending + messages
-            loadedMessageCount += older.count
-            var updatedFingerprint = messageFingerprint
-            updatedFingerprint.count = messages.count
-            for msg in olderAscending {
-                updatedFingerprint.hash ^= msg.rawJson.hashValue
-            }
-            messageFingerprint = updatedFingerprint
-            shouldForceFullRebuild = true
-        } catch {
-            return
+        Task {
+            let state = await timelineLoader.loadOlder(pageSize: Self.largeSessionPageSize)
+            let mappedMessages = state.messages.map { $0.makeMessage() }
+            messages = mappedMessages
+            loadedMessageCount = mappedMessages.count
+            hasMoreOlderMessages = state.hasMoreBefore
+            messageFingerprint = fingerprint(for: mappedMessages)
+            shouldForceFullRebuild = state.didPrepend
         }
-    }
-
-    private func fetchMessages(
-        sessionId: String,
-        limit: Int,
-        offset: Int,
-        descending: Bool
-    ) throws -> [Message] {
-        let predicate = #Predicate<Message> { $0.session?.sessionId == sessionId }
-        var descriptor = FetchDescriptor<Message>(
-            predicate: predicate,
-            sortBy: [
-                SortDescriptor(
-                    \Message.timestamp,
-                    order: descending ? .reverse : .forward
-                )
-            ]
-        )
-        if limit > 0 {
-            descriptor.fetchLimit = limit
-        }
-        descriptor.fetchOffset = offset
-        return try modelContext.fetch(descriptor)
     }
 
     private func shouldUseLargeSessionMode() -> Bool {
@@ -215,7 +163,7 @@ struct SessionMessagesView: View {
     }
 
     private var hasMoreBeforeLoaded: Bool {
-        isLargeSessionMode && messages.count < totalMessageCount
+        isLargeSessionMode && hasMoreOlderMessages
     }
 
     private func buildPrevTimestampMap(
@@ -1144,13 +1092,159 @@ struct FilePreviewSheet: View {
     }
 }
 
-#Preview {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: Project.self, Session.self, Message.self, configurations: config)
+private struct SessionFileTimelineState: Sendable {
+    let messages: [TimelineFileMessage]
+    let hasMoreBefore: Bool
+    let didPrepend: Bool
+}
 
-    let session = Session(sessionId: "test-session", cwd: "/test", slug: "test-slug")
-    container.mainContext.insert(session)
+private actor SessionFileTimelineLoader {
+    private var parser = JSONLParser()
+    private var currentSessionId: String?
+    private var currentFileURL: URL?
+    private var currentLargeMode = false
+    private var oldestLoadedOffset: UInt64 = 0
+    private var newestLoadedOffset: UInt64 = 0
+    private var currentMessages: [TimelineFileMessage] = []
 
-    return SessionMessagesView(session: session, visibleMessageCount: .constant(0), showContextPanel: .constant(true))
-        .modelContainer(container)
+    func load(
+        sessionId: String,
+        fileURL: URL?,
+        largeMode: Bool,
+        initialMessageCount: Int,
+        forceReload: Bool
+    ) -> SessionFileTimelineState {
+        guard let fileURL else {
+            reset()
+            return SessionFileTimelineState(messages: [], hasMoreBefore: false, didPrepend: false)
+        }
+
+        if forceReload
+            || currentSessionId != sessionId
+            || currentFileURL != fileURL
+            || currentLargeMode != largeMode
+            || currentMessages.isEmpty {
+            currentSessionId = sessionId
+            currentFileURL = fileURL
+            currentLargeMode = largeMode
+            return reloadInitial(fileURL: fileURL, largeMode: largeMode, initialMessageCount: initialMessageCount)
+        }
+
+        if !largeMode {
+            return reloadInitial(fileURL: fileURL, largeMode: false, initialMessageCount: initialMessageCount)
+        }
+
+        let fileSize = fileSize(of: fileURL)
+        if fileSize < newestLoadedOffset {
+            return reloadInitial(fileURL: fileURL, largeMode: true, initialMessageCount: initialMessageCount)
+        }
+
+        let appendResult = (try? parser.parseTimelineMessages(url: fileURL, afterOffset: newestLoadedOffset))
+            ?? ([], fileSize)
+        newestLoadedOffset = appendResult.1
+
+        if !appendResult.0.isEmpty {
+            mergeAppended(appendResult.0)
+        }
+
+        return SessionFileTimelineState(
+            messages: currentMessages,
+            hasMoreBefore: oldestLoadedOffset > 0,
+            didPrepend: false
+        )
+    }
+
+    func loadOlder(pageSize: Int) -> SessionFileTimelineState {
+        guard currentLargeMode, let fileURL = currentFileURL, oldestLoadedOffset > 0 else {
+            return SessionFileTimelineState(
+                messages: currentMessages,
+                hasMoreBefore: oldestLoadedOffset > 0,
+                didPrepend: false
+            )
+        }
+
+        let page = (try? parser.parseTimelinePage(
+            url: fileURL,
+            beforeOffset: oldestLoadedOffset,
+            limit: pageSize
+        )) ?? TimelineFilePage(messages: [], startOffset: oldestLoadedOffset, endOffset: oldestLoadedOffset, hasMoreBefore: false)
+
+        oldestLoadedOffset = page.startOffset
+        prependOlder(page.messages)
+
+        return SessionFileTimelineState(
+            messages: currentMessages,
+            hasMoreBefore: page.hasMoreBefore,
+            didPrepend: !page.messages.isEmpty
+        )
+    }
+
+    private func reloadInitial(
+        fileURL: URL,
+        largeMode: Bool,
+        initialMessageCount: Int
+    ) -> SessionFileTimelineState {
+        if largeMode {
+            let page = (try? parser.parseTimelinePage(url: fileURL, limit: initialMessageCount))
+                ?? TimelineFilePage(messages: [], startOffset: 0, endOffset: fileSize(of: fileURL), hasMoreBefore: false)
+            currentMessages = page.messages
+            oldestLoadedOffset = page.startOffset
+            newestLoadedOffset = page.endOffset
+            return SessionFileTimelineState(
+                messages: currentMessages,
+                hasMoreBefore: page.hasMoreBefore,
+                didPrepend: false
+            )
+        }
+
+        let messages = (try? parser.parseTimelineMessages(url: fileURL)) ?? []
+        currentMessages = messages
+        oldestLoadedOffset = 0
+        newestLoadedOffset = fileSize(of: fileURL)
+        return SessionFileTimelineState(
+            messages: currentMessages,
+            hasMoreBefore: false,
+            didPrepend: false
+        )
+    }
+
+    private func mergeAppended(_ newMessages: [TimelineFileMessage]) {
+        var byId: [String: TimelineFileMessage] = [:]
+        byId.reserveCapacity(currentMessages.count + newMessages.count)
+        for message in currentMessages {
+            byId[message.uuid] = message
+        }
+        for message in newMessages {
+            byId[message.uuid] = message
+        }
+        currentMessages = Array(byId.values).sorted(by: messageSort)
+    }
+
+    private func prependOlder(_ olderMessages: [TimelineFileMessage]) {
+        guard !olderMessages.isEmpty else { return }
+        let existingIds = Set(currentMessages.map(\.uuid))
+        let uniqueOlder = olderMessages.filter { !existingIds.contains($0.uuid) }
+        guard !uniqueOlder.isEmpty else { return }
+        currentMessages = (uniqueOlder + currentMessages).sorted(by: messageSort)
+    }
+
+    private func reset() {
+        currentSessionId = nil
+        currentFileURL = nil
+        currentLargeMode = false
+        oldestLoadedOffset = 0
+        newestLoadedOffset = 0
+        currentMessages = []
+    }
+
+    private func fileSize(of url: URL) -> UInt64 {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64) ?? 0
+    }
+
+    private func messageSort(_ lhs: TimelineFileMessage, _ rhs: TimelineFileMessage) -> Bool {
+        if lhs.timestamp == rhs.timestamp {
+            return lhs.uuid < rhs.uuid
+        }
+        return lhs.timestamp < rhs.timestamp
+    }
 }
