@@ -14,10 +14,13 @@
 "context.empty" = "暂无上下文";
 "context.expand.help" = "放大查看";
 "context.section.created" = "已创建";
+"context.section.commands" = "已执行";
 "context.section.edited" = "已编辑";
 "context.section.read" = "已读取";
+"context.section.searches" = "已搜索";
+"context.section.tools" = "工具";
 "context.showFull" = "显示全文…";
-"context.understanding.title" = "Claude 的理解";
+"context.understanding.title" = "助手的理解";
 "error.backup.notFound" = "未找到备份文件";
 "error.delete.failed" = "删除失败：%@";
 "error.file.read.failed" = "无法读取文件：%@";
@@ -35,7 +38,7 @@
 "layout.recentSessions" = "最近会话";
 "layout.split.horizontal" = "横向分割";
 "layout.split.vertical" = "纵向分割";
-"session.resume.copied" = "已复制：claude --resume <sessionId>";
+"session.resume.copied" = "已复制 resume 命令";
 "session.resume.help" = "复制 resume 命令到剪贴板";
 "sidebar.deleteAndDontAsk" = "删除（以后不再确认）";
 "sidebar.deleteMany.confirm" = "确认删除这 %d 个会话吗？对应的 JSONL 文件也会被删除。";
@@ -45,7 +48,7 @@
 "sidebar.selection.count" = "已选择 %d 项";
 "sidebar.sessionName.placeholder" = "会话名称";
 "status.messageCount" = "%d 条";
-"timeline.claude.label" = "Claude";
+"timeline.claude.label" = "助手";
 "timeline.context.help" = "显示上下文";
 "timeline.context.label" = "上下文";
 "timeline.deleteMessage.body" = "将删除这条消息。";

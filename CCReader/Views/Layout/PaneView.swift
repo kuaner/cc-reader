@@ -87,6 +87,8 @@ struct PaneHeaderView: View {
 
             // Per-session action buttons
             if let session = session {
+                SessionSourceBadge(session: session)
+
                 // Open CWD
                 Button {
                     NSWorkspace.shared.open(URL(fileURLWithPath: session.cwd))
@@ -99,7 +101,7 @@ struct PaneHeaderView: View {
 
                 // Resume (copy command)
                 if !session.sessionId.hasPrefix("agent-") {
-                    PaneResumeButton(sessionId: session.sessionId)
+                    PaneResumeButton(session: session)
                 }
 
                 // Refresh
@@ -173,13 +175,47 @@ struct PaneHeaderView: View {
 
 // MARK: - Pane Resume Button
 
+private struct SessionSourceBadge: View {
+    let session: Session
+
+    private var sourceTitle: String {
+        session.source == "codex" ? "Codex" : "Claude"
+    }
+
+    private var sourceIcon: String {
+        session.source == "codex" ? "terminal" : "sparkles"
+    }
+
+    private var sourceColor: Color {
+        session.source == "codex" ? .cyan : .orange
+    }
+
+    var body: some View {
+        Label(sourceTitle, systemImage: sourceIcon)
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .foregroundStyle(sourceColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(sourceColor.opacity(0.12))
+            .clipShape(Capsule(style: .continuous))
+            .help(sourceTitle)
+    }
+}
+
 private struct PaneResumeButton: View {
-    let sessionId: String
+    let session: Session
     @State private var copied = false
+
+    private var command: String {
+        if session.source == "codex" {
+            return "codex resume \(session.sessionId)"
+        }
+        return "claude --resume \(session.sessionId)"
+    }
 
     var body: some View {
         Button {
-            let command = "claude --resume \(sessionId)"
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(command, forType: .string)
             copied = true
@@ -189,7 +225,7 @@ private struct PaneResumeButton: View {
                 .font(.caption)
         }
         .buttonStyle(.plain)
-        .help(copied ? L("session.resume.copied") : L("session.resume.help"))
+        .help(copied ? "\(L("session.resume.copied")): \(command)" : L("session.resume.help"))
     }
 }
 

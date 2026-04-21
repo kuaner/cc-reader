@@ -93,20 +93,30 @@ Renders a single pane: header + timeline, or an empty placeholder with a "Select
 
 **PaneHeaderView** shows:
 - Session title (with attention bell indicator)
-- Per-session actions: open CWD, resume copy, refresh
+- Transcript source badge (`Claude` / `Codex`)
+- Per-session actions: open CWD, resume command copy, refresh
 - Context panel toggle (per-pane, independent across panes)
 - Switch session button (triggers picker)
 - Split/close menu
+
+Resume copy is source-aware:
+- Claude sessions copy `claude --resume <sessionId>`
+- Codex sessions copy `codex resume <sessionId>`
 
 ### SessionPickerView (`Views/Sidebar/SessionPickerView.swift`)
 
 A sheet for searching and selecting sessions. Used for both splitting (assign session to new pane) and switching (assign to focused pane).
 
 Features:
+- Source scope control for switching between Claude and Codex session lists
 - Full-text search across title, git branch, session tag, and CWD (case-insensitive)
 - Keyboard navigation: arrow keys + Enter to confirm, Escape to cancel
 - Dimmed rows for sessions already open in other panes (prevents duplicates)
 - Open session ID set computed once outside `ForEach` (not per-row)
+
+### ProjectListView (`Views/Sidebar/ProjectListView.swift`)
+
+The sidebar uses the same Claude/Codex source scope as the picker. Changing the source filter only changes which rows are visible; it does not clear the currently opened session. If a Codex session is open, switching to Claude hides its row, and switching back to Codex restores the row's selected state.
 
 ## Keyboard Shortcuts
 

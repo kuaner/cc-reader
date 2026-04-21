@@ -1,6 +1,6 @@
 import Foundation
 
-/// Tracks deleted sessions so they are not re-imported from .claude.
+/// Tracks deleted sessions so they are not re-imported from transcript files.
 class IgnoredSessionManager {
     static let shared = IgnoredSessionManager()
 

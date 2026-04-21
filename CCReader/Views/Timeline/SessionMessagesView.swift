@@ -557,7 +557,18 @@ struct SessionMessagesView: View {
                             contextMap[key] = ContextItem(
                                 id: key, toolName: toolUse.name,
                                 filePath: toolUse.filePath, command: toolUse.command,
+                                inputSummary: toolUse.inputSummary,
                                 content: L("timeline.tool.running"), isError: false
+                            )
+                        }
+                    } else if isContextTool(toolUse.name) {
+                        let key = toolUse.inputSummary ?? toolUse.rawInput ?? toolUse.id
+                        if contextMap[key] == nil {
+                            contextMap[key] = ContextItem(
+                                id: key, toolName: toolUse.name,
+                                filePath: nil, command: nil,
+                                inputSummary: toolUse.inputSummary,
+                                content: toolUse.rawInput ?? L("timeline.tool.running"), isError: false
                             )
                         }
                     }
@@ -599,6 +610,7 @@ struct SessionMessagesView: View {
                         contextMap[key] = ContextItem(
                             id: key, toolName: toolUse.name,
                             filePath: toolUse.filePath, command: toolUse.command,
+                            inputSummary: toolUse.inputSummary,
                             content: content.isEmpty ? L("timeline.tool.success") : content,
                             isError: result.is_error ?? false
                         )
@@ -624,6 +636,9 @@ struct SessionMessagesView: View {
         var reads: [ContextItem] = []
         var edits: [ContextItem] = []
         var writes: [ContextItem] = []
+        var commands: [ContextItem] = []
+        var searches: [ContextItem] = []
+        var tools: [ContextItem] = []
         reads.reserveCapacity(sorted.count)
         edits.reserveCapacity(sorted.count)
         writes.reserveCapacity(sorted.count)
@@ -632,15 +647,25 @@ struct SessionMessagesView: View {
             case "Read": reads.append(item)
             case "Edit": edits.append(item)
             case "Write": writes.append(item)
-            default: break
+            case "Bash": commands.append(item)
+            case "WebSearch": searches.append(item)
+            default:
+                tools.append(item)
             }
         }
         contextPanel = ContextPanelSnapshot(
             latestThinking: latestThinking,
             readFiles: reads,
             editedFiles: edits,
-            writtenFiles: writes
+            writtenFiles: writes,
+            commandItems: commands,
+            searchItems: searches,
+            toolItems: tools
         )
+    }
+
+    private func isContextTool(_ name: String) -> Bool {
+        name == "WebSearch" || name.hasPrefix("GitHub ")
     }
 
     private var sessionTitle: String {
@@ -718,7 +743,25 @@ struct ContextPanel: View {
                     ContextSectionView(title: L("context.section.created"), icon: "doc.badge.plus", color: .green, items: snapshot.writtenFiles, onOpenFile: { selectedFileItem = $0 })
                 }
 
-                if snapshot.latestThinking == nil && snapshot.readFiles.isEmpty && snapshot.editedFiles.isEmpty && snapshot.writtenFiles.isEmpty {
+                if !snapshot.commandItems.isEmpty {
+                    ContextSectionView(title: L("context.section.commands"), icon: "terminal", color: .purple, items: snapshot.commandItems)
+                }
+
+                if !snapshot.searchItems.isEmpty {
+                    ContextSectionView(title: L("context.section.searches"), icon: "magnifyingglass", color: .cyan, items: snapshot.searchItems)
+                }
+
+                if !snapshot.toolItems.isEmpty {
+                    ContextSectionView(title: L("context.section.tools"), icon: "wrench.and.screwdriver", color: .gray, items: snapshot.toolItems)
+                }
+
+                if snapshot.latestThinking == nil
+                    && snapshot.readFiles.isEmpty
+                    && snapshot.editedFiles.isEmpty
+                    && snapshot.writtenFiles.isEmpty
+                    && snapshot.commandItems.isEmpty
+                    && snapshot.searchItems.isEmpty
+                    && snapshot.toolItems.isEmpty {
                     Text(L("context.empty"))
                         .font(.caption)
                         .foregroundStyle(.secondary)

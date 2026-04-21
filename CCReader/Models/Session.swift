@@ -46,20 +46,37 @@ public class Session {
     public var sessionSummary: String?
     /// Rolling task summary (from task-summary entries). Last-wins.
     public var taskSummary: String?
+    /// Original session log provider, for example "claude" or "codex".
+    public var source: String?
+    /// Absolute JSONL path. New session sources are not always derivable from project + id.
+    public var transcriptPath: String?
 
-    public init(sessionId: String, cwd: String, gitBranch: String? = nil, slug: String? = nil, startedAt: Date = Date(), updatedAt: Date = Date()) {
+    public init(
+        sessionId: String,
+        cwd: String,
+        gitBranch: String? = nil,
+        slug: String? = nil,
+        startedAt: Date = Date(),
+        updatedAt: Date = Date(),
+        source: String? = nil,
+        transcriptPath: String? = nil
+    ) {
         self.sessionId = sessionId
         self.cwd = cwd
         self.gitBranch = gitBranch
         self.slug = slug
         self.startedAt = startedAt
         self.updatedAt = updatedAt
+        self.source = source
+        self.transcriptPath = transcriptPath
     }
 
     public var jsonlFileURL: URL? {
+        if let transcriptPath, !transcriptPath.isEmpty {
+            return URL(fileURLWithPath: transcriptPath)
+        }
         guard let projectPath = project?.path else { return nil }
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let filePath = "\(home)/.claude/projects/\(projectPath)/\(sessionId).jsonl"
+        let filePath = "\(ClaudeTranscriptParser().rootPath)/\(projectPath)/\(sessionId).jsonl"
         return URL(fileURLWithPath: filePath)
     }
 
@@ -98,9 +115,14 @@ public class Session {
     }
 
     private var fallbackDisplayTitle: String {
-        let raw = sessionId.hasPrefix("agent-")
-            ? String(sessionId.dropFirst("agent-".count))
-            : sessionId
+        let raw: String
+        if sessionId.hasPrefix("agent-") {
+            raw = String(sessionId.dropFirst("agent-".count))
+        } else if sessionId.hasPrefix("codex-") {
+            raw = String(sessionId.dropFirst("codex-".count))
+        } else {
+            raw = sessionId
+        }
         let compact = raw.count > 8 ? String(raw.prefix(8)) : raw
         return compact.isEmpty ? Self.shortDateFormatter.string(from: startedAt) : compact
     }

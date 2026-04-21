@@ -27,6 +27,9 @@ struct ContextPanelSnapshot: Equatable {
     var readFiles: [ContextItem] = []
     var editedFiles: [ContextItem] = []
     var writtenFiles: [ContextItem] = []
+    var commandItems: [ContextItem] = []
+    var searchItems: [ContextItem] = []
+    var toolItems: [ContextItem] = []
 }
 
 struct ContextItem: Identifiable, Hashable {
@@ -34,6 +37,7 @@ struct ContextItem: Identifiable, Hashable {
     let toolName: String
     let filePath: String?
     let command: String?
+    let inputSummary: String?
     let content: String
     let isError: Bool
 
@@ -44,6 +48,9 @@ struct ContextItem: Identifiable, Hashable {
         if let cmd = command {
             return String(cmd.prefix(30))
         }
+        if let inputSummary, !inputSummary.isEmpty {
+            return String(inputSummary.prefix(42))
+        }
         return toolName
     }
 
@@ -53,6 +60,7 @@ struct ContextItem: Identifiable, Hashable {
         case "Edit": return .orange
         case "Write": return .green
         case "Bash": return .purple
+        case "WebSearch": return .cyan
         default: return .gray
         }
     }
@@ -63,6 +71,7 @@ struct ContextItem: Identifiable, Hashable {
         case "Edit": return "pencil"
         case "Write": return "doc.badge.plus"
         case "Bash": return "terminal"
+        case "WebSearch": return "magnifyingglass"
         default: return "wrench"
         }
     }

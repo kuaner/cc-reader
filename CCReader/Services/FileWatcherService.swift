@@ -13,7 +13,7 @@ class FileWatcherService: ObservableObject {
     private var stream: FSEventStreamRef?
     private let callback: (URL) -> Void
     private let eventQueue = DispatchQueue(label: "top.kuaner.ccreader.filewatcher", qos: .userInitiated)
-    private var watchPath: String?
+    private var watchPaths: [String] = []
 
     init(callback: @escaping (URL) -> Void) {
         self.callback = callback
@@ -24,9 +24,16 @@ class FileWatcherService: ObservableObject {
     }
 
     func startWatching(path: String) {
+        startWatching(paths: [path])
+    }
+
+    func startWatching(paths: [String]) {
         guard !isWatching else { return }
 
-        watchPath = path
+        let existingPaths = paths.filter { FileManager.default.fileExists(atPath: $0) }
+        guard !existingPaths.isEmpty else { return }
+
+        watchPaths = existingPaths
 
         var context = FSEventStreamContext(
             version: 0,
@@ -36,7 +43,7 @@ class FileWatcherService: ObservableObject {
             copyDescription: nil
         )
 
-        let pathsToWatch = [path] as CFArray
+        let pathsToWatch = existingPaths as CFArray
 
         stream = FSEventStreamCreate(
             nil,
@@ -79,7 +86,7 @@ class FileWatcherService: ObservableObject {
             self.isWatching = true
         }
 
-        print("Started watching: \(path)")
+        print("Started watching: \(existingPaths.joined(separator: ", "))")
     }
 
     func stopWatching() {
@@ -99,28 +106,32 @@ class FileWatcherService: ObservableObject {
 
     // MARK: - Helpers
 
-    static var claudeProjectsPath: String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.claude/projects"
+    static var transcriptRootPaths: [String] {
+        SessionTranscriptParserRegistry.shared.rootPaths
     }
 
     // Enumerate existing JSONL files on startup.
     static func existingJSONLFiles() -> [URL] {
-        let projectsPath = claudeProjectsPath
+        existingJSONLFiles(in: transcriptRootPaths)
+    }
+
+    private static func existingJSONLFiles(in rootPaths: [String]) -> [URL] {
         let fileManager = FileManager.default
-
-        guard let enumerator = fileManager.enumerator(
-            at: URL(fileURLWithPath: projectsPath),
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-
         var files: [URL] = []
-        while let url = enumerator.nextObject() as? URL {
-            if url.pathExtension == "jsonl" {
-                files.append(url)
+
+        for rootPath in rootPaths where fileManager.fileExists(atPath: rootPath) {
+            guard let enumerator = fileManager.enumerator(
+                at: URL(fileURLWithPath: rootPath),
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                continue
+            }
+
+            while let url = enumerator.nextObject() as? URL {
+                if url.pathExtension == "jsonl" {
+                    files.append(url)
+                }
             }
         }
 

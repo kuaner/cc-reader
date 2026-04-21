@@ -4,6 +4,7 @@ import SwiftData
 @ModelActor
 actor SyncService {
     private let parser = JSONLParser()
+    private let transcriptParsers = SessionTranscriptParserRegistry.shared
     private var loggedFilteredEventTypes: Set<String> = []
 
     // On first launch, scan file paths and create lightweight session rows only.
@@ -47,21 +48,29 @@ actor SyncService {
     // MARK: - Session Indexing
 
     private func ensureSessionIndex(fileURL: URL) {
-        let projectPath = fileURL.deletingLastPathComponent().lastPathComponent
+        guard let transcriptParser = transcriptParsers.parser(for: fileURL) else { return }
+        let source = transcriptParser.source.rawValue
+        let metadata = transcriptParser.readMetadata(from: fileURL)
+        let projectPath = projectPath(fileURL: fileURL, metadata: metadata)
         let project = getOrCreateProject(path: projectPath)
 
-        guard let sessionId = JSONLParser.sessionId(from: fileURL) else { return }
+        guard let sessionId = transcriptParser.sessionId(from: fileURL) else { return }
 
-        if findSession(sessionId: sessionId) != nil {
+        if let existing = findSession(sessionId: sessionId) {
+            existing.source = existing.source ?? source
+            existing.transcriptPath = existing.transcriptPath ?? fileURL.path
             return
         }
 
         let fileDate = fileModifiedDate(fileURL) ?? Date()
         let session = Session(
             sessionId: sessionId,
-            cwd: "",
+            cwd: metadata?.cwd ?? "",
+            gitBranch: metadata?.gitBranch,
             startedAt: fileDate,
-            updatedAt: fileDate
+            updatedAt: fileDate,
+            source: source,
+            transcriptPath: fileURL.path
         )
         session.project = project
         project.sessions.append(session)
@@ -69,16 +78,27 @@ actor SyncService {
     }
 
     private func rebuildSessionIndex(fileURL: URL) {
+        guard let transcriptParser = transcriptParsers.parser(for: fileURL) else { return }
         let rawMessages = (try? parser.parseFile(url: fileURL)) ?? []
         guard !rawMessages.isEmpty else { return }
 
-        let projectPath = fileURL.deletingLastPathComponent().lastPathComponent
+        let source = transcriptParser.source.rawValue
+        let metadata = transcriptParser.readMetadata(from: fileURL)
+        let projectPath = projectPath(fileURL: fileURL, metadata: metadata)
         let project = getOrCreateProject(path: projectPath)
 
-        guard let sessionId = JSONLParser.sessionId(from: fileURL) else { return }
+        guard let sessionId = transcriptParser.sessionId(from: fileURL) else { return }
         let firstTranscript = rawMessages.first(where: { $0.entryType?.isTranscriptMessage == true })
-        let session = getOrCreateSession(sessionId: sessionId, in: project, from: firstTranscript)
+        let session = getOrCreateSession(
+            sessionId: sessionId,
+            in: project,
+            from: firstTranscript,
+            source: source,
+            transcriptPath: fileURL.path
+        )
         resetIndexedSessionState(session)
+        session.source = source
+        session.transcriptPath = fileURL.path
 
         var earliestTimestamp: Date?
         var latestTimestamp: Date?
@@ -148,6 +168,7 @@ actor SyncService {
             || session.cachedTurnCount == 0
             || session.cachedTitle == nil && session.slug == nil
             || session.gitBranch == nil
+            || session.transcriptPath == nil
     }
 
     private func resetIndexedSessionState(_ session: Session) {
@@ -222,18 +243,28 @@ actor SyncService {
         return project
     }
 
-    private func getOrCreateSession(sessionId: String, in project: Project, from firstMessage: RawMessageData?) -> Session {
+    private func getOrCreateSession(
+        sessionId: String,
+        in project: Project,
+        from firstMessage: RawMessageData?,
+        source: String,
+        transcriptPath: String
+    ) -> Session {
         if let existing = findSession(sessionId: sessionId) {
+            existing.source = existing.source ?? source
+            existing.transcriptPath = existing.transcriptPath ?? transcriptPath
             if let slug = firstMessage?.slug,
                existing.slug == nil,
                !existing.isSlugManual,
-               !sessionId.hasPrefix("agent-") {
+               !sessionId.hasPrefix("agent-"),
+               source == "claude" {
                 existing.slug = slug
             }
             return existing
         }
 
-        if !sessionId.hasPrefix("agent-"),
+        if source == "claude",
+           !sessionId.hasPrefix("agent-"),
            let slug = firstMessage?.slug,
            !slug.isEmpty {
             let projectPath = project.path
@@ -260,7 +291,9 @@ actor SyncService {
             gitBranch: gitBranch,
             slug: slug,
             startedAt: messageTime,
-            updatedAt: messageTime
+            updatedAt: messageTime,
+            source: source,
+            transcriptPath: transcriptPath
         )
         session.project = project
         project.sessions.append(session)
@@ -367,6 +400,13 @@ actor SyncService {
 
     private func fileModifiedDate(_ url: URL) -> Date? {
         try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+
+    private func projectPath(fileURL: URL, metadata: SessionTranscriptMetadata?) -> String {
+        if let cwd = metadata?.cwd, !cwd.isEmpty {
+            return JSONLParser.projectPath(fromCwd: cwd)
+        }
+        return fileURL.deletingLastPathComponent().lastPathComponent
     }
 
 }

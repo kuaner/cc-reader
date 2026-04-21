@@ -14,10 +14,13 @@
 "context.empty" = "No context";
 "context.expand.help" = "Expand";
 "context.section.created" = "Created";
+"context.section.commands" = "Commands";
 "context.section.edited" = "Edited";
 "context.section.read" = "Read";
+"context.section.searches" = "Searches";
+"context.section.tools" = "Tools";
 "context.showFull" = "Show full text…";
-"context.understanding.title" = "Claude's Understanding";
+"context.understanding.title" = "Assistant Understanding";
 "error.backup.notFound" = "Backup file not found";
 "error.delete.failed" = "Delete failed: %@";
 "error.file.read.failed" = "Failed to load file: %@";
@@ -35,7 +38,7 @@
 "layout.recentSessions" = "Recent Sessions";
 "layout.split.horizontal" = "Split Horizontally";
 "layout.split.vertical" = "Split Vertically";
-"session.resume.copied" = "Copied: claude --resume <sessionId>";
+"session.resume.copied" = "Copied resume command";
 "session.resume.help" = "Copy resume command to clipboard";
 "sidebar.deleteAndDontAsk" = "Delete (Do not ask again)";
 "sidebar.deleteMany.confirm" = "Delete %d sessions? JSONL files will also be deleted.";
@@ -45,7 +48,7 @@
 "sidebar.selection.count" = "%d selected";
 "sidebar.sessionName.placeholder" = "Session Name";
 "status.messageCount" = "%d msgs";
-"timeline.claude.label" = "Claude";
+"timeline.claude.label" = "Assistant";
 "timeline.context.help" = "Show Context";
 "timeline.context.label" = "Context";
 "timeline.deleteMessage.body" = "This message will be deleted.";
