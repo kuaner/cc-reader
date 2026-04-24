@@ -13,7 +13,7 @@ public struct ContentView: View {
 
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            ProjectListView(
+            SessionSidebarView(
                 selectedSession: $selectedSession
             )
             .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)

@@ -114,7 +114,7 @@ Features:
 - Dimmed rows for sessions already open in other panes (prevents duplicates)
 - Open session ID set computed once outside `ForEach` (not per-row)
 
-### ProjectListView (`Views/Sidebar/ProjectListView.swift`)
+### SessionSidebarView (`Views/Sidebar/SessionSidebarView.swift`)
 
 The sidebar uses the same Claude/Codex source scope as the picker. Changing the source filter only changes which rows are visible; it does not clear the currently opened session. If a Codex session is open, switching to Claude hides its row, and switching back to Codex restores the row's selected state.
 

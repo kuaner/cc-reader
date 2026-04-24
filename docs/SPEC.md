@@ -41,7 +41,7 @@ Key capabilities: multi-tab & multi-pane session monitoring, source-separated Cl
 │                         │                                 │
 │  ┌──────────────────────┴───────────────────────────┐    │
 │  │              Views Layer (SwiftUI)                │    │
-│  │  ProjectListView / SessionPickerView / PaneView  │    │
+│  │  SessionSidebarView / SessionPickerView / PaneView  │    │
 │  │  SessionMessagesView / TimelineHostView          │    │
 │  │  ContextPanel / LayoutView / ResizableSplitView  │    │
 │  └────────────────────┬─────────────────────────────┘    │
@@ -257,7 +257,7 @@ cc-reader/
 │   ├── Views/
 │   │   ├── ContentView.swift           # Per-tab root (NavigationSplitView + persistence)
 │   │   ├── Sidebar/
-│   │   │   ├── ProjectListView.swift   # Session list sidebar
+│   │   │   ├── SessionSidebarView.swift   # Session list sidebar
 │   │   │   └── SessionPickerView.swift # Session search/assign picker sheet
 │   │   ├── Timeline/
 │   │   │   ├── SessionMessagesView.swift   # Timeline orchestration + Context panel

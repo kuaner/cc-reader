@@ -93,7 +93,7 @@ Then confirm the new Swift file appears in `CCReader.xcodeproj/project.pbxproj` 
 
 Today the sidebar scope control and pane source badge know about Claude and Codex. If the new provider should be user-selectable as a separate tab, update the source filter UI in:
 
-- `CCReader/Views/Sidebar/ProjectListView.swift`
+- `CCReader/Views/Sidebar/SessionSidebarView.swift`
 - `CCReader/Views/Sidebar/SessionPickerView.swift`
 - `CCReader/Views/Layout/PaneView.swift`
 

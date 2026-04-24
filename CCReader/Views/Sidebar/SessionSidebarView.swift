@@ -85,7 +85,7 @@ struct SessionSourceScopeBar: View {
     }
 }
 
-struct ProjectListView: View {
+struct SessionSidebarView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
     @Binding var selectedSession: Session?
@@ -272,7 +272,14 @@ struct SessionRow: View {
                     .foregroundStyle(isSelected ? selectedSecondaryForeground : Color.secondary.opacity(0.5))
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.10))
+                .frame(height: 0.5)
+                .padding(.horizontal, 4)
+        }
     }
 
     private static let sessionDateFormatter: DateFormatter = {
@@ -399,6 +406,6 @@ extension Color {
 }
 
 #Preview {
-    ProjectListView(selectedSession: .constant(nil))
+    SessionSidebarView(selectedSession: .constant(nil))
         .modelContainer(for: [Project.self, Session.self, Message.self], inMemory: true)
 }
