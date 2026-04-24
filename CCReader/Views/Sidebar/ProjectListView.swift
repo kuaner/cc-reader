@@ -54,14 +54,14 @@ struct SessionSourceScopeBar: View {
                         Text("\(count(for: filter))")
                             .font(.caption2)
                             .monospacedDigit()
-                            .foregroundStyle(isSelected ? Color.white.opacity(0.76) : Color.secondary.opacity(0.78))
+                            .foregroundStyle(isSelected ? Color.sessionSourceScopeSelectedCount(for: colorScheme) : Color.secondary.opacity(0.78))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
                     .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(isSelected ? Color.white : Color.secondary.opacity(0.9))
+                .foregroundStyle(isSelected ? Color.sessionSourceScopeSelectedText(for: colorScheme) : Color.secondary.opacity(0.9))
                 .background {
                     if isSelected {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
@@ -137,8 +137,17 @@ struct ProjectListView: View {
 // MARK: - Session Row
 
 struct SessionRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Bindable var session: Session
     var isSelected: Bool = false
+
+    private var selectedForeground: Color {
+        colorScheme == .dark ? .white : .primary
+    }
+
+    private var selectedSecondaryForeground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary.opacity(0.7)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -147,7 +156,7 @@ struct SessionRow: View {
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(2)
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? selectedForeground : .primary)
                 .help(taskSummaryTooltip)
 
             // Metadata badges
@@ -260,7 +269,7 @@ struct SessionRow: View {
                 // Last message timestamp
                 Text(formattedDate)
                     .font(.caption2)
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary.opacity(0.5))
+                    .foregroundStyle(isSelected ? selectedSecondaryForeground : Color.secondary.opacity(0.5))
             }
         }
         .padding(.vertical, 2)
@@ -361,6 +370,30 @@ extension Color {
             return Color.black.opacity(0.08)
         @unknown default:
             return Color.white.opacity(0.07)
+        }
+    }
+
+    /// Selected filter title — white in dark mode, dark warm tone in light mode for contrast.
+    static func sessionSourceScopeSelectedText(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return .white
+        case .light:
+            return Color(red: 0.22, green: 0.14, blue: 0.08)
+        @unknown default:
+            return .white
+        }
+    }
+
+    /// Selected filter count badge — muted white in dark mode, muted dark in light mode.
+    static func sessionSourceScopeSelectedCount(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.76)
+        case .light:
+            return Color(red: 0.22, green: 0.14, blue: 0.08).opacity(0.72)
+        @unknown default:
+            return Color.white.opacity(0.76)
         }
     }
 }
