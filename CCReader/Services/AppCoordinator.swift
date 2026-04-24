@@ -5,6 +5,9 @@ import SwiftData
 public class AppCoordinator: ObservableObject {
     @Published public private(set) var isInitialized = false
 
+    /// App-level shared instance — set once in CCReaderApp.init().
+    static var shared: AppCoordinator!
+
     private var syncService: SyncService?
     private var fileWatcher: FileWatcherService?
     private let modelContainer: ModelContainer
@@ -15,12 +18,15 @@ public class AppCoordinator: ObservableObject {
     private var pendingFiles: Set<URL> = []
     private let debounceInterval: UInt64 = 500_000_000 // 0.5 seconds
 
+    private var isStarting = false
+
     public init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
     }
 
     public func start() async {
-        guard !isInitialized else { return }
+        guard !isInitialized, !isStarting else { return }
+        isStarting = true
 
         // Initialize SyncService with the container so it creates its own background contexts.
         let sync = SyncService(modelContainer: modelContainer)
@@ -95,13 +101,4 @@ public class AppCoordinator: ObservableObject {
         NotificationCenter.default.post(name: .sessionDidSync, object: session.sessionId)
     }
 
-    public func stop() {
-        debounceTask?.cancel()
-        metadataWarmupTask?.cancel()
-        debounceTask = nil
-        metadataWarmupTask = nil
-        pendingFiles.removeAll()
-        fileWatcher?.stopWatching()
-        fileWatcher = nil
-    }
 }

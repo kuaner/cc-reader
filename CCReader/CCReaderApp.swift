@@ -22,12 +22,14 @@ struct CCReaderApp: App {
         } catch {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
+        AppCoordinator.shared = AppCoordinator(modelContainer: container)
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(modelContainer: container)
+            ContentView()
                 .modelContainer(container)
+                .environmentObject(AppCoordinator.shared)
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified(showsTitle: false))

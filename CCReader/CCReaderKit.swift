@@ -49,8 +49,10 @@ public enum CCReaderKit {
     /// Create a standalone `ContentView` ready for embedding.
     @MainActor
     public static func makeView() -> some View {
-        ContentView(modelContainer: modelContainer)
+        let coordinator = AppCoordinator(modelContainer: modelContainer)
+        return ContentView()
             .modelContainer(modelContainer)
+            .environmentObject(coordinator)
     }
 
     /// Open CC Reader in a new macOS window.

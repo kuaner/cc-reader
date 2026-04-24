@@ -3,18 +3,13 @@ import SwiftData
 import SwiftUI
 
 public struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @StateObject private var coordinator: AppCoordinator
+    @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var layoutManager = LayoutManager()
 
     @State private var selectedSession: Session?
     @State private var columnVisibility: NavigationSplitViewVisibility = .doubleColumn
     @SceneStorage("windowLayoutJSON") private var layoutData: String?
     @Query(sort: \Session.updatedAt, order: .reverse) private var sessions: [Session]
-
-    public init(modelContainer: ModelContainer) {
-        _coordinator = StateObject(wrappedValue: AppCoordinator(modelContainer: modelContainer))
-    }
 
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -88,7 +83,6 @@ public struct ContentView: View {
         }
         .onDisappear {
             layoutManager.unregisterWindow()
-            coordinator.stop()
         }
         .onChange(of: layoutManager.layout) { _, _ in
             layoutData = layoutManager.encodeLayout()
@@ -160,6 +154,8 @@ class WindowConfigView: NSView {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(
         for: Project.self, Session.self, Message.self, configurations: config)
-    return ContentView(modelContainer: container)
+    let coordinator = AppCoordinator(modelContainer: container)
+    return ContentView()
         .modelContainer(container)
+        .environmentObject(coordinator)
 }
