@@ -349,9 +349,155 @@ footer a:hover { color: var(--accent) }
   .feature-grid, .shortcut-list { grid-template-columns: 1fr }
   footer { flex-direction: column; gap: var(--space-md); text-align: center }
 }
+
+/* ---- OVERDRIVE: Scroll-driven choreography ---- */
+.hero-meta-top, .hero-title, .hero-sub, .hero-actions, .hero-meta {
+  animation: hero-fade-in .8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-meta-top { animation-delay: .1s }
+.hero-title { animation-delay: .2s }
+.hero-sub { animation-delay: .35s }
+.hero-actions { animation-delay: .5s }
+.hero-meta { animation-delay: .65s }
+
+@keyframes hero-fade-in {
+  from { opacity: 0; transform: translateY(18px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+.screenshot .window {
+  animation: hero-fade-in 1s cubic-bezier(0.16, 1, 0.3, 1) .3s both;
+}
+
+/* Scroll-driven reveals — only when supported */
+@supports (animation-timeline: view()) {
+  .feature {
+    animation: scroll-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+    will-change: transform, opacity;
+  }
+  .feature:nth-child(1) { animation-delay: 0s }
+  .feature:nth-child(2) { animation-delay: 0.03s }
+  .feature:nth-child(3) { animation-delay: 0.06s }
+  .feature:nth-child(4) { animation-delay: 0.09s }
+  .feature:nth-child(5) { animation-delay: 0.12s }
+  .feature:nth-child(6) { animation-delay: 0.15s }
+  .feature:nth-child(7) { animation-delay: 0.18s }
+  .feature:nth-child(8) { animation-delay: 0.21s }
+  .feature:nth-child(9) { animation-delay: 0.24s }
+
+  .workspace-card {
+    animation: scroll-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+    will-change: transform, opacity;
+  }
+  .workspace-card:nth-child(2) { animation-delay: 0.08s }
+  .workspace-card:nth-child(3) { animation-delay: 0.16s }
+
+  .shortcut {
+    animation: scroll-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 25%;
+    will-change: transform, opacity;
+  }
+  .shortcut:nth-child(1) { animation-delay: 0s }
+  .shortcut:nth-child(2) { animation-delay: 0.02s }
+  .shortcut:nth-child(3) { animation-delay: 0.04s }
+  .shortcut:nth-child(4) { animation-delay: 0.06s }
+  .shortcut:nth-child(5) { animation-delay: 0.08s }
+  .shortcut:nth-child(6) { animation-delay: 0.10s }
+  .shortcut:nth-child(7) { animation-delay: 0.12s }
+  .shortcut:nth-child(8) { animation-delay: 0.14s }
+  .shortcut:nth-child(9) { animation-delay: 0.16s }
+
+  .theme-dot {
+    animation: scroll-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+    will-change: transform, opacity;
+  }
+  .theme-dot:nth-child(2) { animation-delay: 0.03s }
+  .theme-dot:nth-child(3) { animation-delay: 0.06s }
+  .theme-dot:nth-child(4) { animation-delay: 0.09s }
+  .theme-dot:nth-child(5) { animation-delay: 0.12s }
+  .theme-dot:nth-child(6) { animation-delay: 0.15s }
+  .theme-dot:nth-child(7) { animation-delay: 0.18s }
+  .theme-dot:nth-child(8) { animation-delay: 0.21s }
+  .theme-dot:nth-child(9) { animation-delay: 0.24s }
+  .theme-dot:nth-child(10) { animation-delay: 0.27s }
+  .theme-dot:nth-child(11) { animation-delay: 0.30s }
+
+  /* Parallax on the window */
+  .screenshot .window {
+    animation: window-parallax linear both;
+    animation-timeline: view();
+    animation-range: entry 0% exit 100%;
+  }
+}
+
+@keyframes scroll-reveal {
+  from { opacity: 0; transform: translateY(12px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+@keyframes window-parallax {
+  from { transform: translateY(20px); opacity: .7 }
+  15% { opacity: 1 }
+  to { transform: translateY(-30px); opacity: 1 }
+}
+
+/* ---- OVERDRIVE: Grain overlay ---- */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: .035;
+  mix-blend-mode: overlay;
+}
+
+/* ---- OVERDRIVE: View Transitions for tabs ---- */
+::view-transition-old(tab-content) {
+  animation: tab-out .2s cubic-bezier(0.4, 0, 1, 1) both;
+}
+::view-transition-new(tab-content) {
+  animation: tab-in .3s cubic-bezier(0, 0, 0.2, 1) both;
+}
+@keyframes tab-out {
+  from { opacity: 1; transform: translateY(0) }
+  to { opacity: 0; transform: translateY(-6px) }
+}
+@keyframes tab-in {
+  from { opacity: 0; transform: translateY(6px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+.install-pane.active {
+  view-transition-name: tab-content;
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .hero-meta-top, .hero-title, .hero-sub, .hero-actions, .hero-meta,
+  .screenshot .window {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .grain-overlay { display: none }
+}
 </style>
 </head>
 <body>
+
+<!-- Grain overlay -->
+<svg class="grain-overlay" xmlns="http://www.w3.org/2000/svg">
+  <filter id="grain-filter">
+    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grain-filter)"/>
+</svg>
 
 <nav>
   <div class="container">
@@ -613,12 +759,36 @@ footer a:hover { color: var(--accent) }
 </footer>
 
 <script>
-function showTab(btn,id){
-  btn.parentElement.querySelectorAll('.install-tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  btn.closest('.install-box').querySelectorAll('.install-pane').forEach(p=>p.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
+// View Transitions for install tabs
+function showTab(btn, id) {
+  const update = () => {
+    btn.parentElement.querySelectorAll('.install-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    btn.closest('.install-box').querySelectorAll('.install-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+  };
+  if (document.startViewTransition) {
+    document.startViewTransition(update);
+  } else {
+    update();
+  }
 }
+
+// Grain cursor tracking
+(function() {
+  var turb = document.querySelector('#grain-filter feTurbulence');
+  if (!turb) return;
+  var raf = 0;
+  document.addEventListener('mousemove', function(e) {
+    if (raf) return;
+    raf = requestAnimationFrame(function() {
+      var x = (e.clientX / window.innerWidth - 0.5) * 0.15;
+      var y = (e.clientY / window.innerHeight - 0.5) * 0.15;
+      turb.setAttribute('baseFrequency', (0.65 + x).toFixed(4) + ' ' + (0.65 + y).toFixed(4));
+      raf = 0;
+    });
+  });
+})();
 </script>
 </body>
 </html>
