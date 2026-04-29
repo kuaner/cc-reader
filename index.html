@@ -92,11 +92,9 @@ nav .container {
 .hero {
   padding: 120px 0 var(--space-4xl);
 }
-.hero-meta-top {
   display: flex; align-items: center; gap: var(--space-md);
   margin-bottom: var(--space-lg);
 }
-.hero-icon { width: 40px; height: 40px; border-radius: 10px }
 .hero-title {
   font-size: clamp(32px, 5vw, 52px);
   font-weight: 700; letter-spacing: -0.035em; line-height: 1.05;
@@ -351,10 +349,8 @@ footer a:hover { color: var(--accent) }
 }
 
 /* ---- OVERDRIVE: Scroll-driven choreography ---- */
-.hero-meta-top, .hero-title, .hero-sub, .hero-actions, .hero-meta {
   animation: hero-fade-in .8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.hero-meta-top { animation-delay: .1s }
 .hero-title { animation-delay: .2s }
 .hero-sub { animation-delay: .35s }
 .hero-actions { animation-delay: .5s }
@@ -479,7 +475,6 @@ footer a:hover { color: var(--accent) }
 
 /* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
-  .hero-meta-top, .hero-title, .hero-sub, .hero-actions, .hero-meta,
   .screenshot .window {
     animation: none !important;
     opacity: 1 !important;
@@ -518,9 +513,6 @@ footer a:hover { color: var(--accent) }
 
 <section class="hero">
   <div class="container">
-    <div class="hero-meta-top">
-      <img src="https://raw.githubusercontent.com/kuaner/cc-reader/main/CCReader/Resources/Assets.xcassets/AppIcon.appiconset/1024.png" alt="CC Reader" class="hero-icon" width="40" height="40">
-    </div>
     <h1 class="hero-title">CC&nbsp;Reader</h1>
     <p class="hero-sub">
       A native macOS viewer for Claude Code and Codex session history. Browse timelines, inspect tool usage, and resume sessions — all locally.
