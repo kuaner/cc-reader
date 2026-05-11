@@ -3,7 +3,7 @@ import SwiftData
 
 @Model
 public class Session {
-    @Attribute(.unique) public var sessionId: String
+    public var sessionId: String
     public var project: Project?
     @Relationship(deleteRule: .cascade, inverse: \Message.session)
     public var messages: [Message] = []
@@ -114,6 +114,25 @@ public class Session {
         cachedUnacknowledgedCount
     }
 
+    /// App-level identity for UI selection/layout. `sessionId` stays the raw CLI/log id.
+    public var identityKey: String {
+        "\(sourceIdentity):\(sessionId)"
+    }
+
+    public func matchesIdentityKey(_ value: String) -> Bool {
+        value == identityKey
+            || value == sessionId
+            || legacyCodexSessionId == value
+    }
+
+    /// Shell command used to resume this session in its original CLI.
+    public var resumeCommand: String {
+        if isCodexSession {
+            return "codex resume \(codexResumeSessionId)"
+        }
+        return "claude --resume \(sessionId)"
+    }
+
     private var fallbackDisplayTitle: String {
         let raw: String
         if sessionId.hasPrefix("agent-") {
@@ -125,5 +144,24 @@ public class Session {
         }
         let compact = raw.count > 8 ? String(raw.prefix(8)) : raw
         return compact.isEmpty ? Self.shortDateFormatter.string(from: startedAt) : compact
+    }
+
+    private var codexResumeSessionId: String {
+        guard sessionId.hasPrefix("codex-") else { return sessionId }
+        return String(sessionId.dropFirst("codex-".count))
+    }
+
+    private var isCodexSession: Bool {
+        source == "codex" || sessionId.hasPrefix("codex-")
+    }
+
+    private var sourceIdentity: String {
+        if let source { return source }
+        return sessionId.hasPrefix("codex-") ? "codex" : "claude"
+    }
+
+    private var legacyCodexSessionId: String? {
+        guard isCodexSession else { return nil }
+        return sessionId.hasPrefix("codex-") ? nil : "codex-\(sessionId)"
     }
 }

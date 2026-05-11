@@ -15,7 +15,7 @@ Every parser must implement:
 | `source` | Stable provider id stored on `Session.source` |
 | `rootPath` | Directory watched by `FileWatcherService` and scanned at startup |
 | `matches(_:)` | Returns true for files owned by this provider |
-| `sessionId(from:)` | Returns a stable app-wide unique session id |
+| `sessionId(from:)` | Returns the stable raw session id from the transcript source |
 | `readMetadata(from:)` | Cheap metadata read used during first-launch indexing |
 | `parseLine(_:sourceURL:)` | Converts one provider JSONL line into normalized `RawMessageData` |
 
@@ -207,7 +207,7 @@ Add parser tests under `Tests/CCReaderKitTests/`.
 
 Minimum test coverage:
 
-- `sessionId(from:)` returns a stable prefixed id.
+- `sessionId(from:)` returns the raw source session id. Store the source separately instead of encoding it into the id.
 - `readMetadata(from:)` extracts cwd/branch/model/timestamp without full parsing.
 - User and assistant messages normalize into timeline messages.
 - Tool calls and tool outputs populate fields used by the context panel.

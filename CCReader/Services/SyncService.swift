@@ -56,7 +56,9 @@ actor SyncService {
 
         guard let sessionId = transcriptParser.sessionId(from: fileURL) else { return }
 
-        if let existing = findSession(sessionId: sessionId) {
+        if let existing = findSession(sessionId: sessionId, source: source)
+            ?? findLegacySession(sessionId: sessionId, source: source) {
+            migrateLegacySessionIdIfNeeded(existing, to: sessionId, source: source)
             existing.source = existing.source ?? source
             existing.transcriptPath = existing.transcriptPath ?? fileURL.path
             return
@@ -159,8 +161,10 @@ actor SyncService {
     }
 
     private func shouldWarmup(fileURL: URL) -> Bool {
-        guard let sessionId = JSONLParser.sessionId(from: fileURL),
-              let session = findSession(sessionId: sessionId) else {
+        guard let transcriptParser = transcriptParsers.parser(for: fileURL),
+              let sessionId = transcriptParser.sessionId(from: fileURL),
+              let session = findSession(sessionId: sessionId, source: transcriptParser.source.rawValue)
+                ?? findLegacySession(sessionId: sessionId, source: transcriptParser.source.rawValue) else {
             return true
         }
 
@@ -250,7 +254,9 @@ actor SyncService {
         source: String,
         transcriptPath: String
     ) -> Session {
-        if let existing = findSession(sessionId: sessionId) {
+        if let existing = findSession(sessionId: sessionId, source: source)
+            ?? findLegacySession(sessionId: sessionId, source: source) {
+            migrateLegacySessionIdIfNeeded(existing, to: sessionId, source: source)
             existing.source = existing.source ?? source
             existing.transcriptPath = existing.transcriptPath ?? transcriptPath
             if let slug = firstMessage?.slug,
@@ -301,10 +307,27 @@ actor SyncService {
         return session
     }
 
-    private func findSession(sessionId: String) -> Session? {
+    private func findSession(sessionId: String, source: String) -> Session? {
         let predicate = #Predicate<Session> { $0.sessionId == sessionId }
         let descriptor = FetchDescriptor<Session>(predicate: predicate)
-        return try? modelContext.fetch(descriptor).first
+        guard let sessions = try? modelContext.fetch(descriptor) else { return nil }
+        return sessions.first { $0.source == source }
+            ?? sessions.first { $0.source == nil }
+    }
+
+    private func findLegacySession(sessionId: String, source: String) -> Session? {
+        guard source == "codex", !sessionId.hasPrefix("codex-") else { return nil }
+        return findSession(sessionId: "codex-\(sessionId)", source: source)
+    }
+
+    private func migrateLegacySessionIdIfNeeded(_ session: Session, to sessionId: String, source: String) {
+        guard source == "codex",
+              session.sessionId.hasPrefix("codex-"),
+              !sessionId.hasPrefix("codex-") else {
+            return
+        }
+
+        session.sessionId = sessionId
     }
 
     private func resolveMessageType(from raw: RawMessageData) -> MessageType? {

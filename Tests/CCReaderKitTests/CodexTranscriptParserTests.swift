@@ -16,6 +16,8 @@ struct CodexTranscriptParserTests {
         let messages = try JSONLParser().parseTimelineMessages(url: url).map { $0.makeMessage() }
         let toolUses = messages.flatMap(\.toolUses)
 
+        #expect(CodexTranscriptParser().sessionId(from: url) == "abc")
+
         let shell = try #require(toolUses.first { $0.id == "call_shell" })
         #expect(shell.name == "Bash")
         #expect(shell.command == "git status --short")

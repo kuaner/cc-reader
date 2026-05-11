@@ -22,7 +22,7 @@ public struct ContentView: View {
         }
         .onChange(of: selectedSession) { _, newSession in
             guard let session = newSession else { return }
-            layoutManager.focusOrAssignSession(session.sessionId)
+            focusOrAssign(session)
         }
         .environmentObject(layoutManager)
         .environmentObject(coordinator)
@@ -51,17 +51,17 @@ public struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
             guard layoutManager.window?.isKeyWindow == true else { return }
             guard let targetSessionId = notification.object as? String else { return }
-            guard let session = sessions.first(where: { $0.sessionId == targetSessionId }) else {
+            guard let session = sessions.first(where: { $0.matchesIdentityKey(targetSessionId) }) else {
                 return
             }
 
-            layoutManager.focusOrAssignSession(targetSessionId)
+            focusOrAssign(session)
             selectedSession = session
         }
         .sheet(item: $layoutManager.pendingPickerAction) { _ in
             SessionPickerView(
                 onSelect: { session in
-                    layoutManager.handlePickerSelection(sessionId: session.sessionId)
+                    layoutManager.handlePickerSelection(sessionId: session.identityKey)
                     selectedSession = session
                 },
                 onCancel: {
@@ -105,11 +105,21 @@ public struct ContentView: View {
         guard let focusedId = layoutManager.focusedPaneId,
             let pane = layoutManager.allPanes().first(where: { $0.id == focusedId }),
             let sessionId = pane.sessionId,
-            let session = sessions.first(where: { $0.sessionId == sessionId })
+            let session = sessions.first(where: { $0.matchesIdentityKey(sessionId) })
         else {
             return "CC Reader"
         }
         return session.displayTitle
+    }
+
+    private func focusOrAssign(_ session: Session) {
+        if let pane = layoutManager.allPanes().first(where: { pane in
+            pane.sessionId.map(session.matchesIdentityKey) ?? false
+        }) {
+            layoutManager.focusedPaneId = pane.id
+        } else {
+            layoutManager.focusOrAssignSession(session.identityKey)
+        }
     }
 }
 

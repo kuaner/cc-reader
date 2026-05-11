@@ -20,15 +20,15 @@ struct CodexTranscriptParser: SessionTranscriptParser {
 
     func sessionId(from url: URL) -> String? {
         if let id = readCodexMetadata(from: url)?.id, !id.isEmpty {
-            return "codex-\(id)"
+            return id
         }
 
         let filename = url.deletingPathExtension().lastPathComponent
         guard !filename.isEmpty else { return nil }
         if let uuid = filename.split(separator: "-").suffix(5).map(String.init).joined(separator: "-").nilIfEmpty {
-            return "codex-\(uuid)"
+            return uuid
         }
-        return "codex-\(filename)"
+        return filename
     }
 
     func readMetadata(from url: URL) -> SessionTranscriptMetadata? {

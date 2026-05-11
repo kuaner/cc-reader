@@ -28,8 +28,10 @@ struct SessionPickerView: View {
 
     /// Selectable sessions (filtered, excluding already-open ones).
     private var selectableSessions: [Session] {
-        let openIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
-        return filteredSessions.filter { !openIds.contains($0.sessionId) }
+        let openIds = layoutManager.allPanes().compactMap { $0.sessionId }
+        return filteredSessions.filter { session in
+            !openIds.contains(where: session.matchesIdentityKey)
+        }
     }
 
     var body: some View {
@@ -66,15 +68,15 @@ struct SessionPickerView: View {
             // Session list
             ScrollViewReader { proxy in
                 List(selection: $selectedSessionId) {
-                    let openSessionIds = Set(layoutManager.allPanes().compactMap { $0.sessionId })
-                    ForEach(filteredSessions, id: \.sessionId) { session in
-                        let alreadyOpen = openSessionIds.contains(session.sessionId)
-                        SessionRow(session: session, isSelected: session.sessionId == selectedSessionId && !alreadyOpen)
-                            .tag(session.sessionId)
-                            .id(session.sessionId)
+                    let openSessionIds = layoutManager.allPanes().compactMap { $0.sessionId }
+                    ForEach(filteredSessions, id: \.identityKey) { session in
+                        let alreadyOpen = openSessionIds.contains(where: session.matchesIdentityKey)
+                        SessionRow(session: session, isSelected: session.identityKey == selectedSessionId && !alreadyOpen)
+                            .tag(session.identityKey)
+                            .id(session.identityKey)
                             .listRowSeparator(.hidden)
                             .listRowBackground(
-                                selectedSessionId == session.sessionId && !alreadyOpen
+                                selectedSessionId == session.identityKey && !alreadyOpen
                                     ? RoundedRectangle(cornerRadius: 6, style: .continuous)
                                         .fill(Color.sessionLedgerSidebarSelection(for: colorScheme))
                                         .padding(.horizontal, 4)
@@ -84,7 +86,7 @@ struct SessionPickerView: View {
                             .contentShape(Rectangle())
                             .onHover { hovering in
                                 guard !alreadyOpen, hovering else { return }
-                                selectedSessionId = session.sessionId
+                                selectedSessionId = session.identityKey
                             }
                             .onTapGesture {
                                 guard !alreadyOpen else { return }
@@ -106,16 +108,18 @@ struct SessionPickerView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
         .onAppear {
-            selectedSessionId = selectableSessions.first?.sessionId
+            selectedSessionId = selectableSessions.first?.identityKey
             isSearchFocused = true
         }
         .onChange(of: searchText) { _, _ in
-            if selectedSessionId == nil || !filteredSessions.contains(where: { $0.sessionId == selectedSessionId }) {
-                selectedSessionId = selectableSessions.first?.sessionId
+            if selectedSessionId == nil || !filteredSessions.contains(where: { session in
+                selectedSessionId.map(session.matchesIdentityKey) ?? false
+            }) {
+                selectedSessionId = selectableSessions.first?.identityKey
             }
         }
         .onChange(of: sourceFilter) { _, _ in
-            selectedSessionId = selectableSessions.first?.sessionId
+            selectedSessionId = selectableSessions.first?.identityKey
         }
         .onKeyPress(.upArrow) {
             navigate(offset: -1)
@@ -139,19 +143,19 @@ struct SessionPickerView: View {
         let list = selectableSessions
         guard !list.isEmpty else { return }
         guard let currentId = selectedSessionId,
-              let idx = list.firstIndex(where: { $0.sessionId == currentId }) else {
-            selectedSessionId = list.first?.sessionId
+              let idx = list.firstIndex(where: { $0.matchesIdentityKey(currentId) }) else {
+            selectedSessionId = list.first?.identityKey
             return
         }
         let next = idx + offset
         guard next >= 0, next < list.count else { return }
-        selectedSessionId = list[next].sessionId
-        scrollTarget = list[next].sessionId
+        selectedSessionId = list[next].identityKey
+        scrollTarget = list[next].identityKey
     }
 
     private func confirmSelection() {
         guard let id = selectedSessionId,
-              let session = selectableSessions.first(where: { $0.sessionId == id }) else { return }
+              let session = selectableSessions.first(where: { $0.matchesIdentityKey(id) }) else { return }
         onSelect(session)
     }
 }

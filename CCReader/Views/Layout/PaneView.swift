@@ -10,7 +10,7 @@ struct PaneView: View {
 
     private var session: Session? {
         guard let sessionId = pane.sessionId else { return nil }
-        return sessions.first { $0.sessionId == sessionId }
+        return sessions.first { $0.matchesIdentityKey(sessionId) }
     }
 
     var body: some View {
@@ -208,10 +208,7 @@ private struct PaneResumeButton: View {
     @State private var copied = false
 
     private var command: String {
-        if session.source == "codex" {
-            return "codex resume \(session.sessionId)"
-        }
-        return "claude --resume \(session.sessionId)"
+        session.resumeCommand
     }
 
     var body: some View {

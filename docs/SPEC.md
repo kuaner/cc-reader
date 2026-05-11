@@ -90,7 +90,7 @@ Represents a single assistant session (one JSONL file).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `sessionId` | `String` (unique) | UUID |
+| `sessionId` | `String` | Raw session id from the transcript source |
 | `slug` | `String?` | Session name (`streamed-skipping-tarjan`) |
 | `additionalSessionIds` | `[String]` | Merged session IDs (plan/subagent) |
 | `cwd` | `String` | Working directory |

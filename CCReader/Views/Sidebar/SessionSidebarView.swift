@@ -105,10 +105,10 @@ struct SessionSidebarView: View {
 
             List {
                 ForEach(filteredSessions) { session in
-                    SessionRow(session: session, isSelected: selectedSessionId == session.sessionId)
+                    SessionRow(session: session, isSelected: selectedSessionId == session.identityKey)
                         .listRowSeparator(.hidden)
                         .listRowBackground(
-                            selectedSessionId == session.sessionId
+                            selectedSessionId == session.identityKey
                                 ? RoundedRectangle(cornerRadius: 6, style: .continuous)
                                     .fill(Color.sessionLedgerSidebarSelection(for: colorScheme))
                                     .padding(.horizontal, 4)
@@ -116,16 +116,18 @@ struct SessionSidebarView: View {
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            selectedSessionId = session.sessionId
+                            selectedSessionId = session.identityKey
                         }
                 }
             }
             .listStyle(.sidebar)
         }
         .onChange(of: selectedSessionId) { _, newValue in
-            selectedSession = sessions.first { $0.sessionId == newValue }
+            selectedSession = newValue.flatMap { key in
+                sessions.first { $0.matchesIdentityKey(key) }
+            }
         }
-        .onChange(of: selectedSession?.sessionId) { _, newValue in
+        .onChange(of: selectedSession?.identityKey) { _, newValue in
             sourceFilter = SessionSourceFilter.filter(for: selectedSession)
             if selectedSessionId != newValue {
                 selectedSessionId = newValue
