@@ -38,6 +38,7 @@
 "layout.recentSessions" = "Recent Sessions";
 "layout.split.horizontal" = "Split Horizontally";
 "layout.split.vertical" = "Split Vertically";
+"session.export" = "Export Session JSONL";
 "session.resume.copied" = "Copied resume command";
 "session.resume.help" = "Copy resume command to clipboard";
 "sidebar.deleteAndDontAsk" = "Delete (Do not ask again)";

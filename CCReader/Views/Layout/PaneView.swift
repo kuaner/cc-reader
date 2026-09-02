@@ -104,6 +104,16 @@ struct PaneHeaderView: View {
                     PaneResumeButton(session: session)
                 }
 
+                // Export session JSONL
+                Button {
+                    SessionJSONLExporter.export(session)
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .help(L("session.export"))
+
                 // Refresh
                 Button {
                     Task { await coordinator.syncSession(session) }

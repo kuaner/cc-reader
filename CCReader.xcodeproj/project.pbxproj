@@ -21,6 +21,7 @@
 		423148C129A2CEBE2024A477 /* JSONLWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81801878D7D0F5941459DE8 /* JSONLWriter.swift */; };
 		48241F40F1976ED3E6865715 /* WebColorTheme.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288F13AE63EC3B40FC49033B /* WebColorTheme.generated.swift */; };
 		4ACE54197B2B3192700C9818 /* LayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A14AA57D43E0F035D268F3 /* LayoutManager.swift */; };
+		4EAE8EB27D5AFA29AF8FDFA3 /* SessionJSONLExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A37401E4F7CB3B2511586D /* SessionJSONLExporter.swift */; };
 		556F7DAE0F1D8479C6EACD85 /* JSONLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC01B30FA58E55B743817E8F /* JSONLParser.swift */; };
 		603A696DFA507FD48885E6C8 /* LayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE036CD00B746A0350550D54 /* LayoutView.swift */; };
 		603E97954358B9A36B72ABEB /* PaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63821F7A934EBCE8CF6F23C1 /* PaneView.swift */; };
@@ -78,6 +79,7 @@
 		A5985F341E2F064585D3D61D /* TimelineJSCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineJSCommand.swift; sourceTree = "<group>"; };
 		A5FB0CB31934920123ACED0A /* markdown-preview.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "markdown-preview.js"; sourceTree = "<group>"; };
 		B5CF67A854F6F96C56FD350A /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		B7A37401E4F7CB3B2511586D /* SessionJSONLExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionJSONLExporter.swift; sourceTree = "<group>"; };
 		B8CB81705243D19FB001250A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BC01B30FA58E55B743817E8F /* JSONLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParser.swift; sourceTree = "<group>"; };
 		BE036CD00B746A0350550D54 /* LayoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutView.swift; sourceTree = "<group>"; };
@@ -163,6 +165,7 @@
 				BC01B30FA58E55B743817E8F /* JSONLParser.swift */,
 				C81801878D7D0F5941459DE8 /* JSONLWriter.swift */,
 				30A14AA57D43E0F035D268F3 /* LayoutManager.swift */,
+				B7A37401E4F7CB3B2511586D /* SessionJSONLExporter.swift */,
 				1ADF2C3692DE5C05D400B65E /* SessionTranscriptParser.swift */,
 				A089AB1F16E6120BE5C2C502 /* SyncService.swift */,
 				95B4B5280E7F85051F7BB547 /* TokenEstimator.swift */,
@@ -314,6 +317,7 @@
 				603E97954358B9A36B72ABEB /* PaneView.swift in Sources */,
 				D19FF04D36928346DFFD1310 /* Project.swift in Sources */,
 				673CAD5D15307B6EBB15B539 /* Session.swift in Sources */,
+				4EAE8EB27D5AFA29AF8FDFA3 /* SessionJSONLExporter.swift in Sources */,
 				0E78E0FDC521D999D7DD76B5 /* SessionMessagesView.swift in Sources */,
 				E749B713723913DF49511291 /* SessionPickerView.swift in Sources */,
 				068F106F1CFA9B64A34ADB60 /* SessionSidebarView.swift in Sources */,

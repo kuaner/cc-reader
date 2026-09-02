@@ -38,6 +38,7 @@
 "layout.recentSessions" = "最近会话";
 "layout.split.horizontal" = "横向分割";
 "layout.split.vertical" = "纵向分割";
+"session.export" = "导出会话 JSONL";
 "session.resume.copied" = "已复制 resume 命令";
 "session.resume.help" = "复制 resume 命令到剪贴板";
 "sidebar.deleteAndDontAsk" = "删除（以后不再确认）";
