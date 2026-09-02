@@ -38,6 +38,7 @@
 "layout.recentSessions" = "最近のセッション";
 "layout.split.horizontal" = "横に分割";
 "layout.split.vertical" = "縦に分割";
+"session.export" = "セッションJSONLを書き出す";
 "session.resume.copied" = "resumeコマンドをコピー済み";
 "session.resume.help" = "resumeコマンドをクリップボードにコピー";
 "sidebar.deleteAndDontAsk" = "削除（今後確認しない）";
